@@ -1,0 +1,28 @@
+"use strict";
+const { actor, audit, transaction, fail } = require('./organization.service');
+const { hashPassword } = require('../utils/password');
+async function linkAccount(actorId, employeeId, data) {
+  // Hash outside the transaction; never copy credentials into metadata or responses.
+  const passwordHash = data.mode === 'provision' ? await hashPassword(data.password) : null;
+  return transaction(async tx => {
+    const manager = await actor(tx, actorId);
+    const employee = await tx.employee.findUnique({ where: { id: employeeId } });
+    if (!employee) fail(404, 'Employee not found.', 'NOT_FOUND');
+    if (employee.userId) fail(409, 'Employee already has a linked account.', 'ACCOUNT_LINK_CONFLICT');
+    if (employee.version >= 2147483647) fail(409, 'Profile version exhausted.', 'EMPLOYEE_VERSION_EXHAUSTED');
+    let account;
+    if (data.mode === 'link') {
+      account = await tx.user.findUnique({ where: { email: data.email } });
+      if (!account || account.status !== 'ACTIVE' || ['ADMIN', 'HR'].includes(account.role)) fail(400, 'Eligible account not found. Elevated accounts cannot be linked here.');
+    } else {
+      if (manager.role === 'HR' && data.role !== 'EMPLOYEE') fail(403, 'HR can provision ordinary employee accounts only.', 'FORBIDDEN');
+      account = await tx.user.create({ data: { email: data.email, displayName: employee.fullName, passwordHash, role: data.role, mustChangePassword: true } });
+    }
+    if (manager.role === 'HR' && account.role !== 'EMPLOYEE') fail(403, 'HR can link ordinary employee accounts only.', 'FORBIDDEN');
+    const linked = await tx.employee.updateMany({ where: { id: employeeId, userId: null }, data: { userId: account.id, version: { increment: 1 } } });
+    if (linked.count !== 1) fail(409, 'Account linkage changed. Reload.', 'ACCOUNT_LINK_CONFLICT');
+    await audit(tx, actorId, data.mode === 'link' ? 'EMPLOYEE_ACCOUNT_LINKED' : 'EMPLOYEE_ACCOUNT_PROVISIONED', employeeId, { userId: account.id, role: account.role });
+    return { userId: account.id, email: account.email, role: account.role, mustChangePassword: account.mustChangePassword };
+  });
+}
+module.exports = { linkAccount };

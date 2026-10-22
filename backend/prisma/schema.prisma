@@ -1,0 +1,254 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "cjs"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum EmploymentStatus {
+  PROBATION
+  ACTIVE
+  NOTICE_PERIOD
+  SUSPENDED
+  EXITED
+}
+
+model User {
+  id                  String        @id @default(uuid()) @db.Uuid
+  email               String        @unique @db.VarChar(254)
+  displayName         String        @db.VarChar(120)
+  passwordHash        String        @db.Text
+  role                Role          @default(EMPLOYEE)
+  status              AccountStatus @default(ACTIVE)
+  mustChangePassword  Boolean       @default(true)
+  failedLoginAttempts Int           @default(0)
+  lockedUntil         DateTime?     @db.Timestamptz(3)
+  lastLoginAt         DateTime?     @db.Timestamptz(3)
+  passwordChangedAt   DateTime      @default(now()) @db.Timestamptz(3)
+  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
+
+  sessions                       UserSession[]
+  auditLogs                      AuditLog[]               @relation("AuditActor")
+  employee                       Employee?                @relation("EmployeeAccount")
+  employmentStatusEvents         EmploymentStatusEvent[]  @relation("EmploymentStatusActor")
+  approvedEmploymentStatusEvents EmploymentStatusEvent[]  @relation("EmploymentStatusApprover")
+  organizationChanges            OrganizationUnit[]
+  assignmentChanges              OrganizationAssignment[]
+  managerChanges                 TeamManagerAssignment[]  @relation("ManagerActor")
+  managedTeams                   TeamManagerAssignment[]  @relation("TeamManager")
+  uploadedDocuments              EmployeeDocument[]
+
+  @@index([status, role])
+  @@map("users")
+}
+
+model UserSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  tokenHash     String    @unique @db.Char(64)
+  csrfTokenHash String    @db.Char(64)
+  expiresAt     DateTime  @db.Timestamptz(3)
+  revokedAt     DateTime? @db.Timestamptz(3)
+  lastSeenAt    DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  ipAddress     String?   @db.Inet
+  userAgent     String?   @db.VarChar(512)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String   @db.VarChar(100)
+  success     Boolean
+  targetType  String?  @db.VarChar(80)
+  targetId    String?  @db.VarChar(100)
+  metadata    Json?
+  ipAddress   String?  @db.Inet
+  userAgent   String?  @db.VarChar(512)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("audit_logs")
+}
+
+model Employee {
+  id                           String   @id @default(uuid()) @db.Uuid
+  employeeCode                 String   @unique @db.VarChar(30)
+  userId                       String?  @unique @db.Uuid
+  fullName                     String   @db.VarChar(120)
+  personalEmail                String?  @db.VarChar(254)
+  phone                        String?  @db.VarChar(32)
+  address                      String?  @db.VarChar(1000)
+  emergencyContactName         String?  @db.VarChar(120)
+  emergencyContactPhone        String?  @db.VarChar(32)
+  emergencyContactRelationship String?  @db.VarChar(60)
+  version                      Int      @default(1)
+  createdAt                    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt                    DateTime @updatedAt @db.Timestamptz(3)
+
+  user               User?                    @relation("EmployeeAccount", fields: [userId], references: [id], onDelete: Restrict)
+  employmentEpisodes EmploymentEpisode[]
+  assignments        OrganizationAssignment[]
+  documents          EmployeeDocument[]
+
+  @@index([fullName, id])
+  @@map("employees")
+}
+
+enum OrganizationKind {
+  DEPARTMENT
+  CAMPAIGN
+  TEAM
+  DESIGNATION
+}
+
+model OrganizationUnit {
+  id                     String                   @id @default(uuid()) @db.Uuid
+  kind                   OrganizationKind
+  name                   String                   @db.VarChar(120)
+  departmentId           String?                  @db.Uuid
+  campaignId             String?                  @db.Uuid
+  archivedAt             DateTime?                @db.Timestamptz(3)
+  actorUserId            String                   @db.Uuid
+  reason                 String                   @db.VarChar(1000)
+  createdAt              DateTime                 @default(now()) @db.Timestamptz(3)
+  actor                  User                     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  department             OrganizationUnit?        @relation("TeamDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  campaign               OrganizationUnit?        @relation("TeamCampaign", fields: [campaignId], references: [id], onDelete: Restrict)
+  departmentTeams        OrganizationUnit[]       @relation("TeamDepartment")
+  campaignTeams          OrganizationUnit[]       @relation("TeamCampaign")
+  assignments            OrganizationAssignment[]
+  managers               TeamManagerAssignment[]
+  designationAssignments OrganizationAssignment[] @relation("DesignationAssignments")
+
+  @@unique([kind, name])
+  @@map("organization_units")
+}
+
+model OrganizationAssignment {
+  id            String           @id @default(uuid()) @db.Uuid
+  employeeId    String           @db.Uuid
+  teamId        String           @db.Uuid
+  designationId String           @db.Uuid
+  effectiveFrom DateTime         @db.Date
+  effectiveTo   DateTime?        @db.Date
+  actorUserId   String           @db.Uuid
+  reason        String           @db.VarChar(1000)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  team          OrganizationUnit @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  designation   OrganizationUnit @relation("DesignationAssignments", fields: [designationId], references: [id], onDelete: Restrict)
+  actor         User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([teamId, effectiveFrom])
+  @@map("organization_assignments")
+}
+
+model TeamManagerAssignment {
+  id            String           @id @default(uuid()) @db.Uuid
+  teamId        String           @db.Uuid
+  managerUserId String           @db.Uuid
+  effectiveFrom DateTime         @db.Date
+  effectiveTo   DateTime?        @db.Date
+  actorUserId   String           @db.Uuid
+  reason        String           @db.VarChar(1000)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  team          OrganizationUnit @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  manager       User             @relation("TeamManager", fields: [managerUserId], references: [id], onDelete: Restrict)
+  actor         User             @relation("ManagerActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([managerUserId, effectiveFrom])
+  @@map("team_manager_assignments")
+}
+
+model EmployeeDocument {
+  id           String            @id @default(uuid()) @db.Uuid
+  employeeId   String            @db.Uuid
+  replacesId   String?           @unique @db.Uuid
+  title        String            @db.VarChar(120)
+  storageName  String            @unique @db.VarChar(80)
+  mediaType    String            @db.VarChar(80)
+  byteLength   Int
+  ownerVisible Boolean           @default(false)
+  actorUserId  String            @db.Uuid
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  employee     Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  actor        User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  replaces     EmployeeDocument? @relation("DocumentVersions", fields: [replacesId], references: [id], onDelete: Restrict)
+  replacement  EmployeeDocument? @relation("DocumentVersions")
+
+  @@index([employeeId, createdAt])
+  @@map("employee_documents")
+}
+
+model EmploymentEpisode {
+  id                  String           @id @default(uuid()) @db.Uuid
+  employeeId          String           @db.Uuid
+  startDate           DateTime         @db.Date
+  endDate             DateTime?        @db.Date
+  status              EmploymentStatus
+  statusEffectiveDate DateTime         @db.Date
+  probationEndDate    DateTime?        @db.Date
+  confirmedOn         DateTime?        @db.Date
+  version             Int              @default(1)
+  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
+
+  employee     Employee                @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  statusEvents EmploymentStatusEvent[]
+
+  @@unique([employeeId, startDate])
+  @@index([employeeId, status])
+  @@index([status, startDate])
+  @@map("employment_episodes")
+}
+
+model EmploymentStatusEvent {
+  id                  String            @id @default(uuid()) @db.Uuid
+  employmentEpisodeId String            @db.Uuid
+  fromStatus          EmploymentStatus?
+  toStatus            EmploymentStatus
+  effectiveDate       DateTime          @db.Date
+  reason              String            @db.VarChar(1000)
+  actorUserId         String            @db.Uuid
+  approvedByUserId    String?           @db.Uuid
+  approvedAt          DateTime?         @db.Timestamptz(3)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+
+  employmentEpisode EmploymentEpisode @relation(fields: [employmentEpisodeId], references: [id], onDelete: Restrict)
+  actor             User              @relation("EmploymentStatusActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  approvedBy        User?             @relation("EmploymentStatusApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([employmentEpisodeId, effectiveDate, createdAt], map: "employment_status_timeline_idx")
+  @@index([actorUserId, createdAt], map: "employment_status_actor_idx")
+  @@index([approvedByUserId])
+  @@map("employment_status_events")
+}

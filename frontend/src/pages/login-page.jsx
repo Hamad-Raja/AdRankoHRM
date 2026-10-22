@@ -1,0 +1,195 @@
+import { useState } from "react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/context/auth-context";
+
+const INPUT_CLASSES =
+  "mt-2 h-11 w-full rounded-md border border-input bg-background px-3 " +
+  "text-sm text-foreground focus-visible:outline-2 " +
+  "focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+export default function LoginPage() {
+  const { login, notice, pendingAction } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+
+  const busy = pendingAction !== null;
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (busy) return;
+
+    setError("");
+
+    try {
+      await login({
+        email: email.trim(),
+        password,
+      });
+    } catch (requestError) {
+      setError(
+        requestError.details?.[0]?.message ||
+          requestError.message ||
+          "Unable to sign in. Please try again."
+      );
+
+      setPassword("");
+    }
+  }
+
+  return (
+    <div className="min-h-svh bg-background lg:grid lg:grid-cols-2">
+      <aside className="hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
+        <div className="text-3xl font-bold tracking-tight">
+          Office<span className="text-sidebar-ring">HR</span>
+        </div>
+
+        <div className="max-w-md">
+          <p className="text-sm font-semibold text-sidebar-ring">
+            Your employee and HR portal
+          </p>
+
+          <h1 className="mt-4 text-3xl font-semibold leading-tight">
+            One workspace for your people and their workday.
+          </h1>
+
+          <p className="mt-5 leading-7 text-sidebar-foreground/80">
+            Access your account and manage your work with OfficeHR.
+          </p>
+        </div>
+
+        <p className="text-sm text-sidebar-foreground/70">
+          Emerald &amp; Charcoal
+        </p>
+      </aside>
+
+      <div className="flex min-h-svh flex-col">
+        <header className="flex items-center justify-between gap-4 p-5 sm:p-8">
+          <div className="text-xl font-bold tracking-tight lg:invisible">
+            Office<span className="text-primary">HR</span>
+          </div>
+
+          <ThemeToggle />
+        </header>
+
+        <main className="flex flex-1 items-center justify-center px-5 pb-12 sm:px-8">
+          <section
+            aria-labelledby="login-heading"
+            className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8"
+          >
+            <h2
+              id="login-heading"
+              className="text-2xl font-semibold tracking-tight text-card-foreground"
+            >
+              Sign in
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Use the account provided by your administrator.
+            </p>
+
+            {notice && (
+              <p
+                role="status"
+                className="mt-5 rounded-md bg-accent p-3 text-sm text-accent-foreground"
+              >
+                {notice}
+              </p>
+            )}
+
+            {error && (
+              <p
+                role="alert"
+                className="mt-5 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                {error}
+              </p>
+            )}
+
+            <form onSubmit={handleSubmit} className="mt-6">
+              <fieldset disabled={busy} className="space-y-5">
+                <legend className="sr-only">Sign-in details</legend>
+
+                <div>
+                  <label htmlFor="login-email" className="text-sm font-medium">
+                    Email address
+                  </label>
+
+                  <input
+                    id="login-email"
+                    name="email"
+                    type="email"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                    maxLength={254}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className={INPUT_CLASSES}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="login-password" className="text-sm font-medium">
+                    Password
+                  </label>
+
+                  <div className="relative">
+                    <input
+                      id="login-password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className={`${INPUT_CLASSES} pr-12`}
+                    />
+
+                    <button
+                      type="button"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
+                      onClick={() => setShowPassword((previous) => !previous)}
+                      className="absolute right-1 bottom-1 flex size-9 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="size-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="size-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy && (
+                    <LoaderCircle
+                      className="size-4 animate-spin"
+                      aria-hidden="true"
+                    />
+                  )}
+
+                  {busy ? "Signing in..." : "Sign in"}
+                </button>
+              </fieldset>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Need access? Contact your HR administrator.
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+}

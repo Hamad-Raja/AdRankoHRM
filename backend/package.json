@@ -1,0 +1,39 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.js",
+    "test:integration": "node --import tsx --test --test-concurrency=1 tests/auth.integration.test.js",
+    "test:employees": "node --import tsx --test --test-concurrency=1 tests/employee*.integration.test.js",
+    "test:browser": "node --import tsx tests/browser-check.cjs",
+    "test:phase2": "node --import tsx --test tests/phase2.integration.test.js",
+    "test:phase2-browser": "node --import tsx ../artifacts/phase2/browser-check.cjs",
+    "check": "node --check app.js && node --check routes/auth.routes.js && node --check routes/employee.routes.js && node --check src/validation/employee.validation.js && node --check src/services/employee.service.js && node --check src/controllers/employee.controller.js",
+    "dev": "node --import tsx --watch app.js",
+    "start": "node --import tsx app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@inquirer/prompts": "^8.7.4",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "prisma": "^7.10.1"
+  }
+}

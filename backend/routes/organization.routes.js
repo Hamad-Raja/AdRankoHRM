@@ -1,0 +1,35 @@
+"use strict";
+const router = require('express').Router();
+const { z } = require('zod');
+const authenticate = require('../src/middleware/authenticate');
+const authorize = require('../src/middleware/authorize');
+const validate = require('../src/middleware/validate');
+const { csrfProtection } = require('../src/middleware/csrf');
+const service = require('../src/services/organization.service');
+const { linkAccount } = require('../src/services/employee-account.service');
+const { emailSchema, newPasswordSchema } = require('../src/validation/auth.validation');
+const ApiError = require('../src/utils/ApiError');
+const uuid = z.uuid();
+const text = max => z.string().trim().min(1).max(max).regex(/^[^\u0000-\u001f\u007f]+$/u);
+const calendar = z.string().regex(/^(?!0000)\d{4}-\d{2}-\d{2}$/).refine(v => { const d = new Date(`${v}T00:00:00Z`); return Number.isFinite(+d) && d.toISOString().slice(0, 10) === v; });
+const interval = { effectiveFrom: calendar, effectiveTo: calendar.nullable().optional(), reason: text(1000) };
+const datesValid = v => !v.effectiveTo || v.effectiveTo >= v.effectiveFrom;
+const assignment = z.strictObject({ ...interval, teamId: uuid, designationId: uuid }).refine(datesValid, 'End date must follow start date.');
+const manager = z.strictObject({ ...interval, managerUserId: uuid }).refine(datesValid, 'End date must follow start date.');
+const unit = z.strictObject({ kind: z.enum(['DEPARTMENT', 'CAMPAIGN', 'TEAM', 'DESIGNATION']), name: text(120), reason: text(1000), departmentId: uuid.optional(), campaignId: uuid.optional() });
+const account = z.discriminatedUnion('mode', [z.strictObject({ mode: z.literal('link'), email: emailSchema }), z.strictObject({ mode: z.literal('provision'), email: emailSchema, password: newPasswordSchema, role: z.enum(['EMPLOYEE', 'MANAGER']) })]);
+function id(value) { if (!uuid.safeParse(value).success) throw new ApiError(400, 'Invalid record ID.', 'VALIDATION_ERROR'); return value; }
+function endpoint(work, status = 200) { return async (req, res, next) => { try { const data = await work(req); res.status(status).json({ success: true, data }); } catch (e) { next(e); } }; }
+router.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+router.use(authenticate());
+router.get('/scope/employees', endpoint(req => service.scopedEmployees(req.auth.user.id)));
+router.get('/scope/employees/:employeeId', endpoint(req => service.scopedEmployees(req.auth.user.id, id(req.params.employeeId))));
+router.get('/employees/:employeeId/history', endpoint(req => service.history(req.auth.user.id, id(req.params.employeeId))));
+router.use(authorize('ADMIN', 'HR'));
+router.get('/', endpoint(req => service.listOrganization(req.auth.user.id)));
+router.post('/', csrfProtection, validate(unit), endpoint(req => service.createUnit(req.auth.user.id, req.validatedBody), 201));
+router.post('/:unitId/archive', csrfProtection, validate(z.strictObject({ reason: text(1000) })), endpoint(req => service.archiveUnit(req.auth.user.id, id(req.params.unitId), req.validatedBody.reason)));
+router.post('/teams/:unitId/managers', csrfProtection, validate(manager), endpoint(req => service.assignManager(req.auth.user.id, id(req.params.unitId), req.validatedBody), 201));
+router.post('/employees/:employeeId/assignments', csrfProtection, validate(assignment), endpoint(req => service.assignEmployee(req.auth.user.id, id(req.params.employeeId), req.validatedBody), 201));
+router.post('/employees/:employeeId/account', csrfProtection, validate(account), endpoint(req => linkAccount(req.auth.user.id, id(req.params.employeeId), req.validatedBody), 201));
+module.exports = router;
