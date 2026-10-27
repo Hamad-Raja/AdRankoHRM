@@ -53,8 +53,11 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
+app.use("/api/shifts", require("./routes/shift.routes"));
+app.use("/api/attendance-settings", require("./routes/attendance-settings.routes"));
 app.use("/api/organization", require("./routes/organization.routes"));
 app.use("/api/employee-files", require("./routes/employee-document.routes"));
+app.use("/api/attendance", require("./routes/attendance.routes"));
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Endpoint not found.", "NOT_FOUND"));

@@ -33,7 +33,7 @@ export default function NotFoundPage() {
 
           <Link
             to={destination}
-            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="mt-6 inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
           >
             {status === "authenticated" ? "Return to OfficeHR" : "Go to sign in"}
           </Link>

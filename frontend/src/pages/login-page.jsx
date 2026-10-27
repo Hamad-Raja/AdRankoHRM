@@ -5,8 +5,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/context/auth-context";
 
 const INPUT_CLASSES =
-  "mt-2 h-11 w-full rounded-md border border-input bg-background px-3 " +
-  "text-sm text-foreground focus-visible:outline-2 " +
+  "mt-2 h-10 w-full rounded-lg border border-input bg-background/80 px-3.5 " +
+  "text-sm text-foreground shadow-2xs transition-colors focus-visible:outline-2 " +
   "focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export default function LoginPage() {
@@ -170,7 +170,7 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
                 >
                   {busy && (
                     <LoaderCircle

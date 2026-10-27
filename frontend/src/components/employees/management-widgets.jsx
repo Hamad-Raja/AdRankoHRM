@@ -9,7 +9,7 @@ export function Panel({ title, children }) {
 }
 export function Field({ label, options, ...props }) {
   const id = useId();
-  return <div className="min-w-0 space-y-1 text-sm"><label htmlFor={id} className="block">{label}</label>{options ? <select id={id} className="min-h-10 w-full rounded-lg border bg-background p-2" {...props}>{options.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select> : <Input id={id} {...props} />}</div>;
+  return <div className="min-w-0 space-y-1 text-sm"><label htmlFor={id} className="block font-medium">{label}</label>{options ? <select id={id} className="h-9 w-full rounded-lg border border-input bg-background/80 px-3 py-1.5 text-sm shadow-2xs focus-visible:outline-2 focus-visible:outline-ring" {...props}>{options.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select> : <Input id={id} {...props} />}</div>;
 }
 // Never retry writes. An uncertain response locks this mounted form until an explicit read/reload.
 export function ActionForm({ title, children, action, onSaved, submit = 'Save', reset = true }) {

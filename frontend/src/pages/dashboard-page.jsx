@@ -2,6 +2,8 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 
 import { useAuth } from "@/context/auth-context";
+import MyShift from '@/components/my-shift';
+import AttendanceClock from '@/components/attendance-clock';
 
 const ROLE_LABELS = {
   ADMIN: "Administrator",
@@ -36,6 +38,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      <AttendanceClock />
+      <MyShift />
       <section
         aria-labelledby="account-summary-heading"
         className="max-w-2xl rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8"
@@ -68,7 +72,7 @@ export default function DashboardPage() {
 
         <Link
           to="/account"
-          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="mt-5 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           Manage my account
           <ArrowRight className="size-4" aria-hidden="true" />

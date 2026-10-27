@@ -14,6 +14,8 @@ import DashboardPage from "@/pages/dashboard-page";
 import EmployeeCreatePage from "@/pages/employee-create-page";
 import EmployeeDetailPage from "@/pages/employee-detail-page";
 import OrganizationPage from "@/pages/organization-page";
+import AttendanceSettingsPage from "@/pages/attendance-settings-page";
+import AttendancePage from "@/pages/attendance-page";
 import ScopedEmployeesPage from "@/pages/scoped-employees-page";
 import EmployeesPage from "@/pages/employees-page";
 import LoginPage from "@/pages/login-page";
@@ -59,6 +61,10 @@ export default function App() {
                   path="/dashboard"
                   element={<DashboardPage />}
                 />
+                <Route
+                  path="/attendance"
+                  element={<AttendancePage />}
+                />
 
                 <Route
                   element={
@@ -76,6 +82,8 @@ export default function App() {
                   />
                   <Route path="/employees/:employeeId" element={<EmployeeDetailPage />} />
                   <Route path="/organization" element={<OrganizationPage />} />
+                  <Route path="/attendance-settings" element={<AttendanceSettingsPage />} />
+                  <Route path="/shifts" element={<Navigate to="/attendance-settings" replace />} />
                 </Route>
                 <Route element={<ProtectedRoute allowedRoles={["MANAGER", "EMPLOYEE"]} />}>
                   <Route path="/my-employees" element={<ScopedEmployeesPage />} />

@@ -1,4 +1,6 @@
 import {
+  CalendarCheck,
+  Clock,
   LayoutDashboard,
   UserRound,
   UsersRound,
@@ -18,8 +20,6 @@ const ROLE_LABELS = {
 };
 
 const NAVIGATION = [
-  { label: "Organization", to: "/organization", icon: UsersRound, roles: ["ADMIN", "HR"], allowPasswordChange: false, end: true },
-  { label: "Employee profiles", to: "/my-employees", icon: UsersRound, roles: ["MANAGER", "EMPLOYEE"], allowPasswordChange: false, end: true },
   {
     label: "Dashboard",
     to: "/dashboard",
@@ -28,6 +28,17 @@ const NAVIGATION = [
     allowPasswordChange: false,
     end: true,
   },
+  {
+    label: "Attendance",
+    to: "/attendance",
+    icon: CalendarCheck,
+    roles: ALL_ROLES,
+    allowPasswordChange: false,
+    end: true,
+  },
+  { label: "Attendance Settings", to: "/attendance-settings", icon: Clock, roles: ["ADMIN", "HR"], allowPasswordChange: false, end: true },
+  { label: "Organization", to: "/organization", icon: UsersRound, roles: ["ADMIN", "HR"], allowPasswordChange: false, end: true },
+  { label: "Employee profiles", to: "/my-employees", icon: UsersRound, roles: ["MANAGER", "EMPLOYEE"], allowPasswordChange: false, end: true },
   {
     label: "Employees",
     to: "/employees",
@@ -88,13 +99,13 @@ export default function PortalSidebar({ onNavigate }) {
                   onClick={() => onNavigate?.()}
                   className={({ isActive }) =>
                     cn(
-                      "flex min-h-11 items-center gap-3 rounded-md px-3 py-3",
-                      "text-sm font-medium",
+                      "flex h-10 items-center gap-3 rounded-lg px-3",
+                      "text-sm transition-colors",
                       "focus-visible:outline-2 focus-visible:outline-offset-2",
                       "focus-visible:outline-sidebar-ring",
                       isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-2xs"
+                        : "font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )
                   }
                 >

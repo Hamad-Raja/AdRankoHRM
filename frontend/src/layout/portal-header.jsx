@@ -8,9 +8,11 @@ import { useAuth } from "@/context/auth-context";
 const PAGE_TITLES = {
   "/dashboard": "Dashboard",
   "/account": "My account",
+  "/attendance": "Attendance",
   "/employees": "Employees",
   "/employees/new": "Add employee",
   "/organization": "Organization",
+  "/attendance-settings": "Attendance Settings",
   "/my-employees": "Employee profiles",
 };
 
@@ -45,7 +47,11 @@ export default function PortalHeader({
 
   const [logoutError, setLogoutError] = useState("");
 
-  const pageTitle = PAGE_TITLES[location.pathname] || (location.pathname.startsWith('/employees/') ? 'Employee details' : 'OfficeHR');
+  const pageTitle =
+    PAGE_TITLES[location.pathname] ||
+    (location.pathname.startsWith("/employees/")
+      ? "Employee details"
+      : "OfficeHR");
   const busy = pendingAction !== null;
 
   async function handleLogout() {
@@ -63,9 +69,9 @@ export default function PortalHeader({
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-card text-card-foreground">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+    <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-xs text-card-foreground shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={onOpenMenu}
@@ -73,37 +79,37 @@ export default function PortalHeader({
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
             aria-controls={menuId}
-            className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:hidden"
+            className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border/80 bg-background/80 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:hidden"
           >
-            <Menu className="size-5" aria-hidden="true" />
+            <Menu className="size-4" aria-hidden="true" />
           </button>
 
-          <p className="truncate text-sm font-semibold">
+          <p className="truncate text-sm font-semibold tracking-tight text-foreground">
             {pageTitle}
           </p>
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          <ThemeToggle className="gap-1 px-2 sm:gap-2 sm:px-3" />
+          <ThemeToggle />
 
           <Link
             to="/account"
             aria-label={`Open account for ${user.displayName}`}
-            className="flex min-h-11 items-center gap-3 rounded-md px-1 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-2"
+            className="flex h-9 items-center gap-2.5 rounded-lg px-2 hover:bg-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
           >
             <span
               aria-hidden="true"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+              className="flex size-7.5 shrink-0 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary shadow-2xs"
             >
               {getInitials(user.displayName)}
             </span>
 
             <span className="hidden min-w-0 text-left md:block">
-              <span className="block max-w-36 truncate text-sm font-medium">
+              <span className="block max-w-36 truncate text-xs font-semibold leading-tight text-foreground">
                 {user.displayName}
               </span>
 
-              <span className="block text-xs text-muted-foreground">
+              <span className="block text-[11px] leading-tight text-muted-foreground">
                 {ROLE_LABELS[user.role]}
               </span>
             </span>
@@ -117,15 +123,15 @@ export default function PortalHeader({
               pendingAction === "logout" ? "Signing out" : "Sign out"
             }
             title="Sign out"
-            className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border/80 bg-background/80 px-3 text-xs font-semibold text-foreground shadow-2xs hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-all disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pendingAction === "logout" ? (
               <LoaderCircle
-                className="size-4 animate-spin"
+                className="size-3.5 animate-spin"
                 aria-hidden="true"
               />
             ) : (
-              <LogOut className="size-4" aria-hidden="true" />
+              <LogOut className="size-3.5" aria-hidden="true" />
             )}
 
             <span className="hidden lg:inline">
@@ -138,7 +144,7 @@ export default function PortalHeader({
       {logoutError && (
         <p
           role="alert"
-          className="border-t border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive sm:px-6 lg:px-8"
+          className="border-t border-destructive/20 bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive sm:px-6 lg:px-8"
         >
           {logoutError}
         </p>

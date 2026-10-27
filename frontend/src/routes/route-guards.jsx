@@ -41,7 +41,7 @@ function SessionStatusScreen() {
               <button
                 type="button"
                 onClick={() => void refreshSession()}
-                className="mt-6 min-h-11 cursor-pointer rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="mt-6 inline-flex h-9 cursor-pointer items-center justify-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
               >
                 Try again
               </button>
@@ -94,7 +94,7 @@ export function ProtectedRoute({
 
           <Link
             to="/dashboard"
-            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="mt-6 inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
           >
             Back to dashboard
           </Link>
@@ -119,7 +119,7 @@ export function GuestRoute({ children }) {
 
     const canReturn = typeof requestedPath === "string" && (
       ["/dashboard", "/account"].includes(requestedPath) ||
-      (["ADMIN", "HR"].includes(user.role) && /^\/(employees(?:\/new|\/[0-9a-f-]{36})?|organization)$/.test(requestedPath)) ||
+      (["ADMIN", "HR"].includes(user.role) && /^\/(employees(?:\/new|\/[0-9a-f-]{36})?|organization|attendance-settings|shifts)$/.test(requestedPath)) ||
       (["MANAGER", "EMPLOYEE"].includes(user.role) && requestedPath === "/my-employees")
     );
     const destination = canReturn

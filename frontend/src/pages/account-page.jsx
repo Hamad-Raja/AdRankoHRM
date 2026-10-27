@@ -11,13 +11,13 @@ const ROLE_LABELS = {
 };
 
 const INPUT_CLASSES =
-  "mt-2 h-11 w-full rounded-md border border-input bg-background px-3 " +
-  "text-sm text-foreground focus-visible:outline-2 " +
+  "mt-2 h-9 w-full rounded-lg border border-input bg-background/80 px-3 " +
+  "text-sm text-foreground shadow-2xs transition-colors focus-visible:outline-2 " +
   "focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 const BUTTON_CLASSES =
-  "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 " +
-  "rounded-md px-4 text-sm font-medium focus-visible:outline-2 " +
+  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 " +
+  "rounded-lg px-4 text-xs font-semibold shadow-2xs transition-colors focus-visible:outline-2 " +
   "focus-visible:outline-offset-2 focus-visible:outline-ring " +
   "disabled:cursor-not-allowed disabled:opacity-60";
 
