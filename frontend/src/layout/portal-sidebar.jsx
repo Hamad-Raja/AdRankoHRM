@@ -1,12 +1,13 @@
 import {
   CalendarCheck,
   Clock,
+  FileText,
   LayoutDashboard,
   UserRound,
   UsersRound,
 } from "lucide-react";
-import { Link, NavLink } from "react-router";
 
+import { Link, NavLink } from "react-router";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -36,9 +37,38 @@ const NAVIGATION = [
     allowPasswordChange: false,
     end: true,
   },
-  { label: "Attendance Settings", to: "/attendance-settings", icon: Clock, roles: ["ADMIN", "HR"], allowPasswordChange: false, end: true },
-  { label: "Organization", to: "/organization", icon: UsersRound, roles: ["ADMIN", "HR"], allowPasswordChange: false, end: true },
-  { label: "Employee profiles", to: "/my-employees", icon: UsersRound, roles: ["MANAGER", "EMPLOYEE"], allowPasswordChange: false, end: true },
+  {
+    label: "Reports",
+    to: "/reports",
+    icon: FileText,
+    roles: ALL_ROLES,
+    allowPasswordChange: false,
+    end: true,
+  },
+  {
+    label: "Attendance Settings",
+    to: "/attendance-settings",
+    icon: Clock,
+    roles: ["ADMIN", "HR"],
+    allowPasswordChange: false,
+    end: true,
+  },
+  {
+    label: "Organization",
+    to: "/organization",
+    icon: UsersRound,
+    roles: ["ADMIN", "HR"],
+    allowPasswordChange: false,
+    end: true,
+  },
+  {
+    label: "Employee profiles",
+    to: "/my-employees",
+    icon: UsersRound,
+    roles: ["MANAGER", "EMPLOYEE"],
+    allowPasswordChange: false,
+    end: true,
+  },
   {
     label: "Employees",
     to: "/employees",

@@ -16,6 +16,7 @@ import EmployeeDetailPage from "@/pages/employee-detail-page";
 import OrganizationPage from "@/pages/organization-page";
 import AttendanceSettingsPage from "@/pages/attendance-settings-page";
 import AttendancePage from "@/pages/attendance-page";
+import ReportsPage from "@/pages/reports-page";
 import ScopedEmployeesPage from "@/pages/scoped-employees-page";
 import EmployeesPage from "@/pages/employees-page";
 import LoginPage from "@/pages/login-page";
@@ -51,19 +52,22 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowPasswordChange />}>
             <Route element={<PortalLayout />}>
-              <Route
-                path="/account"
-                element={<AccountPage />}
-              />
+              <Route path="/account" element={<AccountPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route
                   path="/dashboard"
                   element={<DashboardPage />}
                 />
+
                 <Route
                   path="/attendance"
                   element={<AttendancePage />}
+                />
+
+                <Route
+                  path="/reports"
+                  element={<ReportsPage />}
                 />
 
                 <Route
@@ -80,13 +84,44 @@ export default function App() {
                     path="/employees/new"
                     element={<EmployeeCreatePage />}
                   />
-                  <Route path="/employees/:employeeId" element={<EmployeeDetailPage />} />
-                  <Route path="/organization" element={<OrganizationPage />} />
-                  <Route path="/attendance-settings" element={<AttendanceSettingsPage />} />
-                  <Route path="/shifts" element={<Navigate to="/attendance-settings" replace />} />
+
+                  <Route
+                    path="/employees/:employeeId"
+                    element={<EmployeeDetailPage />}
+                  />
+
+                  <Route
+                    path="/organization"
+                    element={<OrganizationPage />}
+                  />
+
+                  <Route
+                    path="/attendance-settings"
+                    element={<AttendanceSettingsPage />}
+                  />
+
+                  <Route
+                    path="/shifts"
+                    element={
+                      <Navigate
+                        to="/attendance-settings"
+                        replace
+                      />
+                    }
+                  />
                 </Route>
-                <Route element={<ProtectedRoute allowedRoles={["MANAGER", "EMPLOYEE"]} />}>
-                  <Route path="/my-employees" element={<ScopedEmployeesPage />} />
+
+                <Route
+                  element={
+                    <ProtectedRoute
+                      allowedRoles={["MANAGER", "EMPLOYEE"]}
+                    />
+                  }
+                >
+                  <Route
+                    path="/my-employees"
+                    element={<ScopedEmployeesPage />}
+                  />
                 </Route>
               </Route>
             </Route>

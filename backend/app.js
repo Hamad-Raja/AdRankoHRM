@@ -35,6 +35,7 @@ app.use(
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", CSRF_HEADER_NAME],
+    exposedHeaders: ["Content-Disposition"],
   })
 );
 
@@ -58,6 +59,7 @@ app.use("/api/attendance-settings", require("./routes/attendance-settings.routes
 app.use("/api/organization", require("./routes/organization.routes"));
 app.use("/api/employee-files", require("./routes/employee-document.routes"));
 app.use("/api/attendance", require("./routes/attendance.routes"));
+app.use("/api/reports", require("./routes/reports.routes"));
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Endpoint not found.", "NOT_FOUND"));
@@ -141,8 +143,7 @@ async function startServer() {
   }
 }
 
-// Keep configuration and startup together; importing the app for isolated tests
-// must not start a listener or install process-wide shutdown handlers.
+// Importing the app for tests must not start a listener.
 if (require.main === module) {
   process.once("SIGINT", () => {
     void shutdown("SIGINT received");
