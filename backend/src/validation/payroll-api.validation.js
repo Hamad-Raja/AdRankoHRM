@@ -10,8 +10,9 @@ const adjustment=z.object({type:z.string(),label:z.string(),amount:z.string()}).
 const inputs={totalPayableDays:z.string(),workedDays:z.string(),earnings:z.array(adjustment).max(50).optional(),deductions:z.array(adjustment).max(50).optional()};
 const preview=z.object({employeeId:z.uuid(),month,...inputs}).strict();
 const draft=preview.extend({reason}).strict();
-const edit=z.object({...inputs,expectedVersion:z.number().int().positive(),reason}).strict();
-const decision=z.object({expectedVersion:z.number().int().positive(),reason}).strict();
+const version=z.number().int().positive().max(2147483647);
+const edit=z.object({...inputs,expectedVersion:version,reason}).strict();
+const decision=z.object({expectedVersion:version,reason}).strict();
 const payment=decision.extend({method:z.enum(['CASH','BANK_TRANSFER','OTHER']),paidOn:z.string().refine(isCalendarDate),reference:z.string().trim().min(1).max(120).optional(),note:reason.optional()}).strict().refine(v=>v.method==='CASH'||!!v.reference,'A reference is required.');
-const list=z.object({page:z.coerce.number().int().min(1).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(20),month:month.optional(),employeeId:z.uuid().optional(),status:z.enum(['DRAFT','HR_APPROVED','APPROVED','PAID']).optional(),search:z.string().trim().max(120).optional()}).strict();
+const list=z.object({page:z.coerce.number().int().min(1).max(1000000).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(20),month:month.optional(),employeeId:z.uuid().optional(),status:z.enum(['DRAFT','HR_APPROVED','APPROVED','PAID']).optional(),search:z.string().trim().max(120).optional()}).strict();
 module.exports={salary,preview,draft,edit,decision,payment,list,month,id:z.uuid()};

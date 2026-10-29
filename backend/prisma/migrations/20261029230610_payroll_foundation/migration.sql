@@ -227,7 +227,7 @@ CREATE TRIGGER payroll_payment_guard BEFORE INSERT OR UPDATE OR DELETE ON payrol
 CREATE FUNCTION payroll_payment_commit_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE payroll payroll_records; payment payroll_payments; record_id uuid;
 BEGIN
- record_id:=CASE WHEN TG_TABLE_NAME='payroll_records' THEN NEW.id ELSE NEW."payrollRecordId" END;
+ record_id:=coalesce(to_jsonb(NEW)->>'payrollRecordId',to_jsonb(NEW)->>'id')::uuid;
  SELECT * INTO payroll FROM payroll_records WHERE id=record_id;
  SELECT * INTO payment FROM payroll_payments WHERE "payrollRecordId"=record_id;
  IF (payroll.status='PAID') IS DISTINCT FROM (payment.id IS NOT NULL) OR (payment.id IS NOT NULL AND (payment.amount<>payroll."netPay" OR payment.currency<>payroll.currency OR payment."actorUserId"<>payroll."paidByUserId")) THEN RAISE EXCEPTION 'Payment and PAID transition must commit together' USING ERRCODE='23514'; END IF;
@@ -235,5 +235,12 @@ BEGIN
 END $$;
 CREATE CONSTRAINT TRIGGER payroll_payment_commit_guard AFTER INSERT OR UPDATE ON payroll_records DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION payroll_payment_commit_guard();
 CREATE CONSTRAINT TRIGGER payroll_payment_commit_guard AFTER INSERT ON payroll_payments DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION payroll_payment_commit_guard();
+CREATE FUNCTION payroll_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF OLD."targetType"='Payroll' THEN RAISE EXCEPTION 'Payroll audit history is immutable' USING ERRCODE='23514'; END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER payroll_audit_immutable BEFORE UPDATE OR DELETE ON audit_logs FOR EACH ROW EXECUTE FUNCTION payroll_audit_immutable();
 COMMIT;
 

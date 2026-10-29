@@ -46,6 +46,22 @@ const NAVIGATION = [
     end: true,
   },
   {
+    label: "Payroll",
+    to: "/payroll",
+    icon: FileText,
+    roles: ["ADMIN", "HR"],
+    allowPasswordChange: false,
+    end: true,
+  },
+  {
+    label: "My payslips",
+    to: "/my-payslips",
+    icon: FileText,
+    roles: ALL_ROLES,
+    allowPasswordChange: false,
+    end: true,
+  },
+  {
     label: "Attendance Settings",
     to: "/attendance-settings",
     icon: Clock,

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -17,6 +17,7 @@ import OrganizationPage from "@/pages/organization-page";
 import AttendanceSettingsPage from "@/pages/attendance-settings-page";
 import AttendancePage from "@/pages/attendance-page";
 import ReportsPage from "@/pages/reports-page";
+const PayrollPage = lazy(() => import("@/pages/payroll-page"));
 import ScopedEmployeesPage from "@/pages/scoped-employees-page";
 import EmployeesPage from "@/pages/employees-page";
 import LoginPage from "@/pages/login-page";
@@ -69,6 +70,7 @@ export default function App() {
                   path="/reports"
                   element={<ReportsPage />}
                 />
+                <Route path="/my-payslips" element={<Suspense fallback={<p role="status">Loading payslips…</p>}><PayrollPage key="own-payslips" own /></Suspense>} />
 
                 <Route
                   element={
@@ -79,6 +81,7 @@ export default function App() {
                     path="/employees"
                     element={<EmployeesPage />}
                   />
+                  <Route path="/payroll" element={<Suspense fallback={<p role="status">Loading payroll…</p>}><PayrollPage key="payroll-management" /></Suspense>} />
 
                   <Route
                     path="/employees/new"

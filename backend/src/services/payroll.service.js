@@ -19,8 +19,8 @@ async function event(tx,userId,action,targetId,metadata){await tx.auditLog.creat
 async function employee(tx,id){const emp=await tx.employee.findUnique({where:{id},select:{id:true,fullName:true,employeeCode:true}});if(!emp)fail(404,'Employee not found.','NOT_FOUND');return emp;}
 async function lock(tx,id){await tx.$queryRaw`SELECT id FROM employees WHERE id=${id}::uuid FOR UPDATE`;}
 async function applicable(tx,employeeId,month){const salary=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:{lte:date(month)}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});if(!salary)fail(409,'Set an effective salary for this payroll month first.','SALARY_REQUIRED');return salary;}
-const salaryView=s=>({id:s.id,employeeId:s.employeeId,effectiveMonth:monthOf(s.effectiveMonth),revision:s.revision,previousId:s.previousId,monthlyBasic:s.monthlyBasic.toFixed(2),currency:s.currency,reason:s.reason,actorUserId:s.actorUserId,createdAt:s.createdAt.toISOString()});
-async function salaryHistory(userId,employeeId){return transaction(async tx=>{await actor(tx,userId);const emp=await employee(tx,employeeId);const versions=await tx.employeeSalaryVersion.findMany({where:{employeeId},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});return {employee:emp,versions:versions.map(salaryView)};});}
+const salaryView=s=>({id:s.id,employeeId:s.employeeId,effectiveMonth:monthOf(s.effectiveMonth),revision:s.revision,previousId:s.previousId,monthlyBasic:s.monthlyBasic.toFixed(2),currency:s.currency,reason:s.reason,actorUserId:s.actorUserId,actorName:s.actor?.displayName||null,createdAt:s.createdAt.toISOString()});
+async function salaryHistory(userId,employeeId){return transaction(async tx=>{await actor(tx,userId);const emp=await employee(tx,employeeId);const versions=await tx.employeeSalaryVersion.findMany({where:{employeeId},include:{actor:{select:{displayName:true}}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});return {employee:emp,versions:versions.map(salaryView)};});}
 async function saveSalary(userId,employeeId,input){return transaction(async tx=>{
  const user=await actor(tx,userId);await employee(tx,employeeId);await lock(tx,employeeId);
  const previous=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:date(input.effectiveMonth)},orderBy:{revision:'desc'}});
@@ -67,6 +67,7 @@ async function detail(userId,id,own=false){return transaction(async tx=>{
 async function mutate(userId,id,input,action){return transaction(async tx=>{
  const user=await actor(tx,userId);let record=await tx.payrollRecord.findUnique({where:{id}});if(!record)fail(404,'Payroll not found.','NOT_FOUND');await lock(tx,record.employeeId);
  if(record.version!==input.expectedVersion)fail(409,'Payroll changed. Reload before trying again.','VERSION_CONFLICT');
+ if(record.version>=2147483647)fail(409,'Payroll revision limit reached. No changes were saved.','VERSION_EXHAUSTED');
  const data={updatedByUserId:user.id,changeReason:input.reason,version:{increment:1}};const now=new Date();
  if(action==='edit'){
   if(record.status!=='DRAFT')fail(409,'Only drafts can be edited.','INVALID_TRANSITION');
