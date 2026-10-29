@@ -46,25 +46,33 @@ model User {
   updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
 
   sessions                       UserSession[]
-  auditLogs                      AuditLog[]               @relation("AuditActor")
-  employee                       Employee?                @relation("EmployeeAccount")
-  employmentStatusEvents         EmploymentStatusEvent[]  @relation("EmploymentStatusActor")
-  approvedEmploymentStatusEvents EmploymentStatusEvent[]  @relation("EmploymentStatusApprover")
+  auditLogs                      AuditLog[]                    @relation("AuditActor")
+  employee                       Employee?                     @relation("EmployeeAccount")
+  employmentStatusEvents         EmploymentStatusEvent[]       @relation("EmploymentStatusActor")
+  approvedEmploymentStatusEvents EmploymentStatusEvent[]       @relation("EmploymentStatusApprover")
   organizationChanges            OrganizationUnit[]
   assignmentChanges              OrganizationAssignment[]
-  managerChanges                 TeamManagerAssignment[]  @relation("ManagerActor")
-  managedTeams                   TeamManagerAssignment[]  @relation("TeamManager")
+  managerChanges                 TeamManagerAssignment[]       @relation("ManagerActor")
+  managedTeams                   TeamManagerAssignment[]       @relation("TeamManager")
   uploadedDocuments              EmployeeDocument[]
   shiftDefinitions               ShiftDefinition[]
-  officeSchedules OfficeSchedule[]
-  officeScheduleDrafts OfficeScheduleDraft[]
-  companyHolidayEvents CompanyHolidayEvent[]
-  shiftAssignments               EmployeeShiftAssignment[] @relation("ShiftAssignmentActor")
-  shiftAssignmentClosures         EmployeeShiftAssignment[] @relation("ShiftAssignmentCloser")
-  attendanceClockIns             AttendanceRecord[] @relation("AttendanceClockInActor")
-  attendanceClockOuts            AttendanceRecord[] @relation("AttendanceClockOutActor")
+  officeSchedules                OfficeSchedule[]
+  officeScheduleDrafts           OfficeScheduleDraft[]
+  companyHolidayEvents           CompanyHolidayEvent[]
+  shiftAssignments               EmployeeShiftAssignment[]     @relation("ShiftAssignmentActor")
+  shiftAssignmentClosures        EmployeeShiftAssignment[]     @relation("ShiftAssignmentCloser")
+  attendanceClockIns             AttendanceRecord[]            @relation("AttendanceClockInActor")
+  attendanceClockOuts            AttendanceRecord[]            @relation("AttendanceClockOutActor")
   correctionRequests             AttendanceCorrectionRequest[] @relation("CorrectionRequester")
   correctionReviews              AttendanceCorrectionRequest[] @relation("CorrectionReviewer")
+
+  salaryVersions        EmployeeSalaryVersion[] @relation("SalaryVersionActor")
+  payrollsCreated       PayrollRecord[]         @relation("PayrollCreator")
+  payrollsUpdated       PayrollRecord[]         @relation("PayrollUpdater")
+  payrollsHrApproved    PayrollRecord[]         @relation("PayrollHrApprover")
+  payrollsAdminApproved PayrollRecord[]         @relation("PayrollAdminApprover")
+  payrollsPaid          PayrollRecord[]         @relation("PayrollPaidActor")
+  payrollPayments       PayrollPayment[]        @relation("PayrollPaymentActor")
 
   @@index([status, role])
   @@map("users")
@@ -124,13 +132,16 @@ model Employee {
   createdAt                    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt                    DateTime @updatedAt @db.Timestamptz(3)
 
-  user               User?                    @relation("EmployeeAccount", fields: [userId], references: [id], onDelete: Restrict)
+  user               User?                         @relation("EmployeeAccount", fields: [userId], references: [id], onDelete: Restrict)
   employmentEpisodes EmploymentEpisode[]
   assignments        OrganizationAssignment[]
   documents          EmployeeDocument[]
   shiftAssignments   EmployeeShiftAssignment[]
   attendanceRecords  AttendanceRecord[]
   correctionRequests AttendanceCorrectionRequest[]
+
+  salaryVersions EmployeeSalaryVersion[]
+  payrollRecords PayrollRecord[]
 
   @@index([fullName, id])
   @@map("employees")
@@ -153,8 +164,9 @@ model OrganizationUnit {
   actorUserId            String                   @db.Uuid
   reason                 String                   @db.VarChar(1000)
   createdAt              DateTime                 @default(now()) @db.Timestamptz(3)
+
   actor                  User                     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
-  department             OrganizationUnit?        @relation("TeamDepartment", fields: [departmentId], references:[id], onDelete: Restrict)
+  department             OrganizationUnit?        @relation("TeamDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
   campaign               OrganizationUnit?        @relation("TeamCampaign", fields: [campaignId], references: [id], onDelete: Restrict)
   departmentTeams        OrganizationUnit[]       @relation("TeamDepartment")
   campaignTeams          OrganizationUnit[]       @relation("TeamCampaign")
@@ -167,56 +179,59 @@ model OrganizationUnit {
 }
 
 model OrganizationAssignment {
-  id            String           @id @default(uuid()) @db.Uuid
-  employeeId    String           @db.Uuid
-  teamId        String           @db.Uuid
-  designationId String           @db.Uuid
-  effectiveFrom DateTime         @db.Date
-  effectiveTo   DateTime?        @db.Date
-  actorUserId   String           @db.Uuid
-  reason        String           @db.VarChar(1000)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  team          OrganizationUnit @relation(fields: [teamId], references: [id], onDelete: Restrict)
-  designation   OrganizationUnit @relation("DesignationAssignments", fields: [designationId], references: [id], onDelete: Restrict)
-  actor         User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  id            String   @id @default(uuid()) @db.Uuid
+  employeeId    String   @db.Uuid
+  teamId        String   @db.Uuid
+  designationId String   @db.Uuid
+  effectiveFrom DateTime @db.Date
+  effectiveTo   DateTime? @db.Date
+  actorUserId   String   @db.Uuid
+  reason        String   @db.VarChar(1000)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  team        OrganizationUnit @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  designation OrganizationUnit @relation("DesignationAssignments", fields: [designationId], references: [id], onDelete: Restrict)
+  actor       User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
 
   @@index([teamId, effectiveFrom])
   @@map("organization_assignments")
 }
 
 model TeamManagerAssignment {
-  id            String           @id @default(uuid()) @db.Uuid
-  teamId        String           @db.Uuid
-  managerUserId String           @db.Uuid
-  effectiveFrom DateTime         @db.Date
-  effectiveTo   DateTime?        @db.Date
-  actorUserId   String           @db.Uuid
-  reason        String           @db.VarChar(1000)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  team          OrganizationUnit @relation(fields: [teamId], references: [id], onDelete: Restrict)
-  manager       User             @relation("TeamManager", fields: [managerUserId], references: [id], onDelete: Restrict)
-  actor         User             @relation("ManagerActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  id            String    @id @default(uuid()) @db.Uuid
+  teamId        String    @db.Uuid
+  managerUserId String    @db.Uuid
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+  actorUserId   String    @db.Uuid
+  reason        String    @db.VarChar(1000)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  team    OrganizationUnit @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  manager User             @relation("TeamManager", fields: [managerUserId], references: [id], onDelete: Restrict)
+  actor   User             @relation("ManagerActor", fields: [actorUserId], references: [id], onDelete: Restrict)
 
   @@index([managerUserId, effectiveFrom])
   @@map("team_manager_assignments")
 }
 
 model EmployeeDocument {
-  id           String            @id @default(uuid()) @db.Uuid
-  employeeId   String            @db.Uuid
-  replacesId   String?           @unique @db.Uuid
-  title        String            @db.VarChar(120)
-  storageName  String            @unique @db.VarChar(80)
-  mediaType    String            @db.VarChar(80)
+  id           String   @id @default(uuid()) @db.Uuid
+  employeeId   String   @db.Uuid
+  replacesId   String?  @unique @db.Uuid
+  title        String   @db.VarChar(120)
+  storageName  String   @unique @db.VarChar(80)
+  mediaType    String   @db.VarChar(80)
   byteLength   Int
-  ownerVisible Boolean           @default(false)
-  actorUserId  String            @db.Uuid
-  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
-  employee     Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  actor        User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
-  replaces     EmployeeDocument? @relation("DocumentVersions", fields: [replacesId], references: [id], onDelete: Restrict)
-  replacement  EmployeeDocument? @relation("DocumentVersions")
+  ownerVisible Boolean  @default(false)
+  actorUserId  String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  employee    Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  actor       User              @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  replaces    EmployeeDocument? @relation("DocumentVersions", fields: [replacesId], references: [id], onDelete: Restrict)
+  replacement EmployeeDocument? @relation("DocumentVersions")
 
   @@index([employeeId, createdAt])
   @@map("employee_documents")
@@ -235,8 +250,8 @@ model EmploymentEpisode {
   createdAt           DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
 
-  employee     Employee                @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  statusEvents EmploymentStatusEvent[]
+  employee        Employee                  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  statusEvents    EmploymentStatusEvent[]
   shiftAssignments EmployeeShiftAssignment[]
   attendanceRecords AttendanceRecord[]
 
@@ -259,7 +274,7 @@ model EmploymentStatusEvent {
   createdAt           DateTime          @default(now()) @db.Timestamptz(3)
 
   employmentEpisode EmploymentEpisode @relation(fields: [employmentEpisodeId], references: [id], onDelete: Restrict)
-  actor             User              @relation("EmploymentStatusActor", fields: [actorUserId], references: [id],onDelete: Restrict)
+  actor             User              @relation("EmploymentStatusActor", fields: [actorUserId], references: [id], onDelete: Restrict)
   approvedBy        User?             @relation("EmploymentStatusApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
 
   @@index([employmentEpisodeId, effectiveDate, createdAt], map: "employment_status_timeline_idx")
@@ -318,50 +333,57 @@ model EmployeeShiftAssignment {
   @@map("employee_shift_assignments")
 }
 
-// Append-only office policy. Intervals end immediately before the next effectiveFrom.
+// Append-only office policy.
+// Intervals end immediately before the next effectiveFrom.
 model OfficeSchedule {
-  attendanceRecords AttendanceRecord[]
-  id String @id @default(uuid()) @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
   effectiveFrom DateTime @unique @db.Date
-  startTime String @default("19:00") @db.VarChar(5)
-  endTime String @default("05:00") @db.VarChar(5)
-  endsNextDay Boolean @default(true)
-  policy Json
-  actorUserId String @db.Uuid
-  reason String @db.VarChar(1000)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
-  draftId String? @unique @db.Uuid
-  draft OfficeScheduleDraft? @relation(fields: [draftId], references: [id], onDelete: Restrict)
+  startTime    String   @default("19:00") @db.VarChar(5)
+  endTime      String   @default("05:00") @db.VarChar(5)
+  endsNextDay  Boolean  @default(true)
+  policy       Json
+  actorUserId  String   @db.Uuid
+  reason       String   @db.VarChar(1000)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  draftId      String?  @unique @db.Uuid
+
+  actor             User                 @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  draft             OfficeScheduleDraft? @relation(fields: [draftId], references: [id], onDelete: Restrict)
+  attendanceRecords AttendanceRecord[]
+
   @@map("office_schedules")
 }
 
 model OfficeScheduleDraft {
-  id String @id @default(uuid()) @db.Uuid
-  revision Int @unique
-  policy Json
-  actorUserId String @db.Uuid
-  reason String @db.VarChar(1000)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  id          String   @id @default(uuid()) @db.Uuid
+  revision    Int      @unique
+  policy      Json
+  actorUserId String   @db.Uuid
+  reason      String   @db.VarChar(1000)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  actor      User            @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
   activation OfficeSchedule?
+
   @@map("office_schedule_drafts")
 }
 
 model CompanyHolidayEvent {
-  id String @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   holidayDate DateTime @db.Date
-  revision Int
-  action String @db.VarChar(10)
-  actorUserId String @db.Uuid
-  reason String @db.VarChar(1000)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  revision    Int
+  action      String   @db.VarChar(10)
+  actorUserId String   @db.Uuid
+  reason      String   @db.VarChar(1000)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
   actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
-  @@unique([holidayDate, revision])
+
+  @@unique([holidayDate, revision], map: "company_holiday_events_date_revision_key")
   @@map("company_holiday_events")
 }
 
-// --- Phase 4: Attendance ---
+// --- Attendance ---
 
 enum AttendanceStatus {
   OPEN
@@ -377,7 +399,7 @@ enum CorrectionStatus {
 }
 
 model AttendanceRecord {
-  id                  String           @id @default(uuid()) @db.Uuid
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employeeId          String           @db.Uuid
   employmentEpisodeId String           @db.Uuid
   shiftDate           DateTime         @db.Date
@@ -399,7 +421,6 @@ model AttendanceRecord {
   clockOutActorUserId String?          @db.Uuid
   scheduleSnapshot    Json
   officeScheduleId    String?          @db.Uuid
-  officeSchedule      OfficeSchedule?  @relation(fields: [officeScheduleId], references: [id], onDelete: Restrict)
   approvedAdjustment  Json?
   version             Int              @default(1)
   createdAt           DateTime         @default(now()) @db.Timestamptz(3)
@@ -407,6 +428,7 @@ model AttendanceRecord {
 
   employee          Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   employmentEpisode EmploymentEpisode @relation(fields: [employmentEpisodeId], references: [id], onDelete: Restrict)
+  officeSchedule    OfficeSchedule?   @relation(fields: [officeScheduleId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   clockInActor      User              @relation("AttendanceClockInActor", fields: [clockInActorUserId], references: [id], onDelete: Restrict)
   clockOutActor     User?             @relation("AttendanceClockOutActor", fields: [clockOutActorUserId], references: [id], onDelete: Restrict)
   corrections       AttendanceCorrectionRequest[]
@@ -419,30 +441,148 @@ model AttendanceRecord {
 }
 
 model AttendanceCorrectionRequest {
-  id                  String           @id @default(uuid()) @db.Uuid
-  attendanceRecordId  String?          @db.Uuid
-  employeeId          String           @db.Uuid
-  shiftDate           DateTime         @db.Date
-  requestType         String           @db.VarChar(50)
-  correctedClockIn    DateTime?        @db.Timestamptz(3)
-  correctedClockOut   DateTime?        @db.Timestamptz(3)
-  reason              String           @db.VarChar(1000)
-  status              CorrectionStatus @default(PENDING)
-  requestedByUserId   String           @db.Uuid
-  reviewedByUserId    String?          @db.Uuid
-  reviewReason        String?          @db.VarChar(1000)
-  reviewedAt          DateTime?        @db.Timestamptz(3)
-  originalData        Json?
-  version             Int              @default(1)
-  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attendanceRecordId String?          @db.Uuid
+  employeeId         String           @db.Uuid
+  shiftDate          DateTime         @db.Date
+  requestType        String           @db.VarChar(50)
+  correctedClockIn   DateTime?        @db.Timestamptz(3)
+  correctedClockOut  DateTime?        @db.Timestamptz(3)
+  reason             String           @db.VarChar(1000)
+  status             CorrectionStatus @default(PENDING)
+  requestedByUserId  String           @db.Uuid
+  reviewedByUserId   String?          @db.Uuid
+  reviewReason       String?          @db.VarChar(1000)
+  reviewedAt         DateTime?        @db.Timestamptz(3)
+  originalData       Json?
+  version            Int              @default(1)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz(3)
 
-  attendanceRecord    AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id], onDelete: Restrict)
-  employee            Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  requestedBy         User              @relation("CorrectionRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
-  reviewedBy          User?             @relation("CorrectionReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+  attendanceRecord AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id], onDelete: Restrict)
+  employee         Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  requestedBy      User              @relation("CorrectionRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy       User?             @relation("CorrectionReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
 
   @@index([employeeId, shiftDate])
   @@index([status])
   @@map("attendance_correction_requests")
+}
+
+// --- Salary and Payroll ---
+
+enum PayrollStatus {
+  DRAFT
+  HR_APPROVED
+  APPROVED
+  PAID
+}
+
+enum PayrollPaymentMethod {
+  BANK_TRANSFER
+  CASH
+  OTHER
+}
+
+model EmployeeSalaryVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @db.Uuid
+  effectiveMonth DateTime @db.Date
+  revision       Int
+  previousId     String?  @unique(map: "salary_previous_key") @db.Uuid
+  monthlyBasic   Decimal  @db.Decimal(14, 2)
+  currency       String   @default("PKR") @db.Char(3)
+  actorUserId    String   @db.Uuid
+  reason         String   @db.VarChar(1000)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  employee       Employee               @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actor          User                   @relation("SalaryVersionActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  previous       EmployeeSalaryVersion? @relation("SalaryVersionChain", fields: [previousId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  replacement    EmployeeSalaryVersion? @relation("SalaryVersionChain")
+  payrollRecords PayrollRecord[]
+
+  @@unique([employeeId, effectiveMonth, revision], map: "salary_employee_month_revision_key")
+  @@index([actorUserId, createdAt], map: "salary_actor_created_idx")
+  @@map("employee_salary_versions")
+}
+
+model PayrollRecord {
+  id                    String        @id @default(uuid()) @db.Uuid
+  employeeId            String        @db.Uuid
+  salaryVersionId       String        @db.Uuid
+  payrollMonth          DateTime      @db.Date
+  currency              String        @default("PKR") @db.Char(3)
+  basis                 String        @default("MANUAL_DAYS") @db.VarChar(20)
+  calculationVersion    String        @default("MANUAL_DAYS_V1") @db.VarChar(40)
+  rounding              String        @default("HALF_UP_TO_PAISA") @db.VarChar(32)
+
+  monthlyBasic          Decimal       @db.Decimal(14, 2)
+  totalPayableDays      Decimal       @db.Decimal(4, 2)
+  workedDays            Decimal       @db.Decimal(4, 2)
+
+  earnings              Json          @default("[]")
+  deductions            Json          @default("[]")
+
+  earnedBasic           Decimal       @db.Decimal(14, 2)
+  unearnedBasic         Decimal       @db.Decimal(14, 2)
+  additionalEarnings    Decimal       @db.Decimal(14, 2)
+  grossPay              Decimal       @db.Decimal(14, 2)
+  totalDeductions       Decimal       @db.Decimal(14, 2)
+  netPay                Decimal       @db.Decimal(14, 2)
+
+  employeeCodeSnapshot  String        @db.VarChar(30)
+  employeeNameSnapshot  String        @db.VarChar(120)
+
+  status                PayrollStatus @default(DRAFT)
+  version               Int           @default(1)
+
+  createdByUserId       String        @db.Uuid
+  updatedByUserId       String        @db.Uuid
+
+  hrApprovedByUserId    String?       @db.Uuid
+  hrApprovedAt          DateTime?     @db.Timestamptz(3)
+
+  adminApprovedByUserId String?       @db.Uuid
+  adminApprovedAt       DateTime?     @db.Timestamptz(3)
+
+  paidByUserId          String?       @db.Uuid
+  paidAt                DateTime?     @db.Timestamptz(3)
+
+  changeReason          String        @db.VarChar(1000)
+  createdAt             DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime      @default(now()) @updatedAt @db.Timestamptz(3)
+
+  employee        Employee              @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  salaryVersion   EmployeeSalaryVersion @relation(fields: [salaryVersionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdBy       User                  @relation("PayrollCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  updatedBy       User                  @relation("PayrollUpdater", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  hrApprovedBy    User?                 @relation("PayrollHrApprover", fields: [hrApprovedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  adminApprovedBy User?                 @relation("PayrollAdminApprover", fields: [adminApprovedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  paidBy          User?                 @relation("PayrollPaidActor", fields: [paidByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  payment         PayrollPayment?
+
+  @@unique([employeeId, payrollMonth], map: "payroll_employee_month_key")
+  @@index([payrollMonth, status], map: "payroll_month_status_idx")
+  @@index([salaryVersionId], map: "payroll_salary_version_idx")
+  @@map("payroll_records")
+}
+
+model PayrollPayment {
+  id              String               @id @default(uuid()) @db.Uuid
+  payrollRecordId String               @unique(map: "payroll_payment_record_key") @db.Uuid
+  amount          Decimal              @db.Decimal(14, 2)
+  currency        String               @default("PKR") @db.Char(3)
+  method          PayrollPaymentMethod
+  paidOn          DateTime             @db.Date
+  reference       String?              @db.VarChar(120)
+  note            String?              @db.VarChar(1000)
+  actorUserId     String               @db.Uuid
+  recordedAt      DateTime             @default(now()) @db.Timestamptz(3)
+
+  payrollRecord PayrollRecord @relation(fields: [payrollRecordId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actor         User          @relation("PayrollPaymentActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([actorUserId, recordedAt], map: "payroll_payment_actor_idx")
+  @@map("payroll_payments")
 }

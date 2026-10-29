@@ -1,0 +1,20 @@
+"use strict";
+const router=require('express').Router(),{z}=require('zod');
+const authenticate=require('../src/middleware/authenticate'),authorize=require('../src/middleware/authorize');
+const {csrfProtection}=require('../src/middleware/csrf'),ApiError=require('../src/utils/ApiError');
+const schema=require('../src/validation/payroll-api.validation'),service=require('../src/services/payroll.service');
+function parse(s,value){const result=s.safeParse(value);if(!result.success)throw new ApiError(400,result.error.issues[0]?.message||'Invalid payroll input.','VALIDATION_ERROR');return result.data;}
+const run=work=>async(req,res,next)=>{try{res.json({success:true,data:await work(req)});}catch(e){next(e);}};
+router.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});router.use(authenticate());
+router.get('/payslips',run(req=>service.list(req.auth.user.id,parse(schema.list,req.query),true)));
+router.get('/payslips/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id),true)));
+router.use(authorize('ADMIN','HR'));
+router.get('/salaries/:employeeId',run(req=>service.salaryHistory(req.auth.user.id,parse(schema.id,req.params.employeeId))));
+router.post('/salaries/:employeeId',csrfProtection,run(req=>service.saveSalary(req.auth.user.id,parse(schema.id,req.params.employeeId),parse(schema.salary,req.body))));
+router.post('/preview',csrfProtection,run(req=>service.preview(req.auth.user.id,parse(schema.preview,req.body))));
+router.get('/',run(req=>service.list(req.auth.user.id,parse(schema.list,req.query))));
+router.post('/',csrfProtection,run(req=>service.createDraft(req.auth.user.id,parse(schema.draft,req.body))));
+router.get('/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id))));
+router.patch('/:id',csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(schema.edit,req.body),'edit')));
+for(const action of ['hr-approve','return','approve','pay'])router.post(`/:id/${action}`,csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(action==='pay'?schema.payment:schema.decision,req.body),action)));
+module.exports=router;
