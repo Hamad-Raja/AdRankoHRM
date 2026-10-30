@@ -4,7 +4,8 @@ import { Link } from "react-router";
 import { useAuth } from "@/context/auth-context";
 import MyShift from '@/components/my-shift';
 import AttendanceClock from '@/components/attendance-clock';
-import AnnouncementBanner from '@/components/announcement-banner';
+import {lazy,Suspense} from 'react';
+const AnnouncementBanner=lazy(()=>import('@/components/announcement-banner').catch(()=>({default:()=>null})));
 
 const ROLE_LABELS = {
   ADMIN: "Administrator",
@@ -39,7 +40,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <AnnouncementBanner />
+      <Suspense fallback={null}><AnnouncementBanner key={user.id}/></Suspense>
       <AttendanceClock />
       <MyShift />
       <section

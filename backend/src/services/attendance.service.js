@@ -703,6 +703,7 @@ async function submitCorrectionRequest(
       attendanceRecordId: record?.id || null,
     });
 
+    await require('./workflow-notifications').correctionSubmitted(tx, correction, user.id);
     return formatCorrectionRequest(correction);
   });
 }
@@ -775,6 +776,7 @@ async function reviewCorrection(
       employeeId: correction.employeeId,
     });
 
+    await require('./workflow-notifications').correctionReviewed(tx, updated, user.id);
     return formatCorrectionRequest(updated);
   });
 }

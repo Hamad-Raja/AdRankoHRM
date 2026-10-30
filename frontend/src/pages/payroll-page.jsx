@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {apiRequest} from '@/lib/api';
 import {payrollRequest,payrollQuery} from '@/services/payroll.service';
+import {useSearchParams} from 'react-router';
 
 const selectClass='w-full rounded-lg border border-input bg-background p-2 text-sm';
 const initialMonth=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Karachi',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
@@ -31,11 +32,13 @@ function Slip({record,own}) {
  </section>;
 }
 export default function PayrollPage({own=false}) {
+ const [resourceQuery]=useSearchParams();
  const {user,getCsrfToken,refreshSession}=useAuth();
  const [month,setMonth]=useState(initialMonth),[status,setStatus]=useState(''),[search,setSearch]=useState(''),[page,setPage]=useState(1),[list,setList]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [employeeSearch,setEmployeeSearch]=useState(''),[employees,setEmployees]=useState([]),[employeeId,setEmployeeId]=useState(''),[salaryHistory,setSalaryHistory]=useState(null),[salaryMonth,setSalaryMonth]=useState(initialMonth),[salaryAmount,setSalaryAmount]=useState(''),[salaryReason,setSalaryReason]=useState('');
  const [draftMonth,setDraftMonth]=useState(initialMonth),[totalDays,setTotalDays]=useState(''),[workedDays,setWorkedDays]=useState(''),[earnings,setEarnings]=useState([]),[deductions,setDeductions]=useState([]),[reason,setReason]=useState(''),[preview,setPreview]=useState(null),[detail,setDetail]=useState(null),[editing,setEditing]=useState(null);
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[paymentMethod,setPaymentMethod]=useState('CASH'),[paidOn,setPaidOn]=useState(''),[reference,setReference]=useState(''),[paymentNote,setPaymentNote]=useState('');
+ useEffect(()=>{const id=resourceQuery.get('payrollId');if(!id||!/^[0-9a-f-]{36}$/.test(id))return;const ctrl=new AbortController();payrollRequest((own?'/payslips/':'/')+id,{signal:ctrl.signal}).then(record=>{if(!ctrl.signal.aborted){setDetail(record);setMonth(record.month);}}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});return()=>ctrl.abort();},[own,user.id,resourceQuery]);
  const lock=useRef(false),sequence=useRef(0),previewSequence=useRef(0);
  function invalidatePreview(){previewSequence.current++;setPreview(null);}
  const load=useCallback(async()=>{

@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api";
+import {inboxChanged} from '@/lib/module-events';
 
 function toQueryString(params = {}) {
   const query = new URLSearchParams();
@@ -26,7 +27,7 @@ export async function markNotificationRead(id, options = {}) {
     method: "PATCH",
     ...options,
   });
-  return response.data;
+  inboxChanged(); return response.data;
 }
 
 export async function markAllNotificationsRead(options = {}) {
@@ -34,7 +35,7 @@ export async function markAllNotificationsRead(options = {}) {
     method: "POST",
     ...options,
   });
-  return response.data;
+  inboxChanged(); return response.data;
 }
 
 export async function deleteNotification(id, options = {}) {
@@ -42,7 +43,7 @@ export async function deleteNotification(id, options = {}) {
     method: "DELETE",
     ...options,
   });
-  return response.data;
+  inboxChanged(); return response.data;
 }
 
 export async function clearReadNotifications(options = {}) {
@@ -50,5 +51,7 @@ export async function clearReadNotifications(options = {}) {
     method: "DELETE",
     ...options,
   });
-  return response.data;
+  inboxChanged(); return response.data;
 }
+
+export async function openNotification(id,options={}) {const response=await apiRequest(`/notifications/${id}/open`,{method:'POST',...options});inboxChanged();return response.data;}

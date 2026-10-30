@@ -31,6 +31,9 @@ enum EmploymentStatus {
 }
 
 model User {
+  announcementPublications Announcement[] @relation("AnnouncementPublisher")
+  announcementArchives Announcement[] @relation("AnnouncementArchiver")
+  frozenAnnouncements AnnouncementRecipient[]
   id                  String        @id @default(uuid()) @db.Uuid
   email               String        @unique @db.VarChar(254)
   displayName         String        @db.VarChar(120)
@@ -598,6 +601,7 @@ enum AnnouncementPriority {
   NORMAL
   HIGH
   URGENT
+  IMPORTANT
 }
 
 enum AnnouncementStatus {
@@ -621,7 +625,21 @@ model Announcement {
   title        String               @db.VarChar(200)
   content      String               @db.Text
   priority     AnnouncementPriority @default(NORMAL)
-  status       AnnouncementStatus   @default(PUBLISHED)
+  status       AnnouncementStatus   @default(DRAFT)
+  category String @default("GENERAL") @db.VarChar(20)
+  audienceMode String @default("ALL") @db.VarChar(20)
+  audienceRoles Role[] @default([])
+  audienceTeamIds String[] @default([]) @db.Uuid
+  audienceFrozen Boolean @default(false)
+  legacyReview Boolean @default(false)
+  version Int @default(1)
+  publishedByUserId String? @db.Uuid
+  archivedByUserId String? @db.Uuid
+  archivedAt DateTime? @db.Timestamptz(3)
+  archiveReason String? @db.VarChar(1000)
+  replacesId String? @db.Uuid
+  replaces Announcement? @relation("AnnouncementReplacements", fields: [replacesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  replacements Announcement[] @relation("AnnouncementReplacements")
   targetRole   Role?
   departmentId String?              @db.Uuid
   pinned       Boolean              @default(false)
@@ -632,8 +650,13 @@ model Announcement {
   updatedAt    DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
 
   author     User              @relation("AnnouncementAuthor", fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  publisher User? @relation("AnnouncementPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  archiver User? @relation("AnnouncementArchiver", fields: [archivedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   department OrganizationUnit? @relation("AnnouncementDepartment", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   reads      AnnouncementRead[]
+  recipients AnnouncementRecipient[]
+  notifications Notification[]
+  events NotificationEvent[]
 
   @@index([status, publishedAt], map: "announcements_status_published_idx")
   @@index([pinned, publishedAt], map: "announcements_pinned_published_idx")
@@ -665,10 +688,39 @@ model Notification {
   isRead      Boolean          @default(false)
   readAt      DateTime?        @db.Timestamptz(3)
   createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  sequence BigInt @unique(map: "notification_sequence_key") @default(autoincrement())
+  eventId String? @db.Uuid
+  announcementId String? @db.Uuid
+  dismissedAt DateTime? @db.Timestamptz(3)
+  event NotificationEvent? @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   user  User  @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   actor User? @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Restrict)
 
   @@index([userId, isRead, createdAt], map: "notifications_user_read_created_idx")
+  @@unique([eventId, userId], map: "notification_event_recipient_key")
   @@map("notifications")
-}
+}
+model AnnouncementRecipient {
+  announcementId String @db.Uuid
+  userId String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@id([announcementId,userId])
+  @@index([userId], map: "announcement_recipient_user_idx")
+  @@map("announcement_recipients")
+}
+
+model NotificationEvent {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique(map: "notification_event_key") @db.VarChar(200)
+  kind String @db.VarChar(50)
+  resourceId String @db.Uuid
+  announcementId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  notifications Notification[]
+  @@map("notification_events")
+}

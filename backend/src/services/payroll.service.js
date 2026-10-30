@@ -86,6 +86,6 @@ async function mutate(userId,id,input,action){return transaction(async tx=>{
   await tx.payrollPayment.create({data:{payrollRecordId:id,amount:record.netPay,currency:'PKR',method:input.method,paidOn:new Date(input.paidOn+'T00:00:00Z'),reference:input.reference||null,note:input.note||null,actorUserId:user.id,recordedAt:now}});Object.assign(data,{status:'PAID',paidByUserId:user.id,paidAt:now});
  }else fail(400,'Unknown payroll action.');
  record=await tx.payrollRecord.update({where:{id,version:input.expectedVersion},data,include:{payment:true}});
- await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status});return view(record);
+ await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
 });}
 module.exports={salaryHistory,saveSalary,preview,createDraft,list,detail,mutate};

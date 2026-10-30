@@ -93,7 +93,7 @@ export default function PortalHeader({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          <NotificationBell />
+          <NotificationBell key={user.id} />
           <ThemeToggle />
 
           <Link
