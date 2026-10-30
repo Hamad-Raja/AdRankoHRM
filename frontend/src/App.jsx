@@ -18,6 +18,8 @@ import AttendanceSettingsPage from "@/pages/attendance-settings-page";
 import AttendancePage from "@/pages/attendance-page";
 import ReportsPage from "@/pages/reports-page";
 const PayrollPage = lazy(() => import("@/pages/payroll-page"));
+const AnnouncementsPage = lazy(() => import("@/pages/announcements-page"));
+const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
 import ScopedEmployeesPage from "@/pages/scoped-employees-page";
 import EmployeesPage from "@/pages/employees-page";
 import LoginPage from "@/pages/login-page";
@@ -71,6 +73,8 @@ export default function App() {
                   element={<ReportsPage />}
                 />
                 <Route path="/my-payslips" element={<Suspense fallback={<p role="status">Loading payslips…</p>}><PayrollPage key="own-payslips" own /></Suspense>} />
+                <Route path="/announcements" element={<Suspense fallback={<p role="status">Loading announcements…</p>}><AnnouncementsPage /></Suspense>} />
+                <Route path="/notifications" element={<Suspense fallback={<p role="status">Loading notifications…</p>}><NotificationsPage /></Suspense>} />
 
                 <Route
                   element={

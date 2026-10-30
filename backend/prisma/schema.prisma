@@ -74,6 +74,11 @@ model User {
   payrollsPaid          PayrollRecord[]         @relation("PayrollPaidActor")
   payrollPayments       PayrollPayment[]        @relation("PayrollPaymentActor")
 
+  announcements      Announcement[]     @relation("AnnouncementAuthor")
+  announcementReads  AnnouncementRead[] @relation("UserAnnouncementReads")
+  notifications      Notification[]     @relation("UserNotifications")
+  actorNotifications Notification[]     @relation("NotificationActor")
+
   @@index([status, role])
   @@map("users")
 }
@@ -173,6 +178,7 @@ model OrganizationUnit {
   assignments            OrganizationAssignment[]
   managers               TeamManagerAssignment[]
   designationAssignments OrganizationAssignment[] @relation("DesignationAssignments")
+  announcements          Announcement[]           @relation("AnnouncementDepartment")
 
   @@unique([kind, name])
   @@map("organization_units")
@@ -586,3 +592,83 @@ model PayrollPayment {
   @@index([actorUserId, recordedAt], map: "payroll_payment_actor_idx")
   @@map("payroll_payments")
 }
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationType {
+  ANNOUNCEMENT
+  ATTENDANCE
+  PAYROLL
+  SYSTEM
+  INFO
+  WARNING
+  SUCCESS
+}
+
+model Announcement {
+  id           String               @id @default(uuid()) @db.Uuid
+  title        String               @db.VarChar(200)
+  content      String               @db.Text
+  priority     AnnouncementPriority @default(NORMAL)
+  status       AnnouncementStatus   @default(PUBLISHED)
+  targetRole   Role?
+  departmentId String?              @db.Uuid
+  pinned       Boolean              @default(false)
+  authorUserId String               @db.Uuid
+  publishedAt  DateTime?            @db.Timestamptz(3)
+  expiresAt    DateTime?            @db.Timestamptz(3)
+  createdAt    DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
+
+  author     User              @relation("AnnouncementAuthor", fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  department OrganizationUnit? @relation("AnnouncementDepartment", fields: [departmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reads      AnnouncementRead[]
+
+  @@index([status, publishedAt], map: "announcements_status_published_idx")
+  @@index([pinned, publishedAt], map: "announcements_pinned_published_idx")
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @db.Uuid
+  userId         String   @db.Uuid
+  readAt         DateTime @default(now()) @db.Timestamptz(3)
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user         User         @relation("UserAnnouncementReads", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([announcementId, userId], map: "announcement_reads_announcement_user_key")
+  @@index([userId, readAt], map: "announcement_reads_user_read_idx")
+  @@map("announcement_reads")
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  actorUserId String?          @db.Uuid
+  title       String           @db.VarChar(200)
+  message     String           @db.VarChar(1000)
+  type        NotificationType @default(INFO)
+  link        String?          @db.VarChar(255)
+  isRead      Boolean          @default(false)
+  readAt      DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+
+  user  User  @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  actor User? @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+
+  @@index([userId, isRead, createdAt], map: "notifications_user_read_created_idx")
+  @@map("notifications")
+}

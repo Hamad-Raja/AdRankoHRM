@@ -3,6 +3,7 @@ import { LoaderCircle, LogOut, Menu } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+import NotificationBell from "@/components/notification-bell";
 import { useAuth } from "@/context/auth-context";
 
 const PAGE_TITLES = {
@@ -14,6 +15,8 @@ const PAGE_TITLES = {
   "/organization": "Organization",
   "/attendance-settings": "Attendance Settings",
   "/my-employees": "Employee profiles",
+  "/announcements": "Announcements",
+  "/notifications": "Notifications",
 };
 
 const ROLE_LABELS = {
@@ -90,6 +93,7 @@ export default function PortalHeader({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          <NotificationBell />
           <ThemeToggle />
 
           <Link

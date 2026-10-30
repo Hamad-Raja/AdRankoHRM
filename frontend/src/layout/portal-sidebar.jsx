@@ -1,8 +1,10 @@
 import {
+  Bell,
   CalendarCheck,
   Clock,
   FileText,
   LayoutDashboard,
+  Megaphone,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -28,6 +30,22 @@ const NAVIGATION = [
     roles: ALL_ROLES,
     allowPasswordChange: false,
     end: true,
+  },
+  {
+    label: "Announcements",
+    to: "/announcements",
+    icon: Megaphone,
+    roles: ALL_ROLES,
+    allowPasswordChange: false,
+    end: false,
+  },
+  {
+    label: "Notifications",
+    to: "/notifications",
+    icon: Bell,
+    roles: ALL_ROLES,
+    allowPasswordChange: false,
+    end: false,
   },
   {
     label: "Attendance",
