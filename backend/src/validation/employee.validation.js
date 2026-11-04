@@ -1,9 +1,11 @@
 "use strict";
 
 const { z } = require("zod");
+const {
+  emailSchema,
+  newPasswordSchema,
+} = require("./auth.validation");
 
-// Reject control characters that should not appear in stored profile text.
-// Tabs and line breaks remain available for addresses and reasons.
 const DISALLOWED_CONTROL_CHARACTERS =
   /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 
@@ -19,8 +21,6 @@ function textField(label, maxLength) {
     );
 }
 
-// For creation requests, omitted, null, and blank optional fields become null.
-// Numbers and other unexpected input types are still rejected.
 function optionalField(schema) {
   return z.preprocess((value) => {
     if (value === undefined || value === null) {
@@ -80,9 +80,7 @@ const employmentSchema = z
     }),
 
     probationEndDate: optionalField(calendarDateSchema),
-
     confirmedOn: optionalField(calendarDateSchema),
-
     reason: textField("Employment creation reason", 1000),
   })
   .refine(
@@ -115,13 +113,9 @@ const employmentSchema = z
 
 const createEmployeeSchema = z.strictObject({
   employeeCode: employeeCodeSchema,
-
   fullName: textField("Full name", 120),
-
   personalEmail: personalEmailSchema,
-
   phone: phoneSchema,
-
   address: optionalField(textField("Address", 1000)),
 
   emergencyContactName: optionalField(
@@ -135,23 +129,41 @@ const createEmployeeSchema = z.strictObject({
   ),
 
   employment: employmentSchema,
+
+  // Optional for existing profile-only API clients.
+  // The updated Add Employee form requires these credentials.
+  portalLogin: z
+    .strictObject({
+      email: emailSchema,
+      password: newPasswordSchema,
+      role: z.enum(["EMPLOYEE", "MANAGER"]).default("EMPLOYEE"),
+    })
+    .optional(),
 });
 
-// Apply .optional() outside the creation normalizer: absent PATCH fields must
-// stay absent, while explicit null/blank nullable fields still clear values.
-const updateEmployeeSchema = z.strictObject({
-  version: z.number().int().positive().max(2147483647),
-  fullName: createEmployeeSchema.shape.fullName.optional(),
-  personalEmail: personalEmailSchema.optional(),
-  phone: phoneSchema.optional(),
-  address: createEmployeeSchema.shape.address.optional(),
-  emergencyContactName: createEmployeeSchema.shape.emergencyContactName.optional(),
-  emergencyContactPhone: phoneSchema.optional(),
-  emergencyContactRelationship: createEmployeeSchema.shape.emergencyContactRelationship.optional(),
-}).refine(
-  (data) => Object.keys(data).some((field) => field !== "version" && data[field] !== undefined),
-  "Provide at least one editable profile field."
-);
+const updateEmployeeSchema = z
+  .strictObject({
+    version: z.number().int().positive().max(2147483647),
+    fullName: createEmployeeSchema.shape.fullName.optional(),
+    personalEmail: personalEmailSchema.optional(),
+    phone: phoneSchema.optional(),
+    address: createEmployeeSchema.shape.address.optional(),
+
+    emergencyContactName:
+      createEmployeeSchema.shape.emergencyContactName.optional(),
+
+    emergencyContactPhone: phoneSchema.optional(),
+
+    emergencyContactRelationship:
+      createEmployeeSchema.shape.emergencyContactRelationship.optional(),
+  })
+  .refine(
+    (data) =>
+      Object.keys(data).some(
+        (field) => field !== "version" && data[field] !== undefined
+      ),
+    "Provide at least one editable profile field."
+  );
 
 function positiveIntegerParameter(label, maximum, fallback) {
   return z
@@ -173,7 +185,6 @@ function positiveIntegerParameter(label, maximum, fallback) {
 
 const listEmployeesQuerySchema = z.strictObject({
   page: positiveIntegerParameter("Page", 10000, 1),
-
   pageSize: positiveIntegerParameter("Page size", 100, 20),
 
   q: z

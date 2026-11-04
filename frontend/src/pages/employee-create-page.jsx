@@ -135,8 +135,8 @@ export default function EmployeeCreatePage() {
             </h1>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              The employee profile and initial employment
-              record have been saved.
+              The employee profile, employment record, and linked
+              login account have been saved.
             </p>
           </div>
         </div>
@@ -187,10 +187,42 @@ export default function EmployeeCreatePage() {
                     : "Active"}
                 </dd>
               </div>
+
+              {createdEmployee.loginAccount && (
+                <>
+                  <div>
+                    <dt className="text-sm text-muted-foreground">
+                      Login email
+                    </dt>
+                    <dd className="mt-1 break-words font-medium">
+                      {createdEmployee.loginAccount.email}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt className="text-sm text-muted-foreground">
+                      Portal access
+                    </dt>
+                    <dd className="mt-1 font-medium">
+                      {createdEmployee.loginAccount.role === "MANAGER"
+                        ? "Manager"
+                        : "Employee"}
+                      {" — "}
+                      password change required on first login
+                    </dd>
+                  </div>
+                </>
+              )}
             </dl>
           </CardContent>
         </Card>
-        <Link className="inline-flex min-h-10 items-center text-primary underline" to={`/employees/${createdEmployee.id}`}>View employee details</Link>
+
+        <Link
+          className="inline-flex min-h-10 items-center text-primary underline"
+          to={`/employees/${createdEmployee.id}`}
+        >
+          View employee details
+        </Link>
 
         <Link
           to="/employees"
@@ -228,8 +260,7 @@ export default function EmployeeCreatePage() {
           </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Create an employee profile and initial employment
-            record. Login account provisioning is separate.
+            Create an employee profile and their portal login together.
           </p>
         </div>
       </div>

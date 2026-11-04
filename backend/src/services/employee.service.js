@@ -4,6 +4,7 @@ const { isIP } = require("node:net");
 
 const prisma = require("../config/prisma");
 const ApiError = require("../utils/ApiError");
+const { hashPassword } = require("../utils/password");
 
 const MAX_TRANSACTION_ATTEMPTS = 3;
 const EMPLOYEE_ROLES = new Set(["ADMIN", "HR"]);
@@ -63,7 +64,6 @@ function toDatabaseDate(value) {
     return null;
   }
 
-  // Employment dates are calendar dates, not local timestamps.
   return new Date(`${value}T00:00:00.000Z`);
 }
 
@@ -93,7 +93,10 @@ function sanitizeUserAgent(value) {
 }
 
 function serializeEmployment(employment) {
-  if (!employment) return null;
+  if (!employment) {
+    return null;
+  }
+
   return {
     id: employment.id,
     startDate: toDateString(employment.startDate),
@@ -117,10 +120,19 @@ function serializeEmployee(employee, employment) {
   };
 }
 
-async function assertEmployeePermission(tx, actorUserId, creating = false) {
+async function assertEmployeePermission(
+  tx,
+  actorUserId,
+  creating = false
+) {
   if (!actorUserId) {
-    throw new ApiError(401, "Authentication is required.", "UNAUTHENTICATED");
+    throw new ApiError(
+      401,
+      "Authentication is required.",
+      "UNAUTHENTICATED"
+    );
   }
+
   const actor = await tx.user.findUnique({
     where: { id: actorUserId },
     select: {
@@ -174,6 +186,12 @@ async function createEmployee({
     );
   }
 
+  // Hash once outside the transaction.
+  // Passwords and hashes never enter response or audit metadata.
+  const passwordHash = data.portalLogin
+    ? await hashPassword(data.portalLogin.password)
+    : null;
+
   const auditIpAddress = sanitizeIpAddress(ipAddress);
   const auditUserAgent = sanitizeUserAgent(userAgent);
 
@@ -206,9 +224,67 @@ async function createEmployee({
             );
           }
 
+          let loginAccount = null;
+
+          if (data.portalLogin) {
+            const actor = await tx.user.findUnique({
+              where: { id: actorUserId },
+              select: { role: true },
+            });
+
+            if (
+              actor.role === "HR" &&
+              data.portalLogin.role !== "EMPLOYEE"
+            ) {
+              throw new ApiError(
+                403,
+                "HR can create Employee accounts only.",
+                "FORBIDDEN"
+              );
+            }
+
+            const existingAccount = await tx.user.findUnique({
+              where: { email: data.portalLogin.email },
+              select: { id: true },
+            });
+
+            if (existingAccount) {
+              throw new ApiError(
+                409,
+                "Login email is already in use.",
+                "LOGIN_EMAIL_IN_USE",
+                [
+                  {
+                    field: "portalLogin.email",
+                    message:
+                      "Choose an unused login email, or link the existing account from the employee profile.",
+                  },
+                ]
+              );
+            }
+
+            loginAccount = await tx.user.create({
+              data: {
+                email: data.portalLogin.email,
+                displayName: data.fullName,
+                passwordHash,
+                role: data.portalLogin.role,
+                status: "ACTIVE",
+                mustChangePassword: true,
+              },
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                mustChangePassword: true,
+              },
+            });
+          }
+
           const employee = await tx.employee.create({
             data: {
               employeeCode: data.employeeCode,
+              ...(loginAccount ? { userId: loginAccount.id } : {}),
               fullName: data.fullName,
               personalEmail: data.personalEmail,
               phone: data.phone,
@@ -272,7 +348,28 @@ async function createEmployee({
             },
           });
 
-          return serializeEmployee(employee, employment);
+          if (loginAccount) {
+            await tx.auditLog.create({
+              data: {
+                actorUserId,
+                action: "EMPLOYEE_ACCOUNT_PROVISIONED",
+                success: true,
+                targetType: "EmployeeManagement",
+                targetId: employee.id,
+                metadata: {
+                  userId: loginAccount.id,
+                  role: loginAccount.role,
+                },
+                ipAddress: auditIpAddress,
+                userAgent: auditUserAgent,
+              },
+            });
+          }
+
+          return {
+            ...serializeEmployee(employee, employment),
+            ...(loginAccount ? { loginAccount } : {}),
+          };
         },
         {
           isolationLevel: "Serializable",
@@ -282,15 +379,13 @@ async function createEmployee({
       );
     } catch (error) {
       if (error.code === "P2034") {
-        // Retry transactions rolled back because of write conflicts.
         continue;
       }
 
       if (error.code === "P2002") {
-        // Includes a concurrent request claiming the same unique code.
         throw new ApiError(
           409,
-          "An employee with these unique details already exists.",
+          "Employee code or login email is already in use.",
           "EMPLOYEE_CONFLICT"
         );
       }
@@ -321,7 +416,6 @@ function serializeDetail(employee) {
 }
 
 function escapeSearch(value) {
-  // Search %, _ and backslash literally instead of as LIKE patterns.
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
@@ -376,11 +470,14 @@ async function readTransaction(actorUserId, operation) {
       await assertEmployeePermission(tx, actorUserId);
       return operation(tx);
     },
-    { isolationLevel: "RepeatableRead", maxWait: 5000, timeout: 10000 }
+    {
+      isolationLevel: "RepeatableRead",
+      maxWait: 5000,
+      timeout: 10000,
+    }
   );
 }
 
-// filters must be the output of listEmployeesQuerySchema validation.
 async function listEmployees({ actorUserId, filters }) {
   const { page, pageSize } = filters;
   const where = buildEmployeeFilter(filters);
@@ -430,8 +527,6 @@ async function getEmployeeById({ actorUserId, employeeId }) {
   });
 }
 
-// data must be validated by updateEmployeeSchema. Construct every write from
-// this explicit allowlist; employee identity/account/history never enter it.
 async function updateEmployee({
   actorUserId,
   employeeId,
@@ -440,79 +535,126 @@ async function updateEmployee({
   userAgent,
 }) {
   const editableFields = [
-    "fullName", "personalEmail", "phone", "address",
-    "emergencyContactName", "emergencyContactPhone",
+    "fullName",
+    "personalEmail",
+    "phone",
+    "address",
+    "emergencyContactName",
+    "emergencyContactPhone",
     "emergencyContactRelationship",
   ];
+
   const patch = {};
+
   for (const field of editableFields) {
     if (Object.hasOwn(data, field) && data[field] !== undefined) {
       patch[field] = data[field];
     }
   }
 
-  for (let attempt = 0; attempt < MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
+  for (
+    let attempt = 0;
+    attempt < MAX_TRANSACTION_ATTEMPTS;
+    attempt += 1
+  ) {
     try {
-      return await prisma.$transaction(async (tx) => {
-        await assertEmployeePermission(tx, actorUserId);
-        const current = await tx.employee.findUnique({
-          where: { id: employeeId },
-          select: EMPLOYEE_SELECT,
-        });
-        if (!current) {
-          throw new ApiError(404, "Employee not found.", "EMPLOYEE_NOT_FOUND");
-        }
-        if (current.version !== data.version) {
-          throw new ApiError(
-            409,
-            "Employee profile changed. Reload it before updating.",
-            "EMPLOYEE_VERSION_CONFLICT"
+      return await prisma.$transaction(
+        async (tx) => {
+          await assertEmployeePermission(tx, actorUserId);
+
+          const current = await tx.employee.findUnique({
+            where: { id: employeeId },
+            select: EMPLOYEE_SELECT,
+          });
+
+          if (!current) {
+            throw new ApiError(
+              404,
+              "Employee not found.",
+              "EMPLOYEE_NOT_FOUND"
+            );
+          }
+
+          if (current.version !== data.version) {
+            throw new ApiError(
+              409,
+              "Employee profile changed. Reload it before updating.",
+              "EMPLOYEE_VERSION_CONFLICT"
+            );
+          }
+
+          if (current.version === 2147483647) {
+            throw new ApiError(
+              409,
+              "Employee profile version limit reached.",
+              "EMPLOYEE_VERSION_EXHAUSTED"
+            );
+          }
+
+          const changedFields = editableFields.filter(
+            (field) =>
+              Object.hasOwn(patch, field) &&
+              patch[field] !== current[field]
           );
-        }
-        if (current.version === 2147483647) {
-          throw new ApiError(409, "Employee profile version limit reached.", "EMPLOYEE_VERSION_EXHAUSTED");
-        }
-        const changedFields = editableFields.filter(
-          (field) => Object.hasOwn(patch, field) && patch[field] !== current[field]
-        );
-        const updated = await tx.employee.updateMany({
-          where: { id: employeeId, version: data.version },
-          data: { ...patch, version: { increment: 1 } },
-        });
-        if (updated.count !== 1) {
-          throw new ApiError(
-            409,
-            "Employee profile changed. Reload it before updating.",
-            "EMPLOYEE_VERSION_CONFLICT"
-          );
-        }
-        await tx.auditLog.create({
-          data: {
-            actorUserId,
-            action: "EMPLOYEE_PROFILE_UPDATED",
-            success: true,
-            targetType: "Employee",
-            targetId: employeeId,
-            metadata: {
-              changedFields,
-              previousVersion: current.version,
-              version: current.version + 1,
+
+          const updated = await tx.employee.updateMany({
+            where: {
+              id: employeeId,
+              version: data.version,
             },
-            ipAddress: sanitizeIpAddress(ipAddress),
-            userAgent: sanitizeUserAgent(userAgent),
-          },
-        });
-        const employee = await tx.employee.findUnique({
-          where: { id: employeeId },
-          select: DETAIL_SELECT,
-        });
-        return serializeDetail(employee);
-      }, { isolationLevel: "Serializable", maxWait: 5000, timeout: 10000 });
+            data: {
+              ...patch,
+              version: { increment: 1 },
+            },
+          });
+
+          if (updated.count !== 1) {
+            throw new ApiError(
+              409,
+              "Employee profile changed. Reload it before updating.",
+              "EMPLOYEE_VERSION_CONFLICT"
+            );
+          }
+
+          await tx.auditLog.create({
+            data: {
+              actorUserId,
+              action: "EMPLOYEE_PROFILE_UPDATED",
+              success: true,
+              targetType: "Employee",
+              targetId: employeeId,
+              metadata: {
+                changedFields,
+                previousVersion: current.version,
+                version: current.version + 1,
+              },
+              ipAddress: sanitizeIpAddress(ipAddress),
+              userAgent: sanitizeUserAgent(userAgent),
+            },
+          });
+
+          const employee = await tx.employee.findUnique({
+            where: { id: employeeId },
+            select: DETAIL_SELECT,
+          });
+
+          return serializeDetail(employee);
+        },
+        {
+          isolationLevel: "Serializable",
+          maxWait: 5000,
+          timeout: 10000,
+        }
+      );
     } catch (error) {
-      if (error.code === "P2034") continue;
+      if (error.code === "P2034") {
+        continue;
+      }
+
       throw error;
     }
   }
+
   throw new ApiError(
     503,
     "Employee update is temporarily busy. Please try again.",

@@ -21,8 +21,8 @@ export function Documents({ employeeId, management, refreshKey = 0 }) {
     if (form.get('replacesId')) metadata.replacesId = form.get('replacesId');
     return org.uploadDocument(employeeId, metadata, file, options);
   }}><Field label="Document title" name="title" required maxLength={120} /><Field label="File (UTF-8 text or plain RGB/RGBA PNG, maximum 5 MiB)" name="file" type="file" accept="text/plain,image/png" required />
-    <Field label="Visibility" name="ownerVisible" options={[[ 'false', 'Admin/HR only' ], ['true', 'Also visible to owning employee']]} />
-    <Field label="Replace existing document (history retained)" name="replacesId" options={[[ '', 'New document' ], ...(docs || []).filter(d => !docs.some(other => other.replacesId === d.id)).map(d => [d.id, d.title])]} />
+    <Field label="Visibility" name="ownerVisible" options={[['false', 'Admin/HR only'], ['true', 'Also visible to owning employee']]} />
+    <Field label="Replace existing document (history retained)" name="replacesId" options={[['', 'New document'], ...(docs || []).filter(d => !docs.some(other => other.replacesId === d.id)).map(d => [d.id, d.title])]} />
   </ActionForm>}</div>;
 }
 
@@ -58,28 +58,28 @@ function EmployeeDetail({ employeeId }) {
   const active = kind => units.filter(u => u.kind === kind && !u.archivedAt).map(u => [u.id, u.name]);
   return <section className="mx-auto max-w-4xl space-y-6"><Link className="text-primary underline" to="/employees">Employee directory</Link>
     {loadError ? <Panel title="Unable to load employee"><p role="alert">{loadError}</p><Button onClick={() => setRevision(v => v + 1)}>Retry employee</Button></Panel> : !employee ? <p role="status">Loading employee…</p> : <>
-    <h1 className="break-words text-2xl font-semibold">{employee.fullName}</h1><p>{employee.employeeCode} · {employee.employment?.status || 'No employment'} · Profile version {employee.version}</p>
-    {write.error && <p role="alert" className="break-words text-destructive">{write.error}</p>}{write.success && <p role="status">{write.success}</p>}
-    {write.conflict && <p role="alert">Someone changed this profile. Your draft is preserved. Saving is blocked until you explicitly load the current profile.</p>}
-    {write.uncertain && <p role="alert">The save result is unconfirmed. Your draft is preserved. Load the current profile to check the result before any new write.</p>}
-    {(write.conflict || write.uncertain) && <Button onClick={loadCurrent}>Discard draft and load current profile</Button>}
-    {editing ? <EmployeeForm key={formKey} employee={employee} onSubmit={save} busy={write.busy} blocked={write.uncertain || write.conflict} /> : <Panel title="Employee profile"><dl className="grid gap-4 sm:grid-cols-2">{['fullName', 'personalEmail', 'phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship'].map(key => <div key={key} className="min-w-0"><dt className="text-sm text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}</dt><dd className="break-words">{employee[key] || 'Not recorded'}</dd></div>)}</dl><Button onClick={() => { setEditing(true); setFormKey(v => v + 1); }}>Edit profile</Button></Panel>}
-    {editing && !write.busy && <Button variant="outline" onClick={() => setEditing(false)}>Cancel editing</Button>}
-    {history && <History data={history} />}
-    <ActionForm key={`assignment-${revision}`} title="Change organization assignment" onSaved={() => setRevision(v => v + 1)} action={(form, options) => org.assignEmployee(employeeId, formObject(form), options)}>
-      <Field label="Team" name="teamId" required options={[[ '', 'Select team' ], ...active('TEAM')]} /><Field label="Designation / job title" name="designationId" required options={[[ '', 'Select designation' ], ...active('DESIGNATION')]} />
-      <Field label="Effective from" name="effectiveFrom" type="date" required /><Field label="Effective to (optional)" name="effectiveTo" type="date" /><Field label="Assignment change reason" name="reason" required maxLength={1000} />
-      <p className="text-sm text-muted-foreground">A later assignment ends the previous open assignment on the preceding day. Closed history is preserved.</p>
-    </ActionForm>
-    {employee.userId ? <Panel title="Login account"><p className="break-all">Linked account: {employee.userId}</p><p>Profile email and login email remain separate. Account linkage cannot be changed here.</p></Panel> : <ActionForm title="Provision or link login account" submit="Save account linkage" onSaved={() => setRevision(v => v + 1)} action={(form, options) => {
-      const data = formObject(form); if (data.mode === 'link') { delete data.password; delete data.role; }
-      return org.linkAccount(employeeId, data, options);
-    }}><Field label="Account operation" name="mode" options={[[ 'provision', 'Create new account (forced password change)' ], ['link', 'Link existing account']]} /><Field label="Login email" name="email" type="email" required maxLength={254} />
-      <Field label="Initial password (new account only, 8 characters minimum, 72 UTF-8 bytes maximum)" name="password" type="password" autoComplete="new-password" />
-      <Field label="New account role" name="role" options={user.role === 'ADMIN' ? [['EMPLOYEE', 'Employee'], ['MANAGER', 'Manager']] : [['EMPLOYEE', 'Employee']]} />
-      <p className="text-sm text-muted-foreground">No email is sent. Existing Admin/HR accounts cannot be linked. HR may only create/link ordinary Employee accounts.</p>
-    </ActionForm>}
-    <Documents employeeId={employeeId} management />
+      <h1 className="break-words text-2xl font-semibold">{employee.fullName}</h1><p>{employee.employeeCode} · {employee.employment?.status || 'No employment'} · Profile version {employee.version}</p>
+      {write.error && <p role="alert" className="break-words text-destructive">{write.error}</p>}{write.success && <p role="status">{write.success}</p>}
+      {write.conflict && <p role="alert">Someone changed this profile. Your draft is preserved. Saving is blocked until you explicitly load the current profile.</p>}
+      {write.uncertain && <p role="alert">The save result is unconfirmed. Your draft is preserved. Load the current profile to check the result before any new write.</p>}
+      {(write.conflict || write.uncertain) && <Button onClick={loadCurrent}>Discard draft and load current profile</Button>}
+      {editing ? <EmployeeForm key={formKey} employee={employee} onSubmit={save} busy={write.busy} blocked={write.uncertain || write.conflict} /> : <Panel title="Employee profile"><dl className="grid gap-4 sm:grid-cols-2">{['fullName', 'personalEmail', 'phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship'].map(key => <div key={key} className="min-w-0"><dt className="text-sm text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}</dt><dd className="break-words">{employee[key] || 'Not recorded'}</dd></div>)}</dl><Button onClick={() => { setEditing(true); setFormKey(v => v + 1); }}>Edit profile</Button></Panel>}
+      {editing && !write.busy && <Button variant="outline" onClick={() => setEditing(false)}>Cancel editing</Button>}
+      {history && <History data={history} />}
+      <ActionForm key={`assignment-${revision}`} title="Change organization assignment" onSaved={() => setRevision(v => v + 1)} action={(form, options) => org.assignEmployee(employeeId, formObject(form), options)}>
+        <Field label="Team" name="teamId" required options={[['', 'Select team'], ...active('TEAM')]} /><Field label="Designation / job title" name="designationId" required options={[['', 'Select designation'], ...active('DESIGNATION')]} />
+        <Field label="Effective from" name="effectiveFrom" type="date" required /><Field label="Effective to (optional)" name="effectiveTo" type="date" /><Field label="Assignment change reason" name="reason" required maxLength={1000} />
+        <p className="text-sm text-muted-foreground">A later assignment ends the previous open assignment on the preceding day. Closed history is preserved.</p>
+      </ActionForm>
+      {employee.userId ? <Panel title="Login account"><p className="break-all">Linked account: {employee.userId}</p><p>Profile email and login email remain separate. Account linkage cannot be changed here.</p></Panel> : <ActionForm title="Provision or link login account" submit="Save account linkage" onSaved={() => setRevision(v => v + 1)} action={(form, options) => {
+        const data = formObject(form); if (data.mode === 'link') { delete data.password; delete data.role; }
+        return org.linkAccount(employeeId, data, options);
+      }}><Field label="Account operation" name="mode" options={[['provision', 'Create new account (forced password change)'], ['link', 'Link existing account']]} /><Field label="Login email" name="email" type="email" required maxLength={254} />
+        <Field label="Initial password (new account only, 8 characters minimum, 72 UTF-8 bytes maximum)" name="password" type="password" autoComplete="new-password" />
+        <Field label="New account role" name="role" options={user.role === 'ADMIN' ? [['EMPLOYEE', 'Employee'], ['MANAGER', 'Manager']] : [['EMPLOYEE', 'Employee']]} />
+        <p className="text-sm text-muted-foreground">No email is sent. Existing Admin/HR accounts cannot be linked. HR may only create/link ordinary Employee accounts.</p>
+      </ActionForm>}
+      <Documents employeeId={employeeId} management />
     </>}
   </section>;
 }
