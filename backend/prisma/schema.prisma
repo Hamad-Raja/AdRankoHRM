@@ -31,6 +31,10 @@ enum EmploymentStatus {
 }
 
 model User {
+  leaveRequests LeaveRequest[] @relation("LeaveRequester")
+  leaveReviews LeaveRequest[] @relation("LeaveReviewer")
+  leaveCancellations LeaveRequest[] @relation("LeaveCanceller")
+  leaveHistory LeaveHistory[]
   announcementPublications Announcement[] @relation("AnnouncementPublisher")
   announcementArchives Announcement[] @relation("AnnouncementArchiver")
   frozenAnnouncements AnnouncementRecipient[]
@@ -126,6 +130,7 @@ model AuditLog {
 }
 
 model Employee {
+  leaveRequests LeaveRequest[]
   id                           String   @id @default(uuid()) @db.Uuid
   employeeCode                 String   @unique @db.VarChar(30)
   userId                       String?  @unique @db.Uuid
@@ -618,6 +623,7 @@ enum NotificationType {
   INFO
   WARNING
   SUCCESS
+  LEAVE
 }
 
 model Announcement {
@@ -723,4 +729,47 @@ model NotificationEvent {
   announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   notifications Notification[]
   @@map("notification_events")
+}
+
+model LeaveRequest {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @db.Uuid
+  requestedByUserId String @db.Uuid
+  shiftDate DateTime @db.Date
+  calendarMonth String @db.VarChar(7)
+  reason String @db.VarChar(1000)
+  status String @default("PENDING") @db.VarChar(12)
+  version Int @default(1)
+  startsAt DateTime @db.Timestamptz(3)
+  endsAt DateTime @db.Timestamptz(3)
+  reviewedByUserId String? @db.Uuid
+  reviewedAt DateTime? @db.Timestamptz(3)
+  reviewReason String? @db.VarChar(1000)
+  cancelledByUserId String? @db.Uuid
+  cancelledAt DateTime? @db.Timestamptz(3)
+  cancellationReason String? @db.VarChar(1000)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  requester User @relation("LeaveRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reviewer User? @relation("LeaveReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  canceller User? @relation("LeaveCanceller", fields: [cancelledByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  history LeaveHistory[]
+  @@index([employeeId, calendarMonth], map: "leave_employee_month_idx")
+  @@index([status, shiftDate], map: "leave_status_date_idx")
+  @@map("leave_requests")
+}
+
+model LeaveHistory {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  actorUserId String @db.Uuid
+  action String @db.VarChar(20)
+  reason String @db.VarChar(1000)
+  version Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  request LeaveRequest @relation(fields: [requestId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([requestId, version], map: "leave_history_version_key")
+  @@map("leave_history")
 }

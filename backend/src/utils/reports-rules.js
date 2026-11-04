@@ -53,7 +53,7 @@ function adjustmentView(adjustment) {
   };
 }
 
-function classifyDuty({ employee, date, versions, holidayDates, record, exception, now }) {
+function classifyDuty({ employee, date, versions, holidayDates, record, exception, approvedLeave, now }) {
   const calendar = calendarFor(employee, date, versions, holidayDates);
   const adjustment = adjustmentView(record?.approvedAdjustment);
   const rawMissingCheckout = Boolean(record && !record.clockOutAt && now >= record.scheduledEnd);
@@ -73,6 +73,8 @@ function classifyDuty({ employee, date, versions, holidayDates, record, exceptio
       minutes: exception.correctedClockIn && exception.correctedClockOut
         ? Math.floor((+new Date(exception.correctedClockOut) - +new Date(exception.correctedClockIn)) / 60000) : null,
     };
+  } else if (approvedLeave) {
+    classification = 'PAID_LEAVE';
   } else if (calendar.state === 'SCHEDULED') {
     classification = now >= new Date(calendar.endsAt) ? 'NO_CLOCK_IN' : 'NOT_YET_ENDED';
   }
@@ -95,6 +97,9 @@ function classifyDuty({ employee, date, versions, holidayDates, record, exceptio
       isAfterScheduleEnd: record.isAfterScheduleEnd, rawMissingCheckout,
     } : null,
     approvedAdjustment: adjustment, approvedException, unresolvedMissingCheckout,
+    paidLeave:approvedLeave?{id:approvedLeave.id,days:1,paid:true,startsAt:iso(approvedLeave.startsAt),endsAt:iso(approvedLeave.endsAt)}:null,
+    leaveConflict:Boolean(approvedLeave&&(record||exception||holidayDates.includes(date)||!['SCHEDULED','SETUP_REQUIRED'].includes(calendar.state)
+      ||calendar.state==='SCHEDULED'&&(calendar.timeZone!=='Asia/Karachi'||iso(approvedLeave.startsAt)!==calendar.startsAt||iso(approvedLeave.endsAt)!==calendar.endsAt))),
   };
 }
 
@@ -113,11 +118,14 @@ function emptyMetrics() {
     rawMissingCheckout: 0, unresolvedMissingCheckout: 0, noClockIn: 0,
     approvedExceptions: 0, adjustedRecords: 0, rawWorkedMinutes: 0,
     rawDurationUnknown: 0, approvedIntervalMinutes: 0, classifications: {},
+    paidLeaveDays:0, leaveConflicts:0,
   };
 }
 
 function addMetrics(metrics, row) {
   metrics.dutyDates++;
+  metrics.paidLeaveDays+=Number(Boolean(row.paidLeave));
+  metrics.leaveConflicts+=Number(Boolean(row.leaveConflict));
   metrics.eligibleDuties += Number(row.eligibleDuty);
   metrics.classifications[row.classification] = (metrics.classifications[row.classification] || 0) + 1;
   metrics.unresolvedMissingCheckout += Number(row.unresolvedMissingCheckout);

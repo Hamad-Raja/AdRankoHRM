@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import {useSearchParams} from 'react-router';
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { organization } from "@/services/organization.service";
 import AttendanceClock from "@/components/attendance-clock";
 import AttendanceHistory from "@/components/attendance-history";
+import PaidLeaveAttendance from '@/components/paid-leave-attendance';
 import {
   getAttendanceList,
   getDailySummary,
@@ -25,13 +27,14 @@ import {
 } from "lucide-react";
 
 export default function AttendancePage() {
+  const [dashboardQuery]=useSearchParams();
   const { user, getCsrfToken, refreshSession } = useAuth();
   const isAdminOrHr = ["ADMIN", "HR"].includes(user?.role);
   const isManager = user?.role === "MANAGER";
 
   // Active view tab
   const [activeTab, setActiveTab] = useState(
-    isAdminOrHr ? "daily" : isManager ? "team" : "own"
+    isAdminOrHr&&dashboardQuery.get('view')==='corrections' ? 'corrections' : isAdminOrHr ? "daily" : isManager ? "team" : "own"
   );
 
   // Trigger to sync widgets
@@ -225,6 +228,7 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-8">
+      <PaidLeaveAttendance key={user.id}/>
       {/* Page Title & Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>

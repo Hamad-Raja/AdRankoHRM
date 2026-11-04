@@ -13,6 +13,10 @@ if (!connectionString) {
 
 const adapter = new PrismaPg({
   connectionString,
+  // The installed adapter serializes UTC clock fields without an offset and
+  // normalizes returned timestamptz offsets to UTC. Pin each pooled session,
+  // while all business calendar decisions continue to use Asia/Karachi.
+  options: '-c timezone=UTC',
   max: 10,
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,

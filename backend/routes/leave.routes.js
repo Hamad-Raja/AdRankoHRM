@@ -1,0 +1,22 @@
+'use strict';
+const router=require('express').Router();
+const authenticate=require('../src/middleware/authenticate');
+const {csrfProtection}=require('../src/middleware/csrf');
+const ApiError=require('../src/utils/ApiError');
+const v=require('../src/validation/leave.validation');
+const service=require('../src/services/leave.service');
+function parse(schema,value){const result=schema.safeParse(value);if(!result.success)throw new ApiError(400,'Invalid leave input. Check the full-day date, month, reason and version.','VALIDATION_ERROR');return result.data;}
+const endpoint=work=>async(req,res,next)=>{try{res.json({success:true,data:await work(req)});}catch(e){next(e);}};
+router.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
+router.use(authenticate());
+router.get('/balance',endpoint(req=>service.getBalance(req.auth.user.id,parse(v.monthQuery,req.query).month)));
+router.post('/preview',csrfProtection,endpoint(req=>service.preview(req.auth.user.id,parse(v.preview,req.body).shiftDate)));
+router.get('/management',endpoint(req=>service.list(req.auth.user.id,parse(v.management,req.query),true)));
+router.get('/management/:id',endpoint(req=>service.detail(req.auth.user.id,parse(v.id,req.params.id),true)));
+router.get('/',endpoint(req=>service.list(req.auth.user.id,parse(v.list,req.query))));
+router.post('/',csrfProtection,endpoint(req=>service.submit(req.auth.user.id,parse(v.request,req.body))));
+router.get('/:id',endpoint(req=>service.detail(req.auth.user.id,parse(v.id,req.params.id))));
+router.post('/:id/review',csrfProtection,endpoint(req=>service.transition(req.auth.user.id,parse(v.id,req.params.id),parse(v.review,req.body),'review')));
+router.post('/:id/withdraw',csrfProtection,endpoint(req=>service.transition(req.auth.user.id,parse(v.id,req.params.id),parse(v.cancel,req.body),'withdraw')));
+router.post('/:id/cancel',csrfProtection,endpoint(req=>service.transition(req.auth.user.id,parse(v.id,req.params.id),parse(v.cancel,req.body),'cancel')));
+module.exports=router;

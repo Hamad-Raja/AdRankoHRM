@@ -75,6 +75,8 @@ function reportColumns(report) {
       'unresolvedMissingCheckout',
       'noClockIn',
       'approvedExceptions',
+      'paidLeaveDays',
+      'leaveConflicts',
       'adjustedRecords',
       'rawWorkedMinutes',
       'rawDurationUnknown',
@@ -103,6 +105,8 @@ function reportColumns(report) {
       ...orgColumns,
       column('DutyStartDate', row => row.shiftDate),
       column('Classification', row => row.classification),
+      column('PaidLeaveDays',row=>row.paidLeave?.days||0,'number'),
+      column('LeaveConflict',row=>row.leaveConflict===true),
       column('CalendarState', row => row.scheduleState),
       column('EligibleDuty', row => row.eligibleDuty),
       column(

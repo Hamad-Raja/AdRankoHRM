@@ -105,10 +105,14 @@ async function getAttendanceStatus(userId, now = clock.now()) {
       };
     }
 
+    const local=localParts(now,'Asia/Karachi');
+    const anchor=local.time<'05:00'?addDays(local.date,-1):local.date;
+    const approvedLeave=await tx.leaveRequest.findFirst({where:{employeeId:employee.id,shiftDate:dateValue(anchor),status:'APPROVED'},select:{id:true,shiftDate:true}});
     const schedule = await getScheduleContext(tx, now);
     if (!schedule) {
       return {
-        state: 'SETUP_REQUIRED',
+        state: approvedLeave?'PAID_LEAVE':'SETUP_REQUIRED',
+        approvedLeave:approvedLeave?{id:approvedLeave.id,shiftDate:dateString(approvedLeave.shiftDate),days:1,paid:true}:null,
         attendance: formatAttendanceRecord(await tx.attendanceRecord.findFirst({ where: { employeeId: employee.id, status: { in: ['OPEN', 'MISSING_CHECKOUT'] } } }), now),
         schedule: null,
         canClockIn: false,
@@ -154,6 +158,8 @@ async function getAttendanceStatus(userId, now = clock.now()) {
       canClockOut = true;
       canClockIn = false;
       clockInBlockReason = 'OPEN_SESSION_EXISTS';
+    } else if (approvedLeave) {
+      clockInBlockReason = 'APPROVED_PAID_LEAVE';
     } else if (approvedException) {
       clockInBlockReason = 'APPROVED_EXCEPTION';
     } else if (todayRecord) {
@@ -192,7 +198,8 @@ async function getAttendanceStatus(userId, now = clock.now()) {
     const formatRecord = r => formatAttendanceRecord(r, now);
 
     return {
-      state: schedule.type,
+      state: approvedLeave?'PAID_LEAVE':schedule.type,
+      approvedLeave:approvedLeave?{id:approvedLeave.id,shiftDate:dateString(approvedLeave.shiftDate),days:1,paid:true}:null,
       attendance: formatRecord(openSession || todayRecord),
       approvedException: approvedException ? formatCorrectionRequest(approvedException) : null,
       schedule: {
@@ -270,6 +277,7 @@ async function clockIn(userId, requestId, now = clock.now()) {
       );
     }
 
+    if (await tx.leaveRequest.findFirst({where:{employeeId:employee.id,shiftDate:dateValue(schedule.shiftDate),status:'APPROVED'}})) fail(409,'Approved full-day paid leave blocks Clock In. Contact HR.','APPROVED_PAID_LEAVE');
     // Must be within scheduled duty window
     if (now < schedule.startInstant) {
       fail(
@@ -866,11 +874,13 @@ async function getDailySummary(userId, shiftDate) {
     const context = await getScheduleContext(tx, instantFor(shiftDate, '19:00', 'Asia/Karachi'));
     const employees = await tx.employee.findMany({ select: { id: true, employeeCode: true, fullName: true } });
     const approvedExceptions = await tx.attendanceCorrectionRequest.findMany({ where: { shiftDate: dateValue(shiftDate), attendanceRecordId: null, status: 'APPROVED' } });
+    const paidLeaves = await tx.leaveRequest.findMany({where:{shiftDate:dateValue(shiftDate),status:'APPROVED'},select:{employeeId:true}});
     const classifications = [];
     for (const employee of employees) {
       const record = records.find(r => r.employeeId === employee.id);
       let classification;
       if (record) classification = formatAttendanceRecord(record, now).isMissingCheckout ? 'MISSING_CHECKOUT' : record.status;
+      else if (paidLeaves.some(l=>l.employeeId===employee.id)) classification = 'PAID_LEAVE';
       else if (!context) classification = 'SETUP_REQUIRED';
       else if (!(await findEligibleEpisode(tx, employee.id, shiftDate))) classification = 'NOT_ELIGIBLE';
       else if (await hasLegacyAssignment(tx, employee.id, shiftDate)) classification = 'LEGACY_ASSIGNMENT_REVIEW';
@@ -881,6 +891,7 @@ async function getDailySummary(userId, shiftDate) {
     }
     const summary = {
       classifications,
+      paidLeaveDays:paidLeaves.length,
       noClockIn: classifications.filter(c => c.classification === 'NO_CLOCK_IN').length,
       approvedExceptions: approvedExceptions.map(formatCorrectionRequest),
       date: shiftDate,
@@ -958,6 +969,7 @@ function formatCorrectionRequest(c) {
 }
 
 module.exports = {
+  findEligibleEpisode, hasLegacyAssignment,
   getAttendanceStatus,
   clockIn,
   clockOut,

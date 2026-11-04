@@ -119,7 +119,7 @@ function metadata(filters, now, access, versions = []) {
     organizationMeaning: 'Assignments are selected for the duty date; organization names are the currently stored labels.',
     durationMeaning: 'Raw recorded minutes and separately approved intervals are not payable hours. Do not add them together.',
     metricMeaning: 'Late, early-departure and other flags can overlap. Classification counts count each visible employee-duty once.',
-    absenceMeaning: 'NO_CLOCK_IN is an ended eligible duty without a punch or approved exception; it is not a payroll or leave decision.',
+    absenceMeaning: 'NO_CLOCK_IN excludes approved full-day paid leave and approved exceptions. Paid leave, actual records and scheduled duties are distinct; payroll remains manual.',
     openMeaning: 'actualOpen counts original records without an actual exit, even when an adjustment resolves the exception.',
     totalsMeaning: 'Totals cover all rows matching this report and its filters, before page slicing.',
     readLimits: READ_LIMITS,
@@ -196,6 +196,11 @@ function createReportsService({ prisma, actor, now = () => new Date() }) {
         orderBy: [{ holidayDate: 'asc' }, { revision: 'asc' }],
         select: { holidayDate: true, revision: true, action: true }, take: READ_LIMITS.maxHolidayEvents + 1,
       }), READ_LIMITS.maxHolidayEvents, 'Holiday history');
+      const leaves = ids.length ? bounded(await tx.leaveRequest.findMany({
+        where:{...rangeWhere,status:'APPROVED'},
+        select:{id:true,employeeId:true,shiftDate:true,startsAt:true,endsAt:true},take:READ_LIMITS.maxRecords+1,
+      }),READ_LIMITS.maxRecords,'Approved leave history') : [];
+      const leaveMap = new Map(leaves.map(leave=>[key(leave.employeeId,day(leave.shiftDate)),leave]));
 
       const holidayMap = new Map();
       for (const event of holidayEvents) holidayMap.set(day(event.holidayDate), event.action);
@@ -214,6 +219,7 @@ function createReportsService({ prisma, actor, now = () => new Date() }) {
         const row = classifyDuty({
           employee, date, versions, holidayDates, now: asOf,
           record: recordMap.get(identifier), exception: exceptionMap.get(identifier),
+          approvedLeave:leaveMap.get(identifier),
         });
         if (matchesAttendanceStatus(row, filters.status)) {
           rows.push({ ...row, organization: scope.organizationFor(employee, date) });

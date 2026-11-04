@@ -17,6 +17,7 @@ const PAGE_TITLES = {
   "/my-employees": "Employee profiles",
   "/announcements": "Announcements",
   "/notifications": "Notifications",
+  "/leaves": "Leave",
 };
 
 const ROLE_LABELS = {

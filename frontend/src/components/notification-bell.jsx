@@ -3,7 +3,7 @@ import {Link,useNavigate} from 'react-router';
 import {Bell} from 'lucide-react';
 import {useAuth} from '@/context/auth-context';
 import {getNotifications,markAllNotificationsRead,markNotificationRead,deleteNotification,openNotification} from '@/services/notification.service';
-import {INBOX_CHANGED} from '@/lib/module-events';
+import {INBOX_CHANGED,publishInboxSnapshot} from '@/lib/module-events';
 import NotificationGlyph from '@/components/notification-glyph';
 
 export default function NotificationBell(){
@@ -14,16 +14,17 @@ export default function NotificationBell(){
  useEffect(()=>{
   let disposed=false,running=false,queued=false,restricted=false,timer,controller,nextDelay=30000;
   setData(null);setOpen(false);setError('');
+  publishInboxSnapshot({ownerId:user?.id,state:active?'loading':'inactive',unreadCount:null});
   async function refresh(){
    clearTimeout(timer);if(disposed||restricted||!active||document.visibilityState==='hidden')return;
    if(running){queued=true;return;}running=true;controller=new AbortController();
-   try{const result=await getNotifications({pageSize:8},{signal:controller.signal});if(!disposed&&!controller.signal.aborted){setData(result);setError('');const expiries=result.notifications.filter(n=>n.expiresAt).map(n=>Date.parse(n.expiresAt)-Date.parse(result.asOf)).filter(v=>v>0);nextDelay=Math.min(30000,...expiries.map(v=>v+50));}}
-   catch(e){if(!disposed&&!controller.signal.aborted){setData(null);setError(e.message||'Notifications unavailable.');if(e.status===401||e.code==='PASSWORD_CHANGE_REQUIRED'){restricted=true;void refreshSession();}}}
+   try{const result=await getNotifications({pageSize:8},{signal:controller.signal});if(!disposed&&!controller.signal.aborted){setData(result);setError('');publishInboxSnapshot({ownerId:user.id,state:'ready',unreadCount:result.unreadCount,asOf:result.asOf});const expiries=result.notifications.filter(n=>n.expiresAt).map(n=>Date.parse(n.expiresAt)-Date.parse(result.asOf)).filter(v=>v>0);nextDelay=Math.min(30000,...expiries.map(v=>v+50));}}
+   catch(e){if(!disposed&&!controller.signal.aborted){setData(null);setError(e.message||'Notifications unavailable.');publishInboxSnapshot({ownerId:user.id,state:'unavailable',unreadCount:null});if(e.status===401||e.code==='PASSWORD_CHANGE_REQUIRED'){restricted=true;void refreshSession();}}}
    finally{running=false;if(!disposed&&!restricted&&active&&document.visibilityState!=='hidden'){if(queued){queued=false;void refresh();}else timer=setTimeout(refresh,nextDelay);}}
   }
   function visibility(){if(document.visibilityState==='hidden'){clearTimeout(timer);controller?.abort();}else void refresh();}
   void refresh();document.addEventListener('visibilitychange',visibility);window.addEventListener(INBOX_CHANGED,refresh);window.addEventListener('focus',refresh);
-  return()=>{disposed=true;controller?.abort();clearTimeout(timer);document.removeEventListener('visibilitychange',visibility);window.removeEventListener(INBOX_CHANGED,refresh);window.removeEventListener('focus',refresh);};
+  return()=>{disposed=true;controller?.abort();clearTimeout(timer);publishInboxSnapshot({ownerId:user?.id,state:'inactive',unreadCount:null});document.removeEventListener('visibilitychange',visibility);window.removeEventListener(INBOX_CHANGED,refresh);window.removeEventListener('focus',refresh);};
  },[active,user?.id,refreshSession]);
  useEffect(()=>{if(!open)return;panel.current?.focus();function outside(e){if(!root.current?.contains(e.target))setOpen(false);}function escape(e){if(e.key==='Escape'){setOpen(false);trigger.current?.focus();}}document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};},[open]);
  async function action(work){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await work({csrfToken:getCsrfToken()});}catch(e){setError(e.message||'Action unconfirmed. Refresh to reconcile.');}finally{lock.current=false;setBusy(false);}}

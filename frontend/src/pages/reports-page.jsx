@@ -96,6 +96,7 @@ function ReportRows({ kind, rows, onEmployee }) {
       "Clock-ins",
       "Late",
       "No clock-in",
+      "Paid leave days",
       "Unresolved checkout",
       "Raw elapsed",
       "Approved intervals",
@@ -133,6 +134,7 @@ function ReportRows({ kind, rows, onEmployee }) {
                 "actualRecords",
                 "late",
                 "noClockIn",
+                "paidLeaveDays",
                 "unresolvedMissingCheckout",
               ].map((field) => (
                 <td key={field} className={CELL}>
@@ -262,6 +264,7 @@ function ReportRows({ kind, rows, onEmployee }) {
 
                 <td className={CELL}>
                   <Badge value={row.classification} />
+                  {row.paidLeave&&<p className="mt-2 text-xs">1 paid full-day leave; no punches created. {row.leaveConflict?'Calendar/employment conflict requires HR review.':''}</p>}
 
                   {row.actual?.rawMissingCheckout &&
                     !row.unresolvedMissingCheckout && (
@@ -676,6 +679,8 @@ function ReportView({
           ["Recorded entries", "actualRecords"],
           ["Late entries", "late"],
           ["No clock-in", "noClockIn"],
+          ["Paid leave days", "paidLeaveDays"],
+          ["Leave conflicts", "leaveConflicts"],
           ["Unresolved checkouts", "unresolvedMissingCheckout"],
           ["Raw elapsed", "rawWorkedMinutes", true],
           ["Approved intervals", "approvedIntervalMinutes", true],

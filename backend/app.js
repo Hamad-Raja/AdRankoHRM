@@ -63,6 +63,8 @@ app.use("/api/reports", require("./routes/reports.routes"));
 app.use("/api/payroll", require("./routes/payroll.routes"));
 app.use("/api/announcements", require("./routes/announcement.routes"));
 app.use("/api/notifications", require("./routes/notification.routes"));
+app.use("/api/leaves", require("./routes/leave.routes"));
+app.use("/api/dashboard", require("./routes/dashboard.routes"));
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Endpoint not found.", "NOT_FOUND"));

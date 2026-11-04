@@ -217,6 +217,7 @@ export default function AttendanceClock({ onRecordUpdated }) {
 
       {data?.state === 'SETUP_REQUIRED' && <p role="status" className="mb-4 text-sm">Attendance setup is required. Clock In stays unavailable until Admin/HR approves an effective schedule. An existing open session can still be checked out.</p>}
       {data?.approvedException && <p role="status" className="mb-4 text-sm">This duty has an approved exception with no original punches. See My Requests for the proposed times and HR decision.</p>}
+      {data?.approvedLeave&&<p role="status" className="mb-4 rounded-lg border p-3 text-sm">Approved full-day paid leave on {data.approvedLeave.shiftDate}. Clock In is unavailable. No attendance punches were created; payroll remains manual.</p>}
       {/* Action feedback */}
       {error && (
         <div

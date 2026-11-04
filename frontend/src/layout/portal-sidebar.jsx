@@ -23,6 +23,7 @@ const ROLE_LABELS = {
 };
 
 const NAVIGATION = [
+  {label:"Leave",to:"/leaves",icon:CalendarCheck,roles:ALL_ROLES,allowPasswordChange:false,end:false},
   {
     label: "Dashboard",
     to: "/dashboard",
