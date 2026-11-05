@@ -105,3 +105,16 @@ private/
 *.sqlite
 *.sqlite3
 *.db
+
+# ==========================================
+# Test folders - Never push to GitHub
+# ==========================================
+
+backend/tests/
+frontend/tests/
+
+# Other common test directories
+**/__tests__/
+**/e2e/
+**/test/
+**/tests/
