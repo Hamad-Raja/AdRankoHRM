@@ -20,7 +20,9 @@
     "test:schedule-browser": "node --import tsx tests/schedule-browser-check.cjs",
     "test:leave-browser": "node --import tsx tests/leave-browser-check.cjs",
     "test:dashboard-browser": "node --import tsx tests/dashboard-browser-check.cjs",
-    "test:connection-browser": "node --import tsx tests/connection-browser-check.cjs"
+    "test:connection-browser": "node --import tsx tests/connection-browser-check.cjs",
+    "test:reports-browser": "node --import tsx tests/reports-browser-check.cjs",
+    "acceptance:serve": "node --import tsx tests/manual-acceptance.cjs"
   },
   "keywords": [],
   "author": "",
