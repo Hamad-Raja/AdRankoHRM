@@ -9,7 +9,7 @@ const ApiError = require('../src/utils/ApiError');
 const { isCalendarDate } = require('../src/utils/shift-rules');
 const date = z.string().refine(isCalendarDate);
 const requestId = z.string().min(8).max(64).regex(/^[a-zA-Z0-9_-]+$/);
-const pagination = { page:z.coerce.number().int().min(1).default(1), pageSize:z.coerce.number().int().min(1).max(100).default(20) };
+const pagination = { page:z.coerce.number().int().min(1).max(10000).default(1), pageSize:z.coerce.number().int().min(1).max(100).default(20) };
 const historyFields = { ...pagination, dateFrom:date.optional(), dateTo:date.optional() };
 const range = v => !v.dateFrom || !v.dateTo || v.dateFrom <= v.dateTo;
 const history = z.object(historyFields).strict().refine(range);

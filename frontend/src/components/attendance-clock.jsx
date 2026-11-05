@@ -20,7 +20,11 @@ import {
 
 const pendingPunches = new Map();
 
-export default function AttendanceClock({ onRecordUpdated }) {
+export default function AttendanceClock(props) {
+  const {user}=useAuth();
+  return <AttendanceClockSession key={user.id} {...props}/>;
+}
+function AttendanceClockSession({ onRecordUpdated }) {
   const { user, getCsrfToken, refreshSession } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,39 +42,39 @@ export default function AttendanceClock({ onRecordUpdated }) {
     return () => clearInterval(timer);
   }, []);
 
-  const loadStatus = useCallback(
-    async (signal) => {
-      try {
-        const res = await getAttendanceStatus({ signal });
+  const readState=useRef({pending:null,controller:null});
+  const loadStatus=useCallback((signal)=>{
+    const state=readState.current;
+    if(state.pending&&!state.controller.signal.aborted)return state.pending;
+    const controller=new AbortController(),abort=()=>controller.abort();
+    signal?.addEventListener('abort',abort,{once:true});
+    if(signal?.aborted)controller.abort();
+    state.controller=controller;
+    const pending=(async()=>{
+      try{
+        const res=await getAttendanceStatus({signal:controller.signal});
+        if(controller.signal.aborted)return;
         setData(res);
-        const action = pendingPunches.get(user.id);
-        if (action) {
-          const history = await getOwnHistory({ dateFrom: action.shiftDate, dateTo: action.shiftDate }, { signal });
-          const confirmed = history.records.some(r => (action.kind === 'in' ? r.clockInRequestId : r.clockOutRequestId) === action.requestId);
-          if (confirmed) {
-            pendingPunches.delete(user.id); setPending(null);
-            setActionNotice('Pending punch confirmed from server history.');
+        const action=pendingPunches.get(user.id);
+        if(action){
+          const history=await getOwnHistory({dateFrom:action.shiftDate,dateTo:action.shiftDate},{signal:controller.signal});
+          if(controller.signal.aborted)return;
+          if(history.records.some(r=>(action.kind==='in'?r.clockInRequestId:r.clockOutRequestId)===action.requestId)){
+            pendingPunches.delete(user.id);setPending(null);setActionNotice('Pending punch confirmed from server history.');
           }
         }
-        setError("");
-      } catch (err) {
-        if (!signal?.aborted) {
-          setError(err.message || "Failed to load attendance status.");
-          if (err.status === 401 || err.code === "PASSWORD_CHANGE_REQUIRED") {
-            void refreshSession();
-          }
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [refreshSession, user.id]
-  );
+        setError('');
+      }catch(err){if(!controller.signal.aborted){setError(err.message||'Failed to load attendance status.');if(err.status===401||err.code==='PASSWORD_CHANGE_REQUIRED')void refreshSession();}}
+      finally{if(!controller.signal.aborted)setLoading(false);}
+    })().finally(()=>{signal?.removeEventListener('abort',abort);if(state.pending===pending)state.pending=null;});
+    state.pending=pending;return pending;
+  },[refreshSession,user.id]);
 
   useEffect(() => {
     const ctrl = new AbortController();
     loadStatus(ctrl.signal);
-    return () => ctrl.abort();
+    const state=readState.current;
+    return () => {ctrl.abort();state.controller?.abort();};
   }, [loadStatus]);
 
   useEffect(() => {

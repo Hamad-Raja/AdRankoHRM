@@ -868,27 +868,30 @@ async function getDailySummary(userId, shiftDate) {
         },
       },
       orderBy: { clockInAt: 'asc' },
+      take:2001,
     });
 
     const now = clock.now();
-    const context = await getScheduleContext(tx, instantFor(shiftDate, '19:00', 'Asia/Karachi'));
-    const employees = await tx.employee.findMany({ select: { id: true, employeeCode: true, fullName: true } });
-    const approvedExceptions = await tx.attendanceCorrectionRequest.findMany({ where: { shiftDate: dateValue(shiftDate), attendanceRecordId: null, status: 'APPROVED' } });
-    const paidLeaves = await tx.leaveRequest.findMany({where:{shiftDate:dateValue(shiftDate),status:'APPROVED'},select:{employeeId:true}});
-    const classifications = [];
-    for (const employee of employees) {
-      const record = records.find(r => r.employeeId === employee.id);
-      let classification;
-      if (record) classification = formatAttendanceRecord(record, now).isMissingCheckout ? 'MISSING_CHECKOUT' : record.status;
-      else if (paidLeaves.some(l=>l.employeeId===employee.id)) classification = 'PAID_LEAVE';
-      else if (!context) classification = 'SETUP_REQUIRED';
-      else if (!(await findEligibleEpisode(tx, employee.id, shiftDate))) classification = 'NOT_ELIGIBLE';
-      else if (await hasLegacyAssignment(tx, employee.id, shiftDate)) classification = 'LEGACY_ASSIGNMENT_REVIEW';
-      else if (context.type !== 'SCHEDULED') classification = context.type;
-      else if (approvedExceptions.some(c => c.employeeId === employee.id)) classification = 'APPROVED_EXCEPTION';
-      else classification = now >= context.endInstant ? 'NO_CLOCK_IN' : 'NOT_YET_ENDED';
-      classifications.push({ employee, classification });
-    }
+    const maximum=2000;
+    const employees = await tx.employee.findMany({take:maximum+1,select:{id:true,employeeCode:true,fullName:true,
+      employmentEpisodes:{select:{startDate:true,endDate:true,status:true,statusEffectiveDate:true,statusEvents:{select:{id:true,effectiveDate:true,createdAt:true,fromStatus:true,toStatus:true}}}},
+      shiftAssignments:{select:{effectiveFrom:true,effectiveTo:true}}}});
+    if(employees.length>maximum||records.length>maximum)fail(413,'Daily summary exceeds 2000 employees. Use scoped reports.','REPORT_TOO_LARGE');
+    const versions=await tx.officeSchedule.findMany({orderBy:[{effectiveFrom:'asc'},{id:'asc'}],take:2001,select:{id:true,effectiveFrom:true,policy:true}});
+    if(versions.length>2000)fail(413,'Policy history exceeds the summary limit.','REPORT_TOO_LARGE');
+    const holiday=await tx.companyHolidayEvent.findFirst({where:{holidayDate:dateValue(shiftDate)},orderBy:{revision:'desc'},select:{action:true}});
+    const approvedExceptions = await tx.attendanceCorrectionRequest.findMany({where:{shiftDate:dateValue(shiftDate),attendanceRecordId:null,status:'APPROVED'},take:30001});
+    if(approvedExceptions.length>30000)fail(413,'Correction history exceeds the summary limit.','REPORT_TOO_LARGE');
+    const paidLeaves = await tx.leaveRequest.findMany({where:{shiftDate:dateValue(shiftDate),status:'APPROVED'},take:2001,select:{id:true,employeeId:true,startsAt:true,endsAt:true}});
+    if(paidLeaves.length>2000)fail(413,'Leave history exceeds the summary limit.','REPORT_TOO_LARGE');
+    const recordMap=new Map(records.map(r=>[r.employeeId,r])),leaveMap=new Map(paidLeaves.map(r=>[r.employeeId,r]));
+    const exceptionMap=new Map();
+    for(const correction of [...approvedExceptions].sort((a,b)=>+b.reviewedAt-+a.reviewedAt||b.id.localeCompare(a.id)))if(!exceptionMap.has(correction.employeeId))exceptionMap.set(correction.employeeId,correction);
+    const {classifyDuty}=require('../utils/reports-rules');
+    const classifications=employees.map(employee=>{
+      const row=classifyDuty({employee,date:shiftDate,versions,holidayDates:holiday?.action==='ANNOUNCE'?[shiftDate]:[],record:recordMap.get(employee.id),exception:exceptionMap.get(employee.id),approvedLeave:leaveMap.get(employee.id),now});
+      return {employee:{id:employee.id,employeeCode:employee.employeeCode,fullName:employee.fullName},classification:row.classification};
+    });
     const summary = {
       classifications,
       paidLeaveDays:paidLeaves.length,

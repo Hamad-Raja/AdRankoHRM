@@ -49,20 +49,13 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  const refreshSession = useCallback(
-    async ({ signal } = {}) => {
+  const verifySession = useCallback(
+    ({ signal } = {}) => {
       if (actionRef.current) return;
 
       const version = ++requestVersionRef.current;
 
-      setState((previous) => ({
-        ...previous,
-        status: "loading",
-        error: null,
-      }));
-
-      try {
-        const session = await authService.getCurrentUser({ signal });
+      return authService.getCurrentUser({ signal }).then(session => {
 
         if (
           signal?.aborted ||
@@ -72,7 +65,7 @@ export function AuthProvider({ children }) {
         }
 
         acceptSession(session);
-      } catch (error) {
+      }).catch(error => {
         if (
           signal?.aborted ||
           version !== requestVersionRef.current
@@ -96,18 +89,24 @@ export function AuthProvider({ children }) {
           error: error.message || "Unable to verify your session.",
           notice: "",
         });
-      }
+      });
     },
     [acceptSession, clearSession]
   );
 
+  const refreshSession = useCallback((options) => {
+    if (actionRef.current) return;
+    setState(previous => ({ ...previous, status: 'loading', error: null }));
+    return verifySession(options);
+  }, [verifySession]);
+
   useEffect(() => {
     const controller = new AbortController();
 
-    void refreshSession({ signal: controller.signal });
+    void verifySession({ signal: controller.signal });
 
     return () => controller.abort();
-  }, [refreshSession]);
+  }, [verifySession]);
 
   const runAction = useCallback(async (name, action) => {
     if (actionRef.current) {

@@ -5,7 +5,10 @@ import { useAuth } from "@/context/auth-context";
 import { submitCorrectionRequest } from "@/services/attendance.service";
 import { X, AlertCircle } from "lucide-react";
 
-export default function AttendanceCorrectionModal({
+export default function AttendanceCorrectionModal(props){
+  return props.isOpen?<CorrectionDialog key={`${props.initialRecord?.id||'missing'}:${props.initialShiftDate||''}`} {...props}/>:null;
+}
+function CorrectionDialog({
   isOpen,
   onClose,
   initialRecord = null,
@@ -15,49 +18,27 @@ export default function AttendanceCorrectionModal({
   const dialogRef = useRef(null);
   const closeTimer = useRef(null);
   const { getCsrfToken, refreshSession } = useAuth();
-  const [shiftDate, setShiftDate] = useState(initialShiftDate || "");
-  const [requestType, setRequestType] = useState("WRONG_TIME");
-  const [clockIn, setClockIn] = useState("");
-  const [clockOut, setClockOut] = useState("");
+  const [shiftDate, setShiftDate] = useState(initialRecord?.shiftDate || initialShiftDate || "");
+  const [requestType, setRequestType] = useState(initialRecord&&(initialRecord.status==='OPEN'||initialRecord.isMissingCheckout)?"MISSING_CHECKOUT":"WRONG_TIME");
+  const [clockIn, setClockIn] = useState(()=>initialRecord?.clockInAt?new Date(Date.parse(initialRecord.clockInAt)+5*3600000).toISOString().slice(0,16):'');
+  const [clockOut, setClockOut] = useState(()=>initialRecord?.clockOutAt?new Date(Date.parse(initialRecord.clockOutAt)+5*3600000).toISOString().slice(0,16):'');
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setError("");
-      setSuccess(false);
-      setReason('');
-      setClockIn('');
-      setClockOut('');
-      setShiftDate(initialShiftDate || '');
-      if (initialRecord) {
-        setShiftDate(initialRecord.shiftDate || "");
-        if (initialRecord.status === "OPEN" || initialRecord.isMissingCheckout) {
-          setRequestType("MISSING_CHECKOUT");
-        } else {
-          setRequestType("WRONG_TIME");
-        }
-        if (initialRecord.clockInAt) {
-          setClockIn(new Date(Date.parse(initialRecord.clockInAt) + 5 * 3600000).toISOString().slice(0, 16));
-        }
-        if (initialRecord.clockOutAt) {
-          setClockOut(new Date(Date.parse(initialRecord.clockOutAt) + 5 * 3600000).toISOString().slice(0, 16));
-        }
-      } else if (initialShiftDate) {
-        setShiftDate(initialShiftDate);
-      }
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-    return () => clearTimeout(closeTimer.current);
-  }, [isOpen, initialRecord, initialShiftDate]);
+  const submitLock=useRef(false);
+  useEffect(()=>{
+    const dialog=dialogRef.current;
+    if(isOpen)dialog?.showModal();
+    // Removing this keyed dialog closes it. Calling close() during Strict Mode
+    // effect replay would emit onClose and immediately dismiss a new dialog.
+    return()=>clearTimeout(closeTimer.current);
+  },[isOpen]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting||submitLock.current) return;
     if (!shiftDate) {
       setError("Shift date is required.");
       return;
@@ -67,6 +48,7 @@ export default function AttendanceCorrectionModal({
       return;
     }
 
+    submitLock.current=true;
     setSubmitting(true);
     setError("");
 
@@ -95,6 +77,7 @@ export default function AttendanceCorrectionModal({
         void refreshSession();
       }
     } finally {
+      submitLock.current=false;
       setSubmitting(false);
     }
   }

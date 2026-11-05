@@ -33,19 +33,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Tests
-tests/
-test/
-__tests__/
-__snapshots__/
-*.test.js
-*.test.jsx
-*.test.ts
-*.test.tsx
-*.spec.js
-*.spec.jsx
-*.spec.ts
-*.spec.tsx
+# Test source and guarded fixtures belong in version control.
+# Only generated results/caches are ignored.
 playwright-report/
 test-results/
 .nyc_output/
@@ -104,6 +93,13 @@ temp/
 *.bak
 *.backup
 *.local
+
+# Test-only generated output; never version private inventories or credentials.
+**/tests/.cache/
+**/tests/output/
+private/
+!FINAL_TECHNICAL_AUDIT_REPORT.md
+!MANUAL_ACCEPTANCE_TEST_CHECKLIST.md
 
 # Local databases
 *.sqlite
