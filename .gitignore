@@ -105,3 +105,11 @@ private/
 *.sqlite
 *.sqlite3
 *.db
+
+# Test folders stay local and must not be included in Git.
+backend/tests/
+frontend/tests/
+**/__tests__/
+**/e2e/
+**/test/
+**/tests/
