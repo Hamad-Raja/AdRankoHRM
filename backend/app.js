@@ -129,7 +129,10 @@ async function startServer() {
 
     console.log("Database connection verified.");
 
-    server = app.listen(PORT, HOST, () => {
+    server = app.listen(PORT, HOST, (error) => {
+      // Express 5 also invokes this callback on a listen failure.
+      // The server error listener below owns logging and cleanup in that case.
+      if (error) return;
       console.log(`OfficeHR API running at http://${HOST}:${PORT}`);
     });
 

@@ -1,6 +1,7 @@
 'use strict';
 
 const { scheduleDate, addDays } = require('./office-schedule');
+const { statusOn } = require('./employment-status');
 
 const day = value => value instanceof Date ? value.toISOString().slice(0, 10) : value;
 const iso = value => value == null ? null : new Date(value).toISOString();
@@ -15,17 +16,6 @@ function datesBetween(from, to) {
   return result;
 }
 
-function statusOn(episode, date) {
-  const events = [...(episode.statusEvents || [])].sort((a, b) =>
-    day(a.effectiveDate).localeCompare(day(b.effectiveDate))
-    || String(iso(a.createdAt) || '').localeCompare(String(iso(b.createdAt) || ''))
-    || String(a.id).localeCompare(String(b.id)));
-  const prior = events.filter(event => day(event.effectiveDate) <= date).at(-1);
-  if (prior) return prior.toStatus;
-  const next = events.find(event => day(event.effectiveDate) > date);
-  if (next) return next.fromStatus;
-  return day(episode.statusEffectiveDate) <= date ? episode.status : null;
-}
 
 function calendarFor(employee, date, versions, holidayDates) {
   const episodes = employee.employmentEpisodes.map(episode => ({

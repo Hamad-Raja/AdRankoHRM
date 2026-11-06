@@ -365,7 +365,7 @@ export default function AttendancePage() {
                 <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Clock-Ins</dt>
                 <Users className="size-4 text-primary/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-foreground font-mono">{dailySummary?.totalRecords ?? 0}</dd>
+              <dd className="mt-2 text-2xl font-black tracking-tight text-foreground font-mono">{dailySummary?.totalRecords ?? 'Unavailable'}</dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
@@ -373,7 +373,7 @@ export default function AttendancePage() {
                 <CheckCircle2 className="size-4 text-emerald-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
-                {dailySummary?.onTime ?? 0}
+                {dailySummary?.onTime ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
@@ -382,7 +382,7 @@ export default function AttendancePage() {
                 <Clock className="size-4 text-amber-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400 font-mono">
-                {dailySummary?.late ?? 0}
+                {dailySummary?.late ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
@@ -391,7 +391,7 @@ export default function AttendancePage() {
                 <LogOut className="size-4 text-rose-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400 font-mono">
-                {dailySummary?.earlyDeparture ?? 0}
+                {dailySummary?.earlyDeparture ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
@@ -400,7 +400,7 @@ export default function AttendancePage() {
                 <AlertCircle className="size-4 text-destructive/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-destructive font-mono">
-                {dailySummary?.missingCheckout ?? 0}
+                {dailySummary?.missingCheckout ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
@@ -409,7 +409,7 @@ export default function AttendancePage() {
                 <Check className="size-4 text-blue-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-blue-600 dark:text-blue-400 font-mono">
-                {dailySummary?.completed ?? 0}
+                {dailySummary?.completed ?? 'Unavailable'}
               </dd>
             </div>
           </div>
@@ -443,7 +443,7 @@ export default function AttendancePage() {
                   ) : !dailySummary?.records || dailySummary.records.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
-                        No employees clocked in on {summaryDate}.
+                        {summaryError ? 'Daily records unavailable. Refresh to retry.' : `No employees clocked in on ${summaryDate}.`}
                       </td>
                     </tr>
                   ) : (
@@ -633,7 +633,7 @@ export default function AttendancePage() {
                   ) : records.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
-                        No records found matching filters.
+                        {recordsError ? 'Attendance records unavailable. Apply filters or refresh to retry.' : 'No records found matching filters.'}
                       </td>
                     </tr>
                   ) : (
@@ -715,7 +715,7 @@ export default function AttendancePage() {
             </div>
 
             {/* Pagination */}
-            {recordsTotalPages > 1 && (
+            {!loadingRecords && !recordsError && recordsTotalPages > 1 && (
               <div className="flex items-center justify-between border-t border-border/80 p-4">
                 <p className="text-xs text-muted-foreground font-medium">
                   Page {recordsPage} of {recordsTotalPages} ({recordsTotal} total entries)
@@ -803,7 +803,7 @@ export default function AttendancePage() {
                   ) : corrections.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
-                        No pending correction requests.
+                        {correctionsError ? 'Correction requests unavailable. Refresh to retry.' : correctionStatus === 'PENDING' ? 'No pending correction requests.' : 'No correction requests match this status.'}
                       </td>
                     </tr>
                   ) : (
@@ -875,6 +875,7 @@ export default function AttendancePage() {
       {/* ─── Review Dialog Modal ────────────────────────────────────── */}
       <dialog
         ref={reviewDialogRef}
+        aria-label={reviewDecision === 'APPROVED' ? 'Approve Correction' : 'Reject Correction'}
         onClose={() => setSelectedCorrection(null)}
         className="fixed inset-0 m-auto w-full max-w-md rounded-2xl border border-border/80 bg-card p-6 text-card-foreground shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-xs"
       >

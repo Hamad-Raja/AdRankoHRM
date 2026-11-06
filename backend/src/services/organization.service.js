@@ -1,10 +1,11 @@
 "use strict";
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
+const { localParts } = require('../utils/office-schedule');
 
 const fail = (status, message, code = 'VALIDATION_ERROR') => { throw new ApiError(status, message, code); };
 const date = value => value == null ? null : new Date(`${value}T00:00:00.000Z`);
-const day = () => date(new Date().toISOString().slice(0, 10));
+const day = () => date(localParts(new Date(), 'Asia/Karachi').date);
 const current = now => ({ effectiveFrom: { lte: now }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] });
 async function actor(tx, id, management = true) {
   const user = await tx.user.findUnique({ where: { id } });
@@ -92,17 +93,17 @@ async function assignManager(id, teamId, data) {
     await audit(tx, id, 'TEAM_MANAGER_ASSIGNED', teamId, { assignmentId: assignment.id, effectiveFrom: data.effectiveFrom }); return assignment;
   });
 }
-async function employeeScope(tx, user) {
+async function employeeScope(tx, user, asOf = day()) {
   if (['ADMIN', 'HR'].includes(user.role)) return {};
   if (user.role === 'EMPLOYEE') return { userId: user.id };
-  const teams = await tx.teamManagerAssignment.findMany({ where: { managerUserId: user.id, ...current(day()) }, select: { teamId: true } });
-  return { assignments: { some: { teamId: { in: teams.map(item => item.teamId) }, ...current(day()) } } };
+  const teams = await tx.teamManagerAssignment.findMany({ where: { managerUserId: user.id, ...current(asOf) }, select: { teamId: true } });
+  return { assignments: { some: { teamId: { in: teams.map(item => item.teamId) }, ...current(asOf) } } };
 }
 async function scopedEmployees(id, employeeId) {
   return transaction(async tx => {
-    const user = await actor(tx, id, false), scope = await employeeScope(tx, user);
+    const user = await actor(tx, id, false), asOf = day(), scope = await employeeScope(tx, user, asOf);
     const employees = await tx.employee.findMany({ where: { AND: [scope, ...(employeeId ? [{ id: employeeId }] : [])] },
-      select: { id: true, employeeCode: true, fullName: true, assignments: { where: current(day()), select: { id: true, effectiveFrom: true, effectiveTo: true, team: { select: { name: true, department: { select: { name: true } }, campaign: { select: { name: true } } } }, designation: { select: { name: true } } } }, employmentEpisodes: { orderBy: [{ startDate: 'desc' }, { id: 'desc' }], take: 1, select: { startDate: true, endDate: true, status: true } } }, orderBy: [{ fullName: 'asc' }, { id: 'asc' }] });
+      select: { id: true, employeeCode: true, fullName: true, assignments: { where: current(asOf), select: { id: true, effectiveFrom: true, effectiveTo: true, team: { select: { name: true, department: { select: { name: true } }, campaign: { select: { name: true } } } }, designation: { select: { name: true } } } }, employmentEpisodes: { orderBy: [{ startDate: 'desc' }, { id: 'desc' }], take: 1, select: { startDate: true, endDate: true, status: true } } }, orderBy: [{ fullName: 'asc' }, { id: 'asc' }] });
     if (employeeId && !employees.length) fail(404, 'Employee not found.', 'NOT_FOUND');
     return employees;
   });

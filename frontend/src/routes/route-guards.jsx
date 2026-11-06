@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet, useLocation } from "react-router";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/context/auth-context";
+import { loginDestination } from '@/lib/return-path';
 
 function SessionStatusScreen() {
   const { status, error, refreshSession } = useAuth();
@@ -65,7 +66,7 @@ export function ProtectedRoute({
       <Navigate
         to="/login"
         replace
-        state={{ from: location.pathname }}
+        state={{ from: location.pathname + location.search }}
       />
     );
   }
@@ -117,14 +118,7 @@ export function GuestRoute({ children }) {
 
     const requestedPath = location.state?.from;
 
-    const canReturn = typeof requestedPath === "string" && (
-      ["/dashboard", "/account"].includes(requestedPath) ||
-      (["ADMIN", "HR"].includes(user.role) && /^\/(employees(?:\/new|\/[0-9a-f-]{36})?|organization|attendance-settings|shifts)$/.test(requestedPath)) ||
-      (["MANAGER", "EMPLOYEE"].includes(user.role) && requestedPath === "/my-employees")
-    );
-    const destination = canReturn
-      ? requestedPath
-      : "/dashboard";
+    const destination = loginDestination(requestedPath, user.role);
 
     return <Navigate to={destination} replace />;
   }

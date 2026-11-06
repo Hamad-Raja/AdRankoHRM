@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,6 +9,7 @@ import AttendanceCorrectionModal from "./attendance-correction-modal";
 import { Filter, History, RotateCcw } from "lucide-react";
 
 export default function AttendanceHistory({ refreshTrigger = 0 }) {
+  const fieldId = useId();
   const [tab, setTab] = useState("records"); // 'records' | 'corrections'
   const [records, setRecords] = useState([]);
   const [corrections, setCorrections] = useState([]);
@@ -129,22 +130,22 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/60 bg-muted/20 p-3.5"
         >
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor={`${fieldId}-from`} className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               From Date
             </label>
             <Input
-              type="date"
+              id={`${fieldId}-from`} type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="h-9 w-40 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor={`${fieldId}-to`} className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               To Date
             </label>
             <Input
-              type="date"
+              id={`${fieldId}-to`} type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="h-9 w-40 text-xs"
@@ -200,7 +201,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
-                    No attendance records found.
+                    {error ? 'Attendance history unavailable. Apply filters or reload to retry.' : 'No attendance records found.'}
                   </td>
                 </tr>
               ) : (
@@ -311,7 +312,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               ) : corrections.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
-                    No correction requests submitted.
+                    {error ? 'Correction history unavailable. Reload to retry.' : 'No correction requests submitted.'}
                   </td>
                 </tr>
               ) : (
@@ -356,7 +357,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!loading && !error && totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between border-t border-border/80 pt-3">
           <p className="text-xs text-muted-foreground font-medium">
             Page {page} of {totalPages}

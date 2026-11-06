@@ -3,6 +3,7 @@ const { actor, audit, transaction, fail } = require('./organization.service');
 const { dateValue, dateString } = require('../utils/shift-rules');
 const { localParts, instantFor, addDays, missingPolicy, scheduleDate } = require('../utils/office-schedule');
 const clock = require('../utils/attendance-clock');
+const { statusOn } = require('../utils/employment-status');
 
 // ─── Schedule resolution helpers ────────────────────────────────────────
 // ─── Get the schedule for the current/potential duty ─────────────────
@@ -78,14 +79,6 @@ async function findEligibleEpisode(tx, employeeId, shiftDate) {
   );
 }
 
-function statusOn(episode, date) {
-  const events = episode.statusEvents || [];
-  const prior = events.filter(e => dateString(e.effectiveDate) <= date).at(-1);
-  if (prior) return prior.toStatus;
-  const next = events.find(e => dateString(e.effectiveDate) > date);
-  if (next) return next.fromStatus;
-  return dateString(episode.statusEffectiveDate) <= date ? episode.status : null;
-}
 
 // ─── Get attendance status ──────────────────────────────────────────
 async function getAttendanceStatus(userId, now = clock.now()) {

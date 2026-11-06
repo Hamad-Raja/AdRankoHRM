@@ -1,5 +1,6 @@
 "use strict";
 const { dateValue, dateString } = require('./shift-rules');
+const { statusOn } = require('./employment-status');
 const formatters = new Map();
 function addDays(date, count) { return dateString(new Date(+dateValue(date) + count * 86400000)); }
 function localParts(instant, timeZone) {
@@ -26,7 +27,7 @@ function scheduleDate(version, date, assignments, episodes, companyHolidays) {
   const p = version.policy, missing = missingPolicy(p);
   const result = { scheduleDate: date, startTime: '19:00', endTime: '05:00', endsNextDay: true, scheduledSpanMinutes: 600, timeZone: p.timeZone, workDays: p.workDays, graceMinutes: p.graceMinutes, breakTrackingEnabled: p.breakTrackingEnabled, automaticBreakDeduction: p.automaticBreakDeduction, breakMinutes: p.breakMinutes ?? null, breakPaid: p.breakPaid ?? null, state: 'SETUP_REQUIRED', missing };
   if (assignments.some(a => a.effectiveFrom <= date && (!a.effectiveTo || a.effectiveTo >= date))) return { ...result, state: 'LEGACY_ASSIGNMENT_REVIEW', missing: ['Existing individual assignment requires an explicit policy decision.'] };
-  if (!episodes.some(e => e.startDate <= date && (!e.endDate || e.endDate >= date) && ['ACTIVE','PROBATION','NOTICE_PERIOD'].includes(e.status))) return { ...result, state: 'NOT_ELIGIBLE', missing: [] };
+  if (!episodes.some(e => e.startDate <= date && (!e.endDate || e.endDate >= date) && ['ACTIVE','PROBATION','NOTICE_PERIOD'].includes(e.statusEffectiveDate || e.statusEvents ? statusOn(e, date) : e.status))) return { ...result, state: 'NOT_ELIGIBLE', missing: [] };
   if (missing.length) return result;
   if (p.holidayPolicy === 'DATES' && (date < p.holidayFrom || date > p.holidayTo)) return { ...result, missing: ['holidayCoverage'] };
   if (p.holidayPolicy === 'DATES' && p.holidays.includes(date)) return { ...result, state: 'HOLIDAY', missing: [] };

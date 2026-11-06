@@ -3,6 +3,7 @@ const { actor, audit, transaction, fail } = require('./organization.service');
 const { dateValue, dateString } = require('../utils/shift-rules');
 const { localParts, instantFor, missingPolicy, resolveSchedule } = require('../utils/office-schedule');
 const schemas = require('../validation/schedule-readiness.validation');
+const { statusOn } = require('../utils/employment-status');
 function parse(schema, data) { const result=schema.safeParse(data); if(!result.success) fail(400,'Invalid scheduling input. Check required values and disabled break flags.','VALIDATION_ERROR'); return result.data; }
 const serialize = row => ({ ...row, effectiveFrom: dateString(row.effectiveFrom) });
 const effectiveInstant = row => row.policy.timeZone ? instantFor(dateString(row.effectiveFrom),'19:00',row.policy.timeZone) : null;
@@ -95,14 +96,14 @@ async function cancelHoliday(userId,eventId,input) {
 async function myShift(userId, now = new Date()) {
   return transaction(async tx => {
     const user = await actor(tx, userId, false);
-    const employee = await tx.employee.findUnique({ where: { userId: user.id }, select: { id: true, employmentEpisodes: { select: { startDate: true, endDate: true, status: true }, orderBy: [{ startDate: 'asc' }, { id: 'asc' }] } } });
+    const employee = await tx.employee.findUnique({ where: { userId: user.id }, select: { id: true, employmentEpisodes: { select: { startDate: true, endDate: true, status: true, statusEffectiveDate: true, statusEvents: { select: { id: true, effectiveDate: true, createdAt: true, fromStatus: true, toStatus: true } } }, orderBy: [{ startDate: 'asc' }, { id: 'asc' }] } } });
     if (!employee) return { state: 'PROFILE_LINK_REQUIRED', duty: '19:00–05:00 next day', current: null, next: null, applicable: null, missing: ['linkedEmployeeProfile'] };
     const rows = await tx.officeSchedule.findMany({ orderBy: { effectiveFrom: 'asc' } });
     const draft=await tx.officeScheduleDraft.findFirst({orderBy:{revision:'desc'},select:{policy:true}});
     const preview=draft?{label:'Inactive draft preview; not an operational schedule',...draft.policy}:null;
     const zone=activeVersion(rows,now)?.policy.timeZone||draft?.policy.timeZone||schemas.confirmedPolicy.timeZone;
     const local=localParts(now,zone),anchor=local.time<'05:00'?require('../utils/office-schedule').addDays(local.date,-1):local.date;
-    if(!employee.employmentEpisodes.some(e=>dateString(e.startDate)<=anchor&&(!e.endDate||dateString(e.endDate)>=anchor)&&['ACTIVE','PROBATION','NOTICE_PERIOD'].includes(e.status)))return {state:'NOT_ELIGIBLE',current:null,next:null,applicable:null,missing:[],asOf:now.toISOString()};
+    if(!employee.employmentEpisodes.some(e=>dateString(e.startDate)<=anchor&&(!e.endDate||dateString(e.endDate)>=anchor)&&['ACTIVE','PROBATION','NOTICE_PERIOD'].includes(statusOn(e,anchor))))return {state:'NOT_ELIGIBLE',current:null,next:null,applicable:null,missing:[],asOf:now.toISOString()};
     const assignments = await tx.employeeShiftAssignment.findMany({ where: { employeeId: employee.id }, select: { effectiveFrom: true, effectiveTo: true } });
     const events=await tx.companyHolidayEvent.findMany({where:{createdAt:{lte:now}},orderBy:[{holidayDate:'asc'},{revision:'desc'}],select:{holidayDate:true,action:true}});
     const latestEvents=new Map();for(const event of events){const date=dateString(event.holidayDate);if(!latestEvents.has(date))latestEvents.set(date,event.action);}

@@ -50,7 +50,7 @@ export default function PayrollPage({own=false}) {
  useEffect(()=>{void load();},[load]);
  useEffect(()=>{
   if(own)return;const ctrl=new AbortController();
-  apiRequest('/employees?'+payrollQuery({search:employeeSearch,pageSize:100}),{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setEmployees(r.data.employees||[]);}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});
+  apiRequest('/employees?'+payrollQuery({q:employeeSearch,pageSize:100}),{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setEmployees(r.data.employees||[]);}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});
   return()=>ctrl.abort();
  },[own,employeeSearch]);
  useEffect(()=>{
