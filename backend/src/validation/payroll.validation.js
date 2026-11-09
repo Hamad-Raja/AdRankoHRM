@@ -68,17 +68,16 @@ function lineItems(value, field, types) {
     }
 
     if (
-      typeof item.label !== "string" ||
-      !item.label.trim() ||
-      item.label.trim().length > 120 ||
-      [...item.label].some((character) => {
+      (item.label !== undefined && typeof item.label !== "string") ||
+      (item.label || '').trim().length > 120 ||
+      [...(item.label || '')].some((character) => {
         const code = character.charCodeAt(0);
         return code <= 31 || code === 127;
       })
     ) {
       invalid(
         field,
-        `${field} labels must contain 1–120 characters without control characters.`
+        `${field} descriptions must contain at most 120 characters without control characters.`
       );
     }
 
@@ -96,7 +95,7 @@ function lineItems(value, field, types) {
 
     result.push({
       type: item.type,
-      label: item.label.trim(),
+      label: item.label?.trim() || item.type.toLowerCase().split('_').map(word=>word[0].toUpperCase()+word.slice(1)).join(' '),
       amount: moneyFromMinor(amount),
     });
   }

@@ -1,96 +1,117 @@
-import {cloneElement,useCallback,useEffect,useId,useRef,useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
+import {useSearchParams} from 'react-router';
+import {UserRound, History, Plus, RefreshCw, Printer, X} from 'lucide-react';
 import {useAuth} from '@/context/auth-context';
 import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
-import {apiRequest} from '@/lib/api';
-import {payrollRequest,payrollQuery} from '@/services/payroll.service';
-import {useSearchParams} from 'react-router';
+import {ApiError, apiRequest} from '@/lib/api';
+import {payrollRequest, payrollQuery} from '@/services/payroll.service';
+import {usePayrollResource} from '@/components/payroll/use-payroll-resource';
+import {PayrollField, PayrollStatus} from '@/components/payroll/payroll-fields';
+import {currentMonth, dateTime, inputClass, pkr, readable} from '@/components/payroll/payroll-format';
+import SalaryRevisionDialog from '@/components/payroll/salary-revision-dialog';
+import PayrollDraftDialog from '@/components/payroll/payroll-draft-dialog';
+import Payslip from '@/components/payroll/payslip';
+import PayrollWorkflow from '@/components/payroll/payroll-workflow';
+import payrollPrintStyles from '@/components/payroll/payroll-print.css?inline';
 
-const selectClass='w-full rounded-lg border border-input bg-background p-2 text-sm';
-const initialMonth=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Karachi',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
-const amount=value=>`PKR ${value}`;
-function Field({label,children}) {const id=useId();return <div className="grid gap-1 text-sm"><label htmlFor={id}>{label}</label>{cloneElement(children,{id})}</div>;}
-function Adjustments({title,items,setItems,types,disabled}) {
- return <fieldset className="space-y-3 rounded-xl border p-4" disabled={disabled}><legend className="px-1 font-medium">{title} (optional period amounts)</legend>
-  {items.map((item,index)=><div key={item.key} className="grid gap-2 sm:grid-cols-4">
-   <Field label={`${title} type ${index+1}`}><select className={selectClass} value={item.type} onChange={e=>setItems(items.map((v,i)=>i===index?{...v,type:e.target.value}:v))}>{types.map(t=><option key={t}>{t}</option>)}</select></Field>
-   <Field label={`${title} label ${index+1}`}><Input required maxLength={120} value={item.label} onChange={e=>setItems(items.map((v,i)=>i===index?{...v,label:e.target.value}:v))}/></Field>
-   <Field label={`${title} PKR ${index+1}`}><Input required inputMode="decimal" value={item.amount} onChange={e=>setItems(items.map((v,i)=>i===index?{...v,amount:e.target.value}:v))}/></Field>
-   <Button type="button" variant="outline" onClick={()=>setItems(items.filter((_,i)=>i!==index))}>Remove {title.toLowerCase()} {index+1}</Button>
-  </div>)}
-  <Button type="button" variant="outline" disabled={items.length>=50} onClick={()=>setItems([...items,{key:crypto.randomUUID(),type:types[0],label:'',amount:''}])}>Add {title.toLowerCase()}</Button>
- </fieldset>;
-}
-function Slip({record,own}) {
- return <section aria-label="Payslip" className="payroll-slip space-y-4 rounded-xl border bg-card p-5 text-card-foreground">
-  <h2 className="text-xl font-semibold">OfficeHR Payslip · {record.month}</h2><p>{record.employeeName} · {record.employeeCode}</p><p>{record.period.dateFrom} through {record.period.dateTo} · {record.status} · PKR</p>
-  <dl className="grid grid-cols-2 gap-3 text-sm">{[['Monthly basic',record.monthlyBasic],['Total payable days (manual)',record.totalPayableDays],['Worked days (manual)',record.workedDays],['Earned basic',record.earnedBasic],['Unearned basic (reference only)',record.unearnedBasic],['Additional earnings',record.additionalEarnings],['Gross pay',record.grossPay],['Manual deductions',record.totalDeductions],['Net pay',record.netPay]].map(([label,value])=><div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="font-mono font-semibold">{label.includes('days')?value:amount(value)}</dd></div>)}</dl>
-  <p className="text-sm">Earned basic = monthly basic × worked days ÷ entered payable days, rounded once half-up to the nearest paisa. Adjustments are not prorated. Unearned basic is not deducted again.</p>
-  {[['Earnings',record.earnings],['Deductions',record.deductions]].map(([label,items])=><div key={label}><h3 className="font-medium">{label}</h3>{items.length?items.map((item,i)=><p key={i} className="text-sm">{item.label} ({item.type}): {amount(item.amount)}</p>):<p className="text-sm text-muted-foreground">None</p>}</div>)}
-  <p className="text-sm">HR approved: {record.hrApprovedAt||'Pending'} · Admin approved: {record.adminApprovedAt||'Pending'}</p>
-  {record.payment&&<div><h3 className="font-medium">Full payment recorded</h3><p>{amount(record.payment.amount)} · {record.payment.method} · {record.payment.paidOn}</p>{!own&&<p className="text-sm">Reference: {record.payment.reference||'None'} · {record.payment.note||''}</p>}<p className="text-sm">This records payment manually; OfficeHR does not transfer funds.</p></div>}
- </section>;
+const monthPattern=/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/;
+const idPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function employeeDirectory(path,options){return (await apiRequest(path,options)).data.employees;}
+
+function PayrollWorkspace({own}) {
+  const {user,getCsrfToken,refreshSession}=useAuth();
+  const [query]=useSearchParams();
+  const requestedId=idPattern.test(query.get('payrollId')||'')?query.get('payrollId'):null;
+  const [month,setMonth]=useState(()=>monthPattern.test(query.get('month')||'')?query.get('month'):requestedId?'':currentMonth());
+  const [status,setStatus]=useState(()=>(own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).includes(query.get('status'))?query.get('status'):'');
+  const [search,setSearch]=useState(''), [page,setPage]=useState(1), [employeeSearch,setEmployeeSearch]=useState(''), [selected,setSelected]=useState(null);
+  const [selection,setSelection]=useState({query:requestedId,id:requestedId});
+  const detailId=selection.query===requestedId?selection.id:requestedId;
+  const [modal,setModal]=useState(null), [busy,setBusy]=useState(false), [uncertain,setUncertain]=useState(false), [writeError,setWriteError]=useState(null), [notice,setNotice]=useState('');
+  const alive=useRef(true), writeLock=useRef(false), writeController=useRef(null);
+  useEffect(()=>{alive.current=true;return()=>{alive.current=false;writeController.current?.abort();};},[]);
+  const directory=usePayrollResource(own?null:'/employees?'+payrollQuery({q:employeeSearch,pageSize:100}),employeeDirectory);
+  const salary=usePayrollResource(!own&&selected?'/salaries/'+selected.id:null);
+  const records=usePayrollResource((own?'/payslips':'')+'?'+payrollQuery({month,status,search,page,pageSize:20,employeeId:own?'':selected?.id||''}));
+  const detail=usePayrollResource(detailId?(own?'/payslips/':'/')+detailId:null);
+  const employees=directory.data||[], currentEmployee=salary.data?.employee||selected;
+  const currentSalary=salary.data?.versions.find(version=>version.effectiveMonth<=currentMonth())||null;
+  const rowEmployee=record=>({id:record.employeeId,fullName:record.employeeName,employeeCode:record.employeeCode});
+  const readFailure=records.error||salary.error||directory.error||detail.error;
+  useEffect(()=>{if(readFailure&&(readFailure.status===401||readFailure.code==='PASSWORD_CHANGE_REQUIRED'))void refreshSession();},[readFailure,refreshSession]);
+
+  function choose(employee){setSelected(employee);setSelection({query:requestedId,id:null});setPage(1);setWriteError(null);setNotice('');}
+  function openRecord(record){setSelection({query:requestedId,id:record.id});setWriteError(null);}
+  function openModal(type,record=null){
+    setWriteError(null);setNotice('');
+    if(record){setSelected(rowEmployee(record));setModal({type:'draft',employee:rowEmployee(record),record});}
+    else if(currentEmployee)setModal({type,employee:currentEmployee,record:null});
+  }
+  async function reload() {
+    if(writeLock.current)return false;
+    writeLock.current=true;setBusy(true);setWriteError(null);
+    try{
+      await Promise.all([records.reload(),salary.reload(),detail.reload()]);
+      if(!alive.current)return false;
+      setUncertain(false);setModal(null);setNotice('Saved records reloaded. Check history before submitting another action.');return true;
+    }catch(error){if(alive.current)setWriteError(error);return false;}
+    finally{writeLock.current=false;if(alive.current)setBusy(false);}
+  }
+  async function write(path,body,method='POST') {
+    if(writeLock.current||uncertain)return null;
+    writeLock.current=true;setBusy(true);setWriteError(null);setNotice('');
+    const controller=new AbortController();writeController.current=controller;
+    let started=false,saved=null,confirmed=false;
+    try{
+      const csrfToken=getCsrfToken();started=true;
+      saved=await payrollRequest(path,{method,body,csrfToken,signal:controller.signal});
+      if(!saved?.id)throw new ApiError('The write outcome is unconfirmed. Reload saved data before another submission.',{code:'INVALID_RESPONSE'});
+      confirmed=true;
+      if(!alive.current||controller.signal.aborted)return null;
+      await Promise.all([records.reload(),salary.reload(),detailId===saved.id?detail.reload():Promise.resolve()]);
+      if(!alive.current||controller.signal.aborted)return null;
+      if(saved.month){setSelection({query:requestedId,id:saved.id});setMonth(saved.month);setPage(1);}
+      setNotice(path.startsWith('/salaries/')?'Salary revision saved. Previous salary records remain in history.':method==='PATCH'?'Draft changes saved successfully.':'Saved successfully.');
+      return saved;
+    }catch(error){
+      if(!alive.current||controller.signal.aborted)return null;
+      const unconfirmed=started&&(confirmed||!error.status||error.status>=500||error.status===409||error.code==='INVALID_RESPONSE');
+      if(unconfirmed)setUncertain(true);
+      setWriteError(confirmed?new Error('Saved successfully, but the saved view could not be refreshed. Reload saved data before another action.'):unconfirmed&&error.status!==409?new Error('The write outcome is unconfirmed. Reload saved data before another submission. No automatic retry was sent.'):error);
+      if(error.status===401||error.status===403||error.code==='PASSWORD_CHANGE_REQUIRED')void refreshSession();
+      return null;
+    }finally{writeLock.current=false;if(alive.current)setBusy(false);}
+  }
+  const rows=records.data?.records||[];
+  return <div className="payroll-screen min-w-0 space-y-6">
+    <style>{payrollPrintStyles}</style>
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{own?'My Payslips':'Payroll Management'}</h1><p className="mt-2 text-sm text-muted-foreground">{own?'Review your finally approved and paid payslips.':'Select an employee, review salary history, and prepare payroll for approval.'}</p></div><Button variant="outline" disabled={busy} onClick={()=>void reload()}><RefreshCw aria-hidden="true"/>Reload saved data</Button></header>
+    {notice&&<p role="status" className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring">{notice}</p>}
+    {writeError&&!modal&&<p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{writeError.message}</p>}
+    {uncertain&&!modal&&<p role="alert" className="text-sm text-muted-foreground">Reload saved data before another write. No automatic retry was sent.</p>}
+    {!own&&<section aria-label="Employee selection" className="min-w-0 space-y-4 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><UserRound aria-hidden="true" className="size-5"/></span><div><h2 className="text-lg font-semibold">Employee Selection</h2><p className="text-sm text-muted-foreground">Search by employee name or code.</p></div></div><div className="grid min-w-0 gap-4 sm:grid-cols-2">
+      <PayrollField label="Find employee"><input className={inputClass} disabled={busy||uncertain} value={employeeSearch} placeholder="Search name or employee code" onChange={event=>{setEmployeeSearch(event.target.value);choose(null);}}/></PayrollField>
+      <PayrollField label="Selected employee"><select className={inputClass} disabled={busy||uncertain||directory.loading} value={selected?.id||''} onChange={event=>choose(employees.find(employee=>employee.id===event.target.value)||null)}><option value="">{directory.loading?'Loading employees…':'Choose employee'}</option>{selected&&!employees.some(employee=>employee.id===selected.id)&&<option value={selected.id}>{selected.fullName} · {selected.employeeCode}</option>}{employees.map(employee=><option key={employee.id} value={employee.id}>{employee.fullName} · {employee.employeeCode}</option>)}</select></PayrollField>
+    </div>{directory.error?<p role="alert" className="text-sm text-destructive">Employee options are unavailable: {directory.error.message}</p>:<p className="text-xs text-muted-foreground">Up to 100 matching employees are shown. Narrow the search if needed.</p>}
+      {currentEmployee&&<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-background/50 p-3"><div className="min-w-0"><p className="break-words font-medium">{currentEmployee.fullName} <span className="text-sm text-muted-foreground">· {currentEmployee.employeeCode}</span></p>{currentEmployee.organization&&<p className="mt-1 text-sm text-muted-foreground">{[currentEmployee.organization.department,currentEmployee.organization.designation].filter(Boolean).join(' · ')}</p>}</div><Button variant="ghost" disabled={busy||uncertain} onClick={()=>choose(null)}>Clear selection</Button></div>}
+    </section>}
+    {!own&&selected&&<section aria-label="Salary setup" className="min-w-0 space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Salary Setup & History</h2><p className="mt-1 text-sm text-muted-foreground">Effective-dated salary revisions are retained.</p></div><Button disabled={busy||uncertain||!salary.data} onClick={()=>openModal('salary')}><History aria-hidden="true"/>Revise Pay</Button></div>
+      {salary.loading?<p role="status" className="text-sm text-muted-foreground">Loading salary history…</p>:salary.error?<p role="alert" className="text-sm text-destructive">Salary history unavailable: {salary.error.message}</p>:salary.data&&<><dl className="grid min-w-0 gap-5 rounded-xl border border-border bg-background/40 p-4 sm:grid-cols-2"><div><dt className="text-sm text-muted-foreground">Current Monthly Basic Salary</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{currentSalary?pkr(currentSalary.monthlyBasic):'Not set'}</dd></div><div><dt className="text-sm text-muted-foreground">Current Effective Salary Month</dt><dd className="mt-1 font-semibold">{currentSalary?.effectiveMonth||'Not set'}</dd>{salary.data.versions[0]?.effectiveMonth>currentMonth()&&<p className="mt-1 text-xs text-muted-foreground">Future revisions are listed below.</p>}</div></dl>
+      {salary.data.versions.length?<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-border bg-muted/40 text-muted-foreground"><tr>{['Effective Month','Monthly Basic','Change','Reason'].map(label=><th key={label} scope="col" className="px-3 py-3">{label}</th>)}</tr></thead><tbody>{salary.data.versions.map(version=><tr key={version.id} className="border-b border-border last:border-0"><td className="px-3 py-3"><p>{version.effectiveMonth}</p><p className="text-xs text-muted-foreground">Revision {version.revision}</p></td><td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums">{pkr(version.monthlyBasic)}</td><td className="whitespace-nowrap px-3 py-3 tabular-nums">{version.changeAmount?pkr(version.changeAmount):'—'}</td><td className="min-w-36 break-words px-3 py-3 text-muted-foreground">{version.reason}</td></tr>)}</tbody></table></div>:<p className="text-sm text-muted-foreground">No salary history yet. Use Revise Pay to save the first effective salary.</p>}</>}
+    </section>}
+    <section aria-label="Payroll records" className="min-w-0 space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{own?'Approved & Paid Payslips':'Payroll Drafts'}</h2><p className="mt-1 text-sm text-muted-foreground">{own?'Only your final payslips are available here.':selected?'Drafts, approvals and payment history for the selected employee.':'Review payroll records across employees, or select an employee to prepare a draft.'}</p></div>{!own&&<Button disabled={busy||uncertain||!salary.data?.versions.length} onClick={()=>openModal('draft')}><Plus aria-hidden="true"/>Prepare Draft</Button>}</div>
+      <fieldset disabled={busy} className="grid min-w-0 gap-4 sm:grid-cols-3"><PayrollField label="Filter payroll month"><input className={inputClass} type="month" value={month} onChange={event=>{setMonth(event.target.value);setPage(1);}}/></PayrollField><PayrollField label="Filter status"><select className={inputClass} value={status} onChange={event=>{setStatus(event.target.value);setPage(1);}}><option value="">All statuses</option>{(own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).map(value=><option key={value} value={value}>{readable(value)}</option>)}</select></PayrollField><PayrollField label="Payroll employee search"><input className={inputClass} value={search} onChange={event=>{setSearch(event.target.value);setPage(1);}} placeholder="Employee name or code"/></PayrollField></fieldset>
+      {records.loading?<p role="status" className="py-4 text-sm text-muted-foreground">Loading payroll…</p>:records.error?<p role="alert" className="py-4 text-sm text-destructive">Payroll data unavailable. Reload saved data to retry. {records.error.message}</p>:rows.length?<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-border bg-muted/40 text-muted-foreground"><tr>{['Employee','Month','Payable Days','Worked Days','Status',...(!own?['Last Updated']:[]),'Net Pay','Actions'].map(label=><th key={label} scope="col" className="whitespace-nowrap px-3 py-3">{label}</th>)}</tr></thead><tbody>{rows.map(record=><tr className="border-b border-border last:border-0" key={record.id}><td className="min-w-36 px-3 py-3"><p className="font-medium">{record.employeeName}</p><p className="text-xs text-muted-foreground">{record.employeeCode}</p></td><td className="px-3 py-3">{record.month}</td><td className="px-3 py-3 tabular-nums">{record.totalPayableDays}</td><td className="px-3 py-3 tabular-nums">{record.workedDays}</td><td className="px-3 py-3"><PayrollStatus status={record.status}/></td>{!own&&<td className="min-w-36 px-3 py-3 text-xs text-muted-foreground">{dateTime(record.updatedAt)}</td>}<td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums">{pkr(record.netPay)}</td><td className="px-3 py-3"><div className="flex gap-2"><Button variant="outline" disabled={busy} aria-label={`View ${own?'payslip':'payroll'} ${record.month} for ${record.employeeName}`} onClick={()=>openRecord(record)}>View</Button>{!own&&record.status==='DRAFT'&&<Button variant="outline" disabled={busy||uncertain} aria-label={`Edit draft ${record.month} for ${record.employeeName}`} onClick={()=>openModal('draft',record)}>Edit</Button>}</div></td></tr>)}</tbody></table></div>:<p className="py-6 text-center text-sm text-muted-foreground">{own?'No final payslips found for these filters.':'No payroll records found for these filters.'}</p>}
+      {!records.error&&records.data&&<div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-sm"><span>Page {page} of {Math.max(1,records.data.totalPages)}</span><div className="flex gap-2"><Button variant="outline" disabled={busy||page<=1} onClick={()=>setPage(value=>value-1)}>Previous</Button><Button variant="outline" disabled={busy||page>=Math.max(1,records.data.totalPages)} onClick={()=>setPage(value=>value+1)}>Next</Button></div></div>}
+    </section>
+    {detailId&&<section aria-label="Payroll detail" className="min-w-0 space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">{own?'Payslip Details':'Payroll Details'}{detail.data?' · '+readable(detail.data.status):''}</h2><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={()=>setSelection({query:requestedId,id:null})}><X aria-hidden="true"/>Close details</Button>{detail.data&&['APPROVED','PAID'].includes(detail.data.status)&&<Button variant="outline" onClick={()=>window.print()}><Printer aria-hidden="true"/>Print / Save as PDF</Button>}</div></div>
+      {detail.loading?<p role="status">Loading saved payroll details…</p>:detail.error?<p role="alert" className="text-sm text-destructive">{detail.error.message}</p>:detail.data&&<><Payslip record={detail.data} own={own}/>{!own&&<PayrollWorkflow key={detail.data.id+':'+detail.data.version} record={detail.data} user={user} busy={busy} uncertain={uncertain} onEdit={record=>openModal('draft',record)} onSave={write}/>}</>}
+    </section>}
+    {modal?.type==='salary'&&<SalaryRevisionDialog key={modal.employee.id} employee={modal.employee} history={salary.data} currentSalary={currentSalary} month={month} busy={busy} uncertain={uncertain} error={writeError} onSave={write} onReload={reload} onClose={()=>setModal(null)}/>}
+    {modal?.type==='draft'&&<PayrollDraftDialog key={modal.record?.id||modal.employee.id} employee={modal.employee} record={modal.record} month={month} busy={busy} uncertain={uncertain} error={writeError} onSave={write} onReload={reload} onClose={()=>setModal(null)}/>}
+  </div>;
 }
 export default function PayrollPage({own=false}) {
- const [resourceQuery]=useSearchParams();
- const {user,getCsrfToken,refreshSession}=useAuth();
- const [month,setMonth]=useState(()=>/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(resourceQuery.get('month')||'')?resourceQuery.get('month'):initialMonth()),[status,setStatus]=useState(()=> (own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).includes(resourceQuery.get('status'))?resourceQuery.get('status'):''),[search,setSearch]=useState(''),[page,setPage]=useState(1),[list,setList]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
- const [employeeSearch,setEmployeeSearch]=useState(''),[employees,setEmployees]=useState([]),[employeeId,setEmployeeId]=useState(''),[salaryHistory,setSalaryHistory]=useState(null),[salaryMonth,setSalaryMonth]=useState(initialMonth),[salaryAmount,setSalaryAmount]=useState(''),[salaryReason,setSalaryReason]=useState('');
- const [draftMonth,setDraftMonth]=useState(initialMonth),[totalDays,setTotalDays]=useState(''),[workedDays,setWorkedDays]=useState(''),[earnings,setEarnings]=useState([]),[deductions,setDeductions]=useState([]),[reason,setReason]=useState(''),[preview,setPreview]=useState(null),[detail,setDetail]=useState(null),[editing,setEditing]=useState(null);
- const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[paymentMethod,setPaymentMethod]=useState('CASH'),[paidOn,setPaidOn]=useState(''),[reference,setReference]=useState(''),[paymentNote,setPaymentNote]=useState('');
- useEffect(()=>{const id=resourceQuery.get('payrollId');if(!id||!/^[0-9a-f-]{36}$/.test(id))return;const ctrl=new AbortController();payrollRequest((own?'/payslips/':'/')+id,{signal:ctrl.signal}).then(record=>{if(!ctrl.signal.aborted){setDetail(record);setMonth(record.month);}}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});return()=>ctrl.abort();},[own,user.id,resourceQuery]);
- const lock=useRef(false),sequence=useRef(0),previewSequence=useRef(0);
- function invalidatePreview(){previewSequence.current++;setPreview(null);}
- const load=useCallback(async()=>{
-  const request=++sequence.current;setLoading(true);setList(null);setError('');
-  try{const result=await payrollRequest(`${own?'/payslips':''}?${payrollQuery({month,status,search,page,pageSize:20,employeeId:own?'':employeeId})}`);if(request===sequence.current){setList(result);return true;}return false;}
-  catch(e){if(request===sequence.current)setError(e.message);if(e.status===401||e.code==='PASSWORD_CHANGE_REQUIRED')void refreshSession();return false;}
-  finally{if(request===sequence.current)setLoading(false);}
- },[own,month,status,search,page,employeeId,refreshSession]);
- useEffect(()=>{void load();},[load]);
- useEffect(()=>{
-  if(own)return;const ctrl=new AbortController();
-  apiRequest('/employees?'+payrollQuery({q:employeeSearch,pageSize:100}),{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setEmployees(r.data.employees||[]);}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});
-  return()=>ctrl.abort();
- },[own,employeeSearch]);
- useEffect(()=>{
-  setSalaryHistory(null);invalidatePreview();if(own||!employeeId)return;const ctrl=new AbortController();
-  payrollRequest('/salaries/'+employeeId,{signal:ctrl.signal}).then(r=>{if(!ctrl.signal.aborted)setSalaryHistory(r);}).catch(e=>{if(!ctrl.signal.aborted)setError(e.message);});return()=>ctrl.abort();
- },[own,employeeId]);
- const input=()=>({employeeId,month:draftMonth,totalPayableDays:totalDays,workedDays,earnings:earnings.map(({type,label,amount})=>({type,label,amount})),deductions:deductions.map(({type,label,amount})=>({type,label,amount}))});
- const write=async(path,body,method='POST')=>{
-  if(lock.current||uncertain)return null;lock.current=true;setBusy(true);setError('');setNotice('');
-  try{const record=await payrollRequest(path,{method,body,csrfToken:getCsrfToken()});setNotice('Saved successfully.');await load();return record;}
-  catch(e){if(!e.status||e.status>=500||e.code==='INVALID_RESPONSE'){setUncertain(true);setError('The write outcome is unconfirmed. Reload saved data before another submission. No automatic retry was sent.');}else setError(e.status===409?e.message+' Reload saved data before editing again.':e.message);if(e.status===409)setUncertain(true);if(e.status===401||e.code==='PASSWORD_CHANGE_REQUIRED')void refreshSession();return null;}
-  finally{lock.current=false;setBusy(false);}
- };
- const open=async id=>{setError('');setDetail(null);try{setDetail(await payrollRequest((own?'/payslips/':'/')+id));return true;}catch(e){setError(e.message);return false;}};
- async function reload(){setError('');if(!await load())return;try{if(employeeId&&!own)setSalaryHistory(await payrollRequest('/salaries/'+employeeId));if(detail&&!await open(detail.id))return;setEditing(null);setPreview(null);setReason('');setSalaryAmount('');setSalaryReason('');setUncertain(false);setNotice('Saved records reloaded. Check history before submitting another action.');}catch(e){setError(e.message);}}
- async function salarySubmit(e){e.preventDefault();const previous=salaryHistory?.versions.find(v=>v.effectiveMonth===salaryMonth);const saved=await write('/salaries/'+employeeId,{effectiveMonth:salaryMonth,monthlyBasic:salaryAmount,expectedPreviousId:previous?.id||null,reason:salaryReason});if(saved){setSalaryAmount('');setSalaryReason('');invalidatePreview();try{setSalaryHistory(await payrollRequest('/salaries/'+employeeId));}catch(error){setError('Salary saved. Reload history to confirm the current revision: '+error.message);}}}
- async function previewSubmit(){setError('');invalidatePreview();const request=previewSequence.current;try{const result=await payrollRequest('/preview',{method:'POST',body:input(),csrfToken:getCsrfToken()});if(request===previewSequence.current)setPreview(result);}catch(e){if(request===previewSequence.current)setError(e.message);}}
- async function saveDraft(e){e.preventDefault();const body=editing?{...input(),reason,expectedVersion:editing.version}:{...input(),reason};if(editing){delete body.employeeId;delete body.month;}const saved=await write(editing?'/'+editing.id:'',body,editing?'PATCH':'POST');if(saved){setEditing(null);await open(saved.id);setPreview(null);}}
- function edit(record){setEmployeeId(record.employeeId);setDraftMonth(record.month);setTotalDays(record.totalPayableDays);setWorkedDays(record.workedDays);setEarnings(record.earnings.map(v=>({...v,key:crypto.randomUUID()})));setDeductions(record.deductions.map(v=>({...v,key:crypto.randomUUID()})));setReason('');setEditing(record);setPreview(null);}
- async function action(name){const body={expectedVersion:detail.version,reason};if(name==='pay')Object.assign(body,{method:paymentMethod,paidOn,...(reference?{reference}:{}),...(paymentNote?{note:paymentNote}:{})});const saved=await write('/'+detail.id+'/'+name,body);if(saved){await open(saved.id);setReason('');}}
- return <div className="space-y-6 payroll-screen">
-  <style>{`@media print {body * {visibility:hidden!important} .payroll-slip,.payroll-slip * {visibility:visible!important} .payroll-slip {position:absolute;left:0;top:0;width:100%;border:0;color:#000!important;background:#fff!important} .payroll-slip * {color:#000!important;background:transparent!important}}`}</style>
-  <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">{own?'My Payslips':'Salary & Payroll'}</h1><Button variant="outline" onClick={reload} disabled={busy}>Reload saved data</Button></div>
-  {error&&<p role="alert" className="rounded-lg border border-destructive p-3 text-sm text-destructive">{error}</p>}{notice&&<p role="status" className="rounded-lg border p-3 text-sm">{notice}</p>}
-  {!own&&<section aria-label="Employee selection" className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2"><Field label="Find employee"><Input value={employeeSearch} disabled={!!editing||busy||uncertain} onChange={e=>{setEmployeeSearch(e.target.value);setEmployeeId('');setSalaryHistory(null);setDetail(null);invalidatePreview();}}/></Field><Field label="Selected employee"><select className={selectClass} value={employeeId} disabled={!!editing||busy} onChange={e=>{setEmployeeId(e.target.value);setSalaryHistory(null);setDetail(null);setTotalDays('');setWorkedDays('');setEarnings([]);setDeductions([]);setReason('');setSalaryAmount('');setSalaryReason('');invalidatePreview();setPage(1);}}><option value="">Choose employee</option>{employeeId&&!employees.some(e=>e.id===employeeId)&&<option value={employeeId}>{salaryHistory?.employee?.fullName||detail?.employeeName||employeeId}</option>}{employees.map(e=><option key={e.id} value={e.id}>{e.fullName} · {e.employeeCode}</option>)}</select></Field><p className="text-xs text-muted-foreground">Search covers all employees; the selector shows up to 100 matches. Select an employee to configure salary or prepare payroll.</p></section>}
-  {!own&&employeeId&&salaryHistory&&<section aria-label="Salary setup" className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-lg font-semibold">Salary setup & history</h2><form onSubmit={salarySubmit} className="grid gap-3 sm:grid-cols-2"><Field label="Salary effective month"><Input type="month" required value={salaryMonth} onChange={e=>setSalaryMonth(e.target.value)}/></Field><Field label="Monthly basic (PKR)"><Input required inputMode="decimal" value={salaryAmount} onChange={e=>setSalaryAmount(e.target.value)}/></Field><Field label="Salary revision reason"><Input required maxLength={1000} value={salaryReason} onChange={e=>setSalaryReason(e.target.value)}/></Field><Button type="submit" disabled={busy||uncertain} className="self-end">Save salary revision</Button></form><ul className="max-h-64 overflow-auto text-sm">{salaryHistory.versions.map(v=><li className="border-t py-2" key={v.id}>{v.effectiveMonth} · revision {v.revision} · {amount(v.monthlyBasic)} · {v.reason}</li>)}</ul>{!salaryHistory.versions.length&&<p>No salary history yet.</p>}</section>}
-  {!own&&employeeId&&<form aria-label="Payroll draft" onSubmit={saveDraft} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-lg font-semibold">{editing?'Edit draft':'Prepare payroll draft'}</h2><div className="grid gap-3 sm:grid-cols-3"><Field label="Draft payroll month"><Input required type="month" value={draftMonth} disabled={!!editing||busy} onChange={e=>{setDraftMonth(e.target.value);invalidatePreview();}}/></Field><Field label="Total payable days (manual)"><Input required inputMode="decimal" value={totalDays} onChange={e=>{setTotalDays(e.target.value);invalidatePreview();}}/></Field><Field label="Worked days (manual)"><Input required inputMode="decimal" value={workedDays} onChange={e=>{setWorkedDays(e.target.value);invalidatePreview();}}/></Field></div>
-   <p className="text-sm text-muted-foreground">Enter up to 31 payable days, with two decimal places. The calendar length and attendance do not replace this denominator. Basic salary is loaded by the server.</p>
-   <Adjustments title="Earnings" items={earnings} setItems={v=>{setEarnings(v);invalidatePreview();}} types={['ALLOWANCE','BONUS','COMMISSION','OVERTIME','OTHER']} disabled={busy||uncertain}/><Adjustments title="Deductions" items={deductions} setItems={v=>{setDeductions(v);invalidatePreview();}} types={['TAX','ADVANCE_RECOVERY','LOAN_RECOVERY','OTHER']} disabled={busy||uncertain}/>
-   <Field label="Draft change reason"><Input required maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)}/></Field><div className="flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={busy||uncertain} onClick={previewSubmit}>Calculate preview</Button><Button type="submit" disabled={busy||uncertain}>{editing?'Save draft changes':'Create draft'}</Button>{editing&&<Button type="button" variant="outline" onClick={()=>setEditing(null)}>Cancel editing</Button>}</div>
-   {preview&&<div role="status" className="rounded-lg border p-3"><p>Server preview · {preview.month} · monthly basic {amount(preview.monthlyBasic)}</p><p>Earned basic: {amount(preview.earnedBasic)} · Gross: {amount(preview.grossPay)} · Deductions: {amount(preview.totalDeductions)} · Net: {amount(preview.netPay)}</p><p>Unearned basic: {amount(preview.unearnedBasic)} (reference only; not subtracted twice).</p></div>}
-  </form>}
-  <section aria-label="Payroll records" className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-lg font-semibold">{own?'Finally approved & paid payslips':'Monthly payroll records'}</h2><div className="grid gap-3 sm:grid-cols-3"><Field label="Filter payroll month"><Input type="month" value={month} onChange={e=>{setMonth(e.target.value);setPage(1);}}/></Field><Field label="Filter status"><select className={selectClass} value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">All statuses</option>{(own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).map(v=><option key={v}>{v}</option>)}</select></Field><Field label="Payroll employee search"><Input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></Field></div>
-   {loading?<p>Loading payroll…</p>:list?.records.length?<div className="overflow-auto"><table className="min-w-[640px] w-full text-left text-sm"><thead><tr>{['Employee','Month','Status','Net pay','Details'].map(v=><th className="p-2" key={v}>{v}</th>)}</tr></thead><tbody>{list.records.map(r=><tr key={r.id} className="border-t"><td className="p-2">{r.employeeName} · {r.employeeCode}</td><td className="p-2">{r.month}</td><td className="p-2">{r.status}</td><td className="p-2 whitespace-nowrap">{amount(r.netPay)}</td><td className="p-2"><Button variant="outline" onClick={()=>open(r.id)}>Open {own?'payslip':'payroll'}</Button></td></tr>)}</tbody></table></div>:<p>{error?'Payroll data unavailable. Reload saved data to retry.':'No payroll records found.'}</p>}
-   <div className="flex items-center gap-3"><Button variant="outline" disabled={loading||page<=1} onClick={()=>setPage(p=>p-1)}>Previous</Button><span>Page {page} of {Math.max(1,list?.totalPages||1)}</span><Button variant="outline" disabled={loading||page>=Math.max(1,list?.totalPages||1)} onClick={()=>setPage(p=>p+1)}>Next</Button></div>
-  </section>
-  {detail&&<section aria-label="Payroll detail" className="space-y-4"><div className="flex flex-wrap gap-3"><h2 className="text-lg font-semibold">{own?'Payslip details':'Payroll details'} · {detail.status}</h2><Button variant="outline" onClick={()=>setDetail(null)}>Close details</Button>{['APPROVED','PAID'].includes(detail.status)&&<Button variant="outline" onClick={()=>window.print()}>Print / Save as PDF</Button>}</div><Slip record={detail} own={own}/>
-   {!own&&<><section className="space-y-3 rounded-xl border bg-card p-4" aria-label="Payroll actions"><h3 className="font-semibold">Workflow actions</h3><p className="text-sm">DRAFT → HR_APPROVED → APPROVED → PAID. HR and Admin approval require distinct accounts. Final approval locks the financial snapshot.</p><Field label="Workflow reason"><Input required value={reason} maxLength={1000} onChange={e=>setReason(e.target.value)}/></Field><div className="flex flex-wrap gap-3">{detail.status==='DRAFT'&&<Button disabled={busy||uncertain} onClick={()=>edit(detail)}>Edit / Recalculate draft</Button>}{detail.status==='DRAFT'&&user.role==='HR'&&<Button disabled={busy||uncertain||!reason.trim()} onClick={()=>action('hr-approve')}>HR approve</Button>}{detail.status==='HR_APPROVED'&&<Button disabled={busy||uncertain||!reason.trim()} onClick={()=>action('return')}>Return to draft</Button>}{detail.status==='HR_APPROVED'&&user.role==='ADMIN'&&<Button disabled={busy||uncertain||!reason.trim()} onClick={()=>action('approve')}>Admin final approve</Button>}</div>
-    {detail.status==='APPROVED'&&<div className="grid gap-3 sm:grid-cols-2"><p className="sm:col-span-2 text-sm">Record the full approved net amount {amount(detail.netPay)}. This action does not initiate a transfer.</p><Field label="Payment method"><select className={selectClass} value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}>{['CASH','BANK_TRANSFER','OTHER'].map(v=><option key={v}>{v}</option>)}</select></Field><Field label="Payment date"><Input type="date" value={paidOn} onChange={e=>setPaidOn(e.target.value)}/></Field><Field label="Payment reference"><Input maxLength={120} value={reference} onChange={e=>setReference(e.target.value)}/></Field><Field label="Payment note (optional)"><Input maxLength={1000} value={paymentNote} onChange={e=>setPaymentNote(e.target.value)}/></Field><Button disabled={busy||uncertain||!reason.trim()||!paidOn||(paymentMethod!=='CASH'&&!reference.trim())} onClick={()=>action('pay')}>Record full payment</Button></div>}
-   </section><section aria-label="Payroll history" className="rounded-xl border bg-card p-4"><h3 className="font-semibold">Approval & payment history</h3><ul className="text-sm">{detail.history?.map((entry,index)=><li key={index} className="border-t py-2">{entry.action} · {entry.actor} · {entry.at} · {entry.metadata?.reason}</li>)}</ul></section></>}
-  </section>}
- </div>;
+  const {user}=useAuth();
+  return <PayrollWorkspace key={`${user.id}:${user.role}:${own}`} own={own}/>;
 }

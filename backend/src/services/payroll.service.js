@@ -20,7 +20,20 @@ async function employee(tx,id){const emp=await tx.employee.findUnique({where:{id
 async function lock(tx,id){await tx.$queryRaw`SELECT id FROM employees WHERE id=${id}::uuid FOR UPDATE`;}
 async function applicable(tx,employeeId,month){const salary=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:{lte:date(month)}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});if(!salary)fail(409,'Set an effective salary for this payroll month first.','SALARY_REQUIRED');return salary;}
 const salaryView=s=>({id:s.id,employeeId:s.employeeId,effectiveMonth:monthOf(s.effectiveMonth),revision:s.revision,previousId:s.previousId,monthlyBasic:s.monthlyBasic.toFixed(2),currency:s.currency,reason:s.reason,actorUserId:s.actorUserId,actorName:s.actor?.displayName||null,createdAt:s.createdAt.toISOString()});
-async function salaryHistory(userId,employeeId){return transaction(async tx=>{await actor(tx,userId);const emp=await employee(tx,employeeId);const versions=await tx.employeeSalaryVersion.findMany({where:{employeeId},include:{actor:{select:{displayName:true}}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});return {employee:emp,versions:versions.map(salaryView)};});}
+async function organizationAt(tx,employeeId,asOf){
+ const assignment=await tx.organizationAssignment.findFirst({where:{employeeId,effectiveFrom:{lte:asOf},OR:[{effectiveTo:null},{effectiveTo:{gte:asOf}}]},orderBy:[{effectiveFrom:'desc'},{id:'desc'}],select:{department:{select:{name:true}},designation:{select:{name:true}},team:{select:{department:{select:{name:true}}}}}});
+ return assignment?{department:assignment.department?.name||assignment.team?.department?.name||null,designation:assignment.designation?.name||null,asOf:asOf.toISOString().slice(0,10)}:null;
+}
+async function salaryHistory(userId,employeeId){return transaction(async tx=>{
+ await actor(tx,userId);const emp=await employee(tx,employeeId);
+ const versions=await tx.employeeSalaryVersion.findMany({where:{employeeId},include:{actor:{select:{displayName:true}}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});
+ const today=require('../utils/office-schedule').localParts(new Date(),'Asia/Karachi').date;
+ return {employee:{...emp,organization:await organizationAt(tx,emp.id,new Date(today+'T00:00:00Z'))},versions:versions.map(version=>{
+  const previous=versions.find(other=>other.id===version.previousId)||versions.find(other=>other.effectiveMonth<version.effectiveMonth);
+  const difference=previous?moneyToMinor(version.monthlyBasic.toFixed(2))-moneyToMinor(previous.monthlyBasic.toFixed(2)):null;
+  return {...salaryView(version),changeAmount:difference===null?null:(difference<0n?'-':'+')+moneyFromMinor(difference<0n?-difference:difference)};
+ })};
+});}
 async function saveSalary(userId,employeeId,input){return transaction(async tx=>{
  const user=await actor(tx,userId);await employee(tx,employeeId);await lock(tx,employeeId);
  const previous=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:date(input.effectiveMonth)},orderBy:{revision:'desc'}});
@@ -61,6 +74,7 @@ async function detail(userId,id,own=false){return transaction(async tx=>{
  if(own){const emp=await ownEmployee(tx,user);if(!record||record.employeeId!==emp.id||!['APPROVED','PAID'].includes(record.status))fail(404,'Payslip not found.','NOT_FOUND');}
  if(!record)fail(404,'Payroll not found.','NOT_FOUND');
  const result=view(record,own);
+ result.organization=await organizationAt(tx,record.employeeId,new Date(result.period.dateTo+'T00:00:00Z'));
  if(!own){const events=await tx.auditLog.findMany({where:{targetType:'Payroll',targetId:id},orderBy:[{createdAt:'asc'},{id:'asc'}],include:{actor:{select:{displayName:true}}}});result.history=events.map(e=>({action:e.action,at:e.createdAt.toISOString(),actor:e.actor?.displayName||'Authorized account',metadata:e.metadata}));}
  return result;
 });}

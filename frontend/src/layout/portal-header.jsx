@@ -11,7 +11,7 @@ const PAGE_TITLES = {
   "/account": "My account",
   "/attendance": "Attendance",
   "/reports": "Reports",
-  "/payroll": "Salary & Payroll",
+  "/payroll": "Payroll Management",
   "/my-payslips": "My payslips",
   "/employees": "Employees",
   "/employees/new": "Add employee",

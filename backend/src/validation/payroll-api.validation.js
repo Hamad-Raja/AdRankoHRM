@@ -6,7 +6,7 @@ const month=z.string().refine(v=>{try{payrollPeriod(v);return true;}catch{return
 const reason=z.string().trim().min(1).max(1000).regex(/^[^\u0000-\u001f\u007f]+$/u);
 const money=z.string().refine(v=>{try{return moneyToMinor(v)>0n;}catch{return false;}},'Enter positive PKR with at most two decimals.');
 const salary=z.object({effectiveMonth:month,monthlyBasic:money,currency:z.literal('PKR').default('PKR'),expectedPreviousId:z.uuid().nullable(),reason}).strict();
-const adjustment=z.object({type:z.string(),label:z.string(),amount:z.string()}).strict();
+const adjustment=z.object({type:z.string(),label:z.string().max(120).optional(),amount:z.string()}).strict();
 const inputs={totalPayableDays:z.string(),workedDays:z.string(),earnings:z.array(adjustment).max(50).optional(),deductions:z.array(adjustment).max(50).optional()};
 const preview=z.object({employeeId:z.uuid(),month,...inputs}).strict();
 const draft=preview.extend({reason}).strict();
