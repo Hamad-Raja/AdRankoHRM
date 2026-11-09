@@ -131,12 +131,19 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(
-    (credentials) =>
+    (credentials, { signal } = {}) =>
       runAction("login", async () => {
-        const session = await authService.login(credentials);
-        acceptSession(session);
+        const session = await authService.login(credentials, { signal });
+        if (!signal?.aborted) acceptSession(session);
       }),
     [acceptSession, runAction]
+  );
+
+  const demoLogin = useCallback(
+    (role, { signal } = {}) => runAction('demo-login', async () => {
+      const session = await authService.demoLogin(role, { signal });
+      if (!signal?.aborted) acceptSession(session);
+    }), [acceptSession, runAction]
   );
 
   const logout = useCallback(
@@ -235,6 +242,7 @@ export function AuthProvider({ children }) {
       pendingAction,
       refreshSession,
       login,
+      demoLogin,
       logout,
       changePassword,
       getCsrfToken,
@@ -244,6 +252,7 @@ export function AuthProvider({ children }) {
       pendingAction,
       refreshSession,
       login,
+      demoLogin,
       logout,
       changePassword,
       getCsrfToken,

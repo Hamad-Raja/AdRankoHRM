@@ -1,4 +1,10 @@
 require("dotenv/config");
+// Only ordinary executable startup loads the private opt-in file. Imported test
+// apps/acceptance runners retain their explicitly supplied environment.
+if (require.main === module) {
+  require('dotenv').config({ path: require('node:path').join(__dirname, '.env.local'), quiet: true });
+}
+const localDemoConfig = require('./src/config/local-demo').readLocalDemoConfig();
 
 const express = require("express");
 const cors = require("cors");
@@ -52,6 +58,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+if (localDemoConfig.enabled) {
+  app.use('/api/auth', require('./routes/local-demo.routes').createLocalDemoRouter({ config: localDemoConfig, prisma }));
+}
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/shifts", require("./routes/shift.routes"));

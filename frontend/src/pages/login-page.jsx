@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from 'react-router';
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/context/auth-context";
+import { DEMO_LOGIN_ENABLED, DEMO_LOGIN_LABEL } from '@/services/auth.service';
 
 const INPUT_CLASSES =
   "mt-2 h-10 w-full rounded-lg border border-input bg-background/80 px-3.5 " +
@@ -10,7 +12,11 @@ const INPUT_CLASSES =
   "focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export default function LoginPage() {
-  const { login, notice, pendingAction } = useAuth();
+  const { login, demoLogin, notice, pendingAction } = useAuth();
+  const navigate = useNavigate();
+  const requestRef = useRef(null);
+  const [selectedRole, setSelectedRole] = useState(null);
+  useEffect(() => () => { requestRef.current?.abort(); }, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +28,9 @@ export default function LoginPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (busy) return;
+    if (busy || requestRef.current) return;
+    const controller = new AbortController();
+    requestRef.current = controller;
 
     setError("");
 
@@ -30,8 +38,9 @@ export default function LoginPage() {
       await login({
         email: email.trim(),
         password,
-      });
+      }, { signal: controller.signal });
     } catch (requestError) {
+      if (controller.signal.aborted) return;
       setError(
         requestError.details?.[0]?.message ||
           requestError.message ||
@@ -39,6 +48,26 @@ export default function LoginPage() {
       );
 
       setPassword("");
+    } finally {
+      if (requestRef.current === controller) requestRef.current = null;
+    }
+  }
+
+  async function handleDemo(role) {
+    if (busy || requestRef.current) return;
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setSelectedRole(role);
+    setError('');
+    // Demo logins always start on the dashboard; regular login retains return links.
+    navigate('/login', { replace: true, state: { from: '/dashboard' } });
+    try {
+      await demoLogin(role, { signal: controller.signal });
+    } catch (requestError) {
+      if (!controller.signal.aborted) setError(requestError.message || 'Unable to sign in. Please try again.');
+    } finally {
+      if (!controller.signal.aborted) setSelectedRole(null);
+      if (requestRef.current === controller) requestRef.current = null;
     }
   }
 
@@ -183,6 +212,25 @@ export default function LoginPage() {
                 </button>
               </fieldset>
             </form>
+
+            {DEMO_LOGIN_ENABLED && (
+              <section aria-labelledby="demo-heading" className="mt-6 border-t border-border pt-5">
+                <h3 id="demo-heading" className="text-sm font-semibold">{DEMO_LOGIN_LABEL}</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {['HR', 'Manager', 'Employee'].map(label => {
+                    const role = label.toUpperCase();
+                    return <button key={role} type="button" disabled={busy}
+                      aria-label={`Login as ${label}`} aria-busy={busy && selectedRole === role}
+                      onClick={() => void handleDemo(role)}
+                      className="flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60">
+                      {busy && selectedRole === role && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
+                      {busy && selectedRole === role ? 'Signing in...' : `Login as ${label}`}
+                    </button>;
+                  })}
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">Synthetic accounts only. Sign out before switching roles.</p>
+              </section>
+            )}
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Need access? Contact your HR administrator.

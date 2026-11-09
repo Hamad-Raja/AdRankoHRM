@@ -14,9 +14,8 @@ const text = max => z.string().trim().min(1).max(max).regex(/^[^\u0000-\u001f\u0
 const calendar = z.string().regex(/^(?!0000)\d{4}-\d{2}-\d{2}$/).refine(v => { const d = new Date(`${v}T00:00:00Z`); return Number.isFinite(+d) && d.toISOString().slice(0, 10) === v; });
 const interval = { effectiveFrom: calendar, effectiveTo: calendar.nullable().optional(), reason: text(1000) };
 const datesValid = v => !v.effectiveTo || v.effectiveTo >= v.effectiveFrom;
-const assignment = z.strictObject({ ...interval, teamId: uuid, designationId: uuid }).refine(datesValid, 'End date must follow start date.');
+const {assignment,unit,unitUpdate}=require('../src/validation/organization.validation');
 const manager = z.strictObject({ ...interval, managerUserId: uuid }).refine(datesValid, 'End date must follow start date.');
-const unit = z.strictObject({ kind: z.enum(['DEPARTMENT', 'CAMPAIGN', 'TEAM', 'DESIGNATION']), name: text(120), reason: text(1000), departmentId: uuid.optional(), campaignId: uuid.optional() });
 const account = z.discriminatedUnion('mode', [z.strictObject({ mode: z.literal('link'), email: emailSchema }), z.strictObject({ mode: z.literal('provision'), email: emailSchema, password: newPasswordSchema, role: z.enum(['EMPLOYEE', 'MANAGER']) })]);
 function id(value) { if (!uuid.safeParse(value).success) throw new ApiError(400, 'Invalid record ID.', 'VALIDATION_ERROR'); return value; }
 function endpoint(work, status = 200) { return async (req, res, next) => { try { const data = await work(req); res.status(status).json({ success: true, data }); } catch (e) { next(e); } }; }
@@ -28,8 +27,10 @@ router.get('/employees/:employeeId/history', endpoint(req => service.history(req
 router.use(authorize('ADMIN', 'HR'));
 router.get('/', endpoint(req => service.listOrganization(req.auth.user.id)));
 router.post('/', csrfProtection, validate(unit), endpoint(req => service.createUnit(req.auth.user.id, req.validatedBody), 201));
+router.patch('/:unitId',csrfProtection,validate(unitUpdate),endpoint(req=>service.updateUnit(req.auth.user.id,id(req.params.unitId),req.validatedBody)));
 router.post('/:unitId/archive', csrfProtection, validate(z.strictObject({ reason: text(1000) })), endpoint(req => service.archiveUnit(req.auth.user.id, id(req.params.unitId), req.validatedBody.reason)));
 router.post('/teams/:unitId/managers', csrfProtection, validate(manager), endpoint(req => service.assignManager(req.auth.user.id, id(req.params.unitId), req.validatedBody), 201));
 router.post('/employees/:employeeId/assignments', csrfProtection, validate(assignment), endpoint(req => service.assignEmployee(req.auth.user.id, id(req.params.employeeId), req.validatedBody), 201));
 router.post('/employees/:employeeId/account', csrfProtection, validate(account), endpoint(req => linkAccount(req.auth.user.id, id(req.params.employeeId), req.validatedBody), 201));
+router.post('/employees/:employeeId/reset-password',authorize('ADMIN'),csrfProtection,require('../src/middleware/rateLimit').passwordChangeLimiter,validate(z.strictObject({newPassword:newPasswordSchema})),endpoint(req=>require('../src/services/employee-account.service').resetAccountPassword(req.auth.user.id,id(req.params.employeeId),req.validatedBody.newPassword)));
 module.exports = router;

@@ -1,614 +1,101 @@
-import { useId, useState } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link } from 'react-router';
+import { Eye, EyeOff, LoaderCircle, UserRound, Hash, Phone, Mail, MapPin, Building2, Megaphone, UsersRound, BriefcaseBusiness, CalendarDays, LockKeyhole, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/auth-context';
+import * as org from '@/services/organization.service';
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/context/auth-context";
-
-const PROFILE_FIELDS = [
-  {
-    name: "fullName",
-    label: "Full name",
-    maxLength: 120,
-    required: true,
-  },
-  {
-    name: "personalEmail",
-    label: "Personal email",
-    type: "email",
-    maxLength: 254,
-    hint: "Optional contact email. Portal login is configured below.",
-  },
-  {
-    name: "phone",
-    label: "Phone number",
-    type: "tel",
-    maxLength: 32,
-  },
-  {
-    name: "address",
-    label: "Address",
-    maxLength: 1000,
-    multiline: true,
-    wide: true,
-  },
-  {
-    name: "emergencyContactName",
-    label: "Emergency contact name",
-    maxLength: 120,
-  },
-  {
-    name: "emergencyContactPhone",
-    label: "Emergency contact phone",
-    type: "tel",
-    maxLength: 32,
-  },
-  {
-    name: "emergencyContactRelationship",
-    label: "Emergency contact relationship",
-    maxLength: 60,
-  },
-];
-
-const CONTROL_CLASS =
-  "min-h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
-
-function Field({
-  id,
-  label,
-  hint,
-  multiline = false,
-  wide = false,
-  error,
-  ...props
-}) {
-  const hintId = hint ? `${id}-hint` : undefined;
-
-  const describedBy =
-    [hintId, error && `${id}-error`]
-      .filter(Boolean)
-      .join(" ") || undefined;
-
-  return (
-    <div
-      className={
-        wide
-          ? "min-w-0 space-y-2 sm:col-span-2"
-          : "min-w-0 space-y-2"
-      }
-    >
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-        {props.required && (
-          <span className="ml-1 text-destructive" aria-hidden="true">
-            *
-          </span>
-        )}
-      </label>
-
-      {multiline ? (
-        <textarea
-          {...props}
-          id={id}
-          rows={3}
-          aria-describedby={describedBy}
-          aria-invalid={!!error}
-          className={`${CONTROL_CLASS} resize-y`}
-        />
-      ) : (
-        <Input
-          {...props}
-          id={id}
-          aria-describedby={describedBy}
-          aria-invalid={!!error}
-          className="min-h-10"
-        />
-      )}
-
-      {hint && (
-        <p
-          id={hintId}
-          className="text-xs leading-relaxed text-muted-foreground"
-        >
-          {hint}
-        </p>
-      )}
-
-      {error && (
-        <p id={`${id}-error`} className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  );
+const control = 'h-11 w-full min-w-0 rounded-lg border border-input bg-background/70 px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60';
+const profileFields = ['fullName', 'phone', 'personalEmail', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship'];
+function Section({ number, title, description, children }) {
+  return <section className="min-w-0 rounded-2xl border border-border bg-card p-4 text-card-foreground sm:p-5"><div className="mb-4 flex items-center gap-3 border-b border-border pb-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">{number}</span><div><h2 className="text-lg font-semibold">{title}</h2><p className="mt-0.5 text-sm text-muted-foreground">{description}</p></div></div>{children}</section>;
 }
-
-export default function EmployeeForm({
-  employee = null,
-  onSubmit,
-  busy = false,
-  blocked = false,
-  issues = [],
-}) {
-  const prefix = useId();
-  const { user } = useAuth();
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState("");
-
-  const editing = employee !== null;
-  const disabled = busy || blocked;
-
-  const [values, setValues] = useState(() => ({
-    employeeCode: employee?.employeeCode ?? "",
-
-    ...Object.fromEntries(
-      PROFILE_FIELDS.map(({ name }) => [
-        name,
-        employee?.[name] ?? "",
-      ])
-    ),
-
-    startDate: "",
-    status: "",
-    probationEndDate: "",
-    confirmedOn: "",
-    loginEmail: "",
-    loginRole: "EMPLOYEE",
-    password: "",
-    confirmPassword: "",
-  }));
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-
-    setValues((previous) => ({
-      ...previous,
-      [name]: value,
-      ...(name === "status" && value === "PROBATION"
-        ? { confirmedOn: "" }
-        : {}),
-    }));
+function FormField({ label, icon: Icon, error, options, children, ...props }) {
+  const id = useId();
+  const [validationMessage, setValidationMessage] = useState('');
+  const message = error || validationMessage;
+  const attributes = {
+    ...props, id, 'aria-label': label, 'aria-invalid': Boolean(message),
+    'aria-describedby': message ? id + '-error' : undefined,
+    onInvalid: event => setValidationMessage(event.target.validationMessage),
+    onChange: event => { setValidationMessage(''); props.onChange?.(event); },
+    className: `${control} ${Icon ? 'pl-10' : ''}`,
+  };
+  return <div className="min-w-0 space-y-1.5">
+    <label htmlFor={id} className="block text-sm font-medium">{label}{props.required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}</label>
+    <div className="relative">
+      {Icon && <Icon aria-hidden="true" className="pointer-events-none absolute top-3 left-3 size-5 text-muted-foreground" />}
+      {options ? <select {...attributes}>{options.map(([value,text]) => <option key={value} value={value}>{text}</option>)}</select> : <input {...attributes} />}
+      {children}
+    </div>
+    {message && <p id={id+'-error'} className="text-sm text-destructive">{message}</p>}
+  </div>;
+}
+export default function EmployeeForm({ employee = null, onSubmit, busy = false, blocked = false, issues = [] }) {
+  const { user } = useAuth(), editing = Boolean(employee), formRef = useRef(null), locked = useRef(false);
+  const [values,setValues] = useState(()=>({ ...Object.fromEntries(profileFields.map(key=>[key,employee?.[key] || ''])), employeeCode:employee?.employeeCode || '', autoCode:!employee,
+    startDate:employee?.employment?.startDate || '', status:employee?.employment?.status || 'ACTIVE', probationEndDate:employee?.employment?.probationEndDate || '', confirmedOn:employee?.employment?.confirmedOn || '',
+    departmentId:'',campaignId:'',teamId:'',designationId:'',reportingManagerId:'',loginEmail:'',loginRole:'EMPLOYEE',password:'',confirmPassword:'' }));
+  const [metadata,setMetadata] = useState(null), [loadError,setLoadError] = useState(''), [revision,setRevision] = useState(0), [errors,setErrors] = useState({}), [showPassword,setShowPassword] = useState(false);
+  useEffect(()=>{ if(editing)return;const controller=new AbortController();org.organization({signal:controller.signal}).then(data=>{if(!controller.signal.aborted){setMetadata(data);setLoadError('');}}).catch(error=>{if(!controller.signal.aborted)setLoadError(error.message);});return()=>controller.abort(); },[editing,revision]);
+  const disabled=busy||blocked;
+  const units=metadata?.units || [];
+  const active=unit=>!unit.archivedAt && (!unit.departmentId||!units.find(parent=>parent.id===unit.departmentId)?.archivedAt) && (!unit.campaignId||!units.find(parent=>parent.id===unit.campaignId)?.archivedAt);
+  const choices=(kind,predicate=()=>true)=>[['',`Select ${kind==='DESIGNATION'?'job title':kind.toLowerCase()}`],...units.filter(unit=>unit.kind===kind&&active(unit)&&predicate(unit)).map(unit=>[unit.id,unit.name])];
+  const managerOptions=[['','No reporting manager'],...(metadata?.eligibleManagers||[]).map(manager=>[manager.id,[manager.employee?.fullName||manager.displayName,manager.employee?.employeeCode,manager.employee?.assignments[0]?.designation?.name].filter(Boolean).join(' — ')])];
+  function suggestedManager(teamId,date){return (metadata?.managers||[]).find(item=>item.teamId===teamId&&item.effectiveFrom.slice(0,10)<=date&&(!item.effectiveTo||item.effectiveTo.slice(0,10)>=date))?.managerUserId || '';}
+  function change(event){const {name,value,type,checked}=event.target;setValues(old=>{
+    const next={...old,[name]:type==='checkbox'?checked:value};
+    if(name==='departmentId')Object.assign(next,{campaignId:'',teamId:'',reportingManagerId:''});
+    if(name==='campaignId')Object.assign(next,{teamId:'',reportingManagerId:''});
+    if(name==='teamId'||name==='startDate')next.reportingManagerId=suggestedManager(next.teamId,next.startDate);
+    if(name==='status'&&value==='PROBATION')next.confirmedOn='';return next;
+  });setErrors(old=>({...old,[name]:''}));}
+  const errorFor=name=>errors[name]||issues.find(issue=>issue.field===name||issue.field===({startDate:'employment.startDate',status:'employment.status',loginEmail:'portalLogin.email',password:'portalLogin.password'}[name]||'organization.'+name))?.message;
+  const field=(name,label,icon,extra={})=><FormField name={name} label={label} icon={icon} value={values[name]} onChange={change} error={errorFor(name)} {...extra} />;
+  async function submit(event){event.preventDefault();if(disabled||locked.current)return;
+    const nextErrors={};if(!editing){if(values.password!==values.confirmPassword)nextErrors.confirmPassword='Passwords do not match.';if(Array.from(values.password).length<8||new TextEncoder().encode(values.password).length>72)nextErrors.password='Use at least 8 characters and at most 72 UTF-8 bytes.';}
+    setErrors(nextErrors);if(Object.keys(nextErrors).length){queueMicrotask(()=>formRef.current?.querySelector('[aria-invalid="true"]')?.focus());return;}
+    const profile=Object.fromEntries(profileFields.map(key=>[key,values[key].trim()||null]));
+    locked.current=true;try{await onSubmit(editing?{version:employee.version,...profile,probationEndDate:values.probationEndDate||null,confirmedOn:values.confirmedOn||null}:{...profile,...(!values.autoCode?{employeeCode:values.employeeCode.trim().toUpperCase()}:{}),
+      employment:{startDate:values.startDate,status:values.status,probationEndDate:values.probationEndDate||null,confirmedOn:values.status==='PROBATION'?null:values.confirmedOn||null,reason:'Initial employment created through Add Employee.'},
+      organization:{departmentId:values.departmentId,campaignId:values.campaignId||null,teamId:values.teamId||null,designationId:values.designationId,reportingManagerId:values.reportingManagerId||null},
+      portalLogin:{email:values.loginEmail.trim().toLowerCase(),password:values.password,role:user.role==='ADMIN'?values.loginRole:'EMPLOYEE'}});
+    }finally{locked.current=false;}
   }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-
-    if (disabled) {
-      return;
-    }
-
-    const profile = Object.fromEntries(
-      PROFILE_FIELDS.map(({ name }) => {
-        const value = values[name].trim();
-
-        return [
-          name,
-          name === "fullName" ? value : value || null,
-        ];
-      })
-    );
-
-    if (editing) {
-      void onSubmit({
-        version: employee.version,
-        ...profile,
-      });
-
-      return;
-    }
-
-    setLoginError("");
-
-    if (values.password !== values.confirmPassword) {
-      setLoginError("Passwords do not match.");
-      return;
-    }
-
-    if (
-      Array.from(values.password).length < 8 ||
-      new TextEncoder().encode(values.password).length > 72
-    ) {
-      setLoginError(
-        "Password must contain at least 8 characters and no more than 72 UTF-8 bytes."
-      );
-      return;
-    }
-
-    void onSubmit({
-      portalLogin: {
-        email: values.loginEmail.trim().toLowerCase(),
-        password: values.password,
-        role:
-          user.role === "ADMIN"
-            ? values.loginRole
-            : "EMPLOYEE",
-      },
-
-      employeeCode: values.employeeCode.trim().toUpperCase(),
-      ...profile,
-
-      employment: {
-        startDate: values.startDate,
-        status: values.status,
-        probationEndDate: values.probationEndDate || null,
-        confirmedOn:
-          values.status === "PROBATION"
-            ? null
-            : values.confirmedOn || null,
-
-        reason:
-          "Initial employment record created through Add Employee.",
-      },
-    });
-  }
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      autoComplete="off"
-      aria-busy={busy}
-      className="space-y-6"
-    >
-      <fieldset
-        disabled={disabled}
-        className="min-w-0 space-y-6"
-      >
-        <legend className="sr-only">
-          {editing
-            ? "Edit employee profile"
-            : "Create employee & login"}
-        </legend>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Employee profile</h2>
-            </CardTitle>
-
-            <p className="text-sm text-muted-foreground">
-              Fields marked with * are required.
-            </p>
-          </CardHeader>
-
-          <CardContent className="grid min-w-0 gap-5 sm:grid-cols-2">
-            <Field
-              id={`${prefix}-employeeCode`}
-              name="employeeCode"
-              label="Employee code"
-              value={values.employeeCode}
-              onChange={handleChange}
-              maxLength={30}
-              required
-              readOnly={editing}
-              error={
-                issues.find(
-                  (issue) => issue.field === "employeeCode"
-                )?.message
-              }
-              disabled={disabled}
-              hint="A permanent unique code. Letters, numbers, hyphens and underscores are supported."
-            />
-
-            {PROFILE_FIELDS.map((field) => (
-              <Field
-                key={field.name}
-                {...field}
-                id={`${prefix}-${field.name}`}
-                value={values[field.name]}
-                onChange={handleChange}
-                disabled={disabled}
-                error={
-                  issues.find(
-                    (issue) => issue.field === field.name
-                  )?.message
-                }
-              />
-            ))}
-          </CardContent>
-        </Card>
-
-        {!editing && (
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <h2>Initial employment</h2>
-              </CardTitle>
-
-              <p className="text-sm text-muted-foreground">
-                Enter the approved joining details. No probation
-                duration is assumed.
-              </p>
-            </CardHeader>
-
-            <CardContent className="grid min-w-0 gap-5 sm:grid-cols-2">
-              <Field
-                id={`${prefix}-startDate`}
-                name="startDate"
-                label="Joining date"
-                type="date"
-                value={values.startDate}
-                onChange={handleChange}
-                min="0001-01-01"
-                max="9999-12-31"
-                required
-                disabled={disabled}
-              />
-
-              <div className="min-w-0 space-y-2">
-                <label
-                  htmlFor={`${prefix}-status`}
-                  className="block text-sm font-medium"
-                >
-                  Initial status
-                  <span
-                    className="ml-1 text-destructive"
-                    aria-hidden="true"
-                  >
-                    *
-                  </span>
-                </label>
-
-                <select
-                  id={`${prefix}-status`}
-                  name="status"
-                  value={values.status}
-                  onChange={handleChange}
-                  required
-                  disabled={disabled}
-                  className={CONTROL_CLASS}
-                >
-                  <option value="">Select status</option>
-                  <option value="PROBATION">Probation</option>
-                  <option value="ACTIVE">Active</option>
-                </select>
-              </div>
-
-              <Field
-                id={`${prefix}-probationEndDate`}
-                name="probationEndDate"
-                label="Probation end date"
-                type="date"
-                value={values.probationEndDate}
-                onChange={handleChange}
-                min={values.startDate || "0001-01-01"}
-                max="9999-12-31"
-                disabled={disabled}
-                hint="Optional. Enter only when an approved date exists."
-              />
-
-              <Field
-                id={`${prefix}-confirmedOn`}
-                name="confirmedOn"
-                label="Confirmation date"
-                type="date"
-                value={values.confirmedOn}
-                onChange={handleChange}
-                min={values.startDate || "0001-01-01"}
-                max="9999-12-31"
-                disabled={
-                  disabled || values.status !== "ACTIVE"
-                }
-                hint="Optional for Active employees. Unavailable during probation."
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {!editing && (
-          <Card className="border-primary/40">
-            <CardHeader>
-              <CardTitle>
-                <h2>Portal login</h2>
-              </CardTitle>
-
-              <p className="text-sm text-muted-foreground">
-                Create the linked account for this employee&apos;s
-                dashboard.
-              </p>
-            </CardHeader>
-
-            <CardContent className="grid min-w-0 gap-5 sm:grid-cols-2">
-              <Field
-                id={`${prefix}-loginEmail`}
-                name="loginEmail"
-                label="Login email"
-                type="email"
-                maxLength={254}
-                required
-                value={values.loginEmail}
-                onChange={handleChange}
-                disabled={disabled}
-                error={
-                  issues.find(
-                    (issue) =>
-                      issue.field === "portalLogin.email"
-                  )?.message
-                }
-                hint="Use an existing personal or company email. This does not create an email mailbox."
-              />
-
-              <div className="space-y-2">
-                <label
-                  htmlFor={`${prefix}-loginRole`}
-                  className="block text-sm font-medium"
-                >
-                  Portal role *
-                </label>
-
-                <select
-                  id={`${prefix}-loginRole`}
-                  name="loginRole"
-                  value={values.loginRole}
-                  onChange={handleChange}
-                  disabled={
-                    disabled || user.role !== "ADMIN"
-                  }
-                  className={CONTROL_CLASS}
-                >
-                  <option value="EMPLOYEE">Employee</option>
-
-                  {user.role === "ADMIN" && (
-                    <option value="MANAGER">Manager</option>
-                  )}
-                </select>
-
-                <p className="text-xs text-muted-foreground">
-                  Only Admin can create Manager accounts.
-                </p>
-              </div>
-
-              <Field
-                id={`${prefix}-password`}
-                name="password"
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={values.password}
-                onChange={handleChange}
-                disabled={disabled}
-                error={
-                  issues.find(
-                    (issue) =>
-                      issue.field === "portalLogin.password"
-                  )?.message
-                }
-                hint="At least 8 characters; maximum 72 UTF-8 bytes."
-              />
-
-              <Field
-                id={`${prefix}-confirmPassword`}
-                name="confirmPassword"
-                label="Confirm password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={values.confirmPassword}
-                onChange={handleChange}
-                disabled={disabled}
-              />
-
-              <div className="flex flex-wrap gap-3 sm:col-span-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={disabled}
-                  onClick={() =>
-                    setShowPassword((value) => !value)
-                  }
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-
-                  {showPassword
-                    ? "Hide passwords"
-                    : "Show passwords"}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={disabled}
-                  onClick={() => {
-                    const alphabet =
-                      "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
-
-                    const limit =
-                      Math.floor(256 / alphabet.length) *
-                      alphabet.length;
-
-                    let password = "";
-
-                    while (password.length < 16) {
-                      const bytes = crypto.getRandomValues(
-                        new Uint8Array(32)
-                      );
-
-                      for (const byte of bytes) {
-                        if (
-                          byte < limit &&
-                          password.length < 16
-                        ) {
-                          password +=
-                            alphabet[byte % alphabet.length];
-                        }
-                      }
-                    }
-
-                    setValues((previous) => ({
-                      ...previous,
-                      password,
-                      confirmPassword: password,
-                    }));
-
-                    setLoginError("");
-                  }}
-                >
-                  Generate password
-                </Button>
-              </div>
-
-              <p className="text-sm text-muted-foreground sm:col-span-2">
-                The employee must change this password on first
-                login. Share the credentials securely before
-                leaving this page.
-              </p>
-
-              {loginError && (
-                <p
-                  role="alert"
-                  className="text-sm text-destructive sm:col-span-2"
-                >
-                  {loginError}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="submit"
-            disabled={disabled}
-            className="min-h-10"
-          >
-            {busy && (
-              <Loader2
-                className="size-4 animate-spin"
-                aria-hidden="true"
-              />
-            )}
-
-            {busy
-              ? "Saving..."
-              : editing
-                ? "Save profile changes"
-                : "Create employee & login"}
-          </Button>
-
-          {busy && (
-            <span
-              role="status"
-              className="text-sm text-muted-foreground"
-            >
-              Saving employee. Please wait.
-            </span>
-          )}
-        </div>
-      </fieldset>
-    </form>
-  );
+  function generate(){const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';const limit=Math.floor(256/alphabet.length)*alphabet.length;let password='';while(password.length<20){for(const byte of crypto.getRandomValues(new Uint8Array(32)))if(byte<limit&&password.length<20)password+=alphabet[byte%alphabet.length];}setValues(old=>({...old,password,confirmPassword:password}));setErrors({});}
+  return <form ref={formRef} onSubmit={submit} autoComplete="off" aria-busy={busy} className="space-y-5"><fieldset disabled={disabled} className="min-w-0 space-y-5"><legend className="sr-only">{editing?'Edit employee profile':'Create employee and login'}</legend>
+    <Section number="1" title="Personal Information" description="Basic details about the employee."><div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {field('fullName','Full Name',UserRound,{required:true,maxLength:120,placeholder:'Enter full name'})}
+      <div className="space-y-2"><FormField label="Employee Code" icon={Hash} name="employeeCode" value={values.autoCode?'Assigned automatically on save':values.employeeCode} onChange={change} readOnly={editing||values.autoCode} required={!values.autoCode} maxLength={30} error={errorFor('employeeCode')} />{!editing&&<label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" name="autoCode" checked={values.autoCode} onChange={change} />Generate a unique code automatically</label>}</div>
+      {field('phone','Phone Number',Phone,{type:'tel',maxLength:32,placeholder:'+92 300 1234567'})}
+      {field('personalEmail','Personal Email',Mail,{type:'email',maxLength:254,placeholder:'name@example.com'})}
+      <div className="md:col-span-1 xl:col-span-2">{field('address','Address',MapPin,{maxLength:1000,placeholder:'Enter complete address'})}</div>
+    </div></Section>
+    {!editing&&<Section number="2" title="Job & Organization" description="Assign the employee to the company structure.">
+      {loadError&&<div role="alert" className="mb-4 text-sm text-destructive">{loadError} <Button type="button" variant="outline" onClick={()=>setRevision(v=>v+1)}>Retry organization options</Button></div>}
+      {!metadata&&!loadError&&<p role="status" className="mb-4 text-sm text-muted-foreground">Loading organization options…</p>}
+      <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {field('departmentId','Department',Building2,{options:choices('DEPARTMENT'),required:true})}
+        {field('campaignId','Campaign',Megaphone,{options:choices('CAMPAIGN',unit=>!unit.departmentId||unit.departmentId===values.departmentId),disabled:!values.departmentId})}
+        {field('teamId','Team',UsersRound,{options:choices('TEAM',unit=>unit.departmentId===values.departmentId&&(unit.campaignId||'')===values.campaignId),disabled:!values.departmentId})}
+        {field('designationId','Designation (Job Title)',BriefcaseBusiness,{options:choices('DESIGNATION'),required:true})}
+      </div><div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {field('reportingManagerId','Reporting Manager',UserRound,{options:managerOptions})}
+        {field('startDate','Joining Date',CalendarDays,{type:'date',required:true,min:'0001-01-01',max:'9999-12-31'})}
+        {field('status','Employment Status',null,{options:[['ACTIVE','Active'],['PROBATION','Probation']],required:true})}
+      </div><p className="mt-3 text-xs text-muted-foreground">Campaign, team and reporting manager are optional. A team's dated manager is suggested for the joining date. Job titles do not grant portal permissions.</p>
+    </Section>}
+    {!editing&&<Section number="3" title="Portal Login" description="Create login access for the employee."><div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {field('loginEmail','Login Email',Mail,{type:'email',required:true,maxLength:254,placeholder:'Enter login email'})}
+      {field('loginRole','Portal Role',UserRound,{options:user.role==='ADMIN'?[['EMPLOYEE','Employee'],['MANAGER','Manager']]:[['EMPLOYEE','Employee']],disabled:user.role!=='ADMIN'})}
+      {field('password','Password',LockKeyhole,{type:showPassword?'text':'password',required:true,autoComplete:'new-password'})}
+      {field('confirmPassword','Confirm Password',LockKeyhole,{type:showPassword?'text':'password',required:true,autoComplete:'new-password'})}
+    </div><div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={()=>setShowPassword(value=>!value)} aria-pressed={showPassword}>{showPassword?<EyeOff aria-hidden="true"/>:<Eye aria-hidden="true"/>}{showPassword?'Hide passwords':'Show passwords'}</Button><Button type="button" variant="outline" onClick={generate}>Generate Strong Password</Button>{values.personalEmail&&<Button type="button" variant="outline" onClick={()=>setValues(old=>({...old,loginEmail:old.personalEmail}))}>Use personal email for login</Button>}</div><p className="mt-3 text-xs text-muted-foreground">Use at least 8 characters and at most 72 UTF-8 bytes. No mailbox is created. Only Admin can reset an existing account's password.</p></Section>}
+    <details className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5"><summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-ring"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">{editing?'2':'4'}</span><div className="flex-1"><h2 className="text-lg font-semibold">Additional Details (Optional)</h2><p className="mt-0.5 text-sm text-muted-foreground">Employment timeline and emergency contact.</p></div><ChevronDown className="size-5" aria-hidden="true" /></summary><div className="mt-5 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {field('emergencyContactName','Emergency Contact Name',UserRound,{maxLength:120})}{field('emergencyContactPhone','Emergency Contact Phone',Phone,{type:'tel',maxLength:32})}{field('emergencyContactRelationship','Emergency Contact Relationship',null,{maxLength:60})}
+      {field('probationEndDate','Probation End Date',CalendarDays,{type:'date',min:values.startDate||'0001-01-01',max:'9999-12-31'})}{field('confirmedOn','Confirmation Date',CalendarDays,{type:'date',disabled:values.status==='PROBATION',min:values.startDate||'0001-01-01',max:'9999-12-31'})}
+    </div></details>
+    <div className="flex flex-wrap items-center justify-end gap-3">{!busy&&<Link to={editing?`/employees/${employee.id}`:'/employees'} className="inline-flex h-11 items-center rounded-lg border border-input px-6 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Cancel</Link>}<Button type="submit" disabled={disabled||(!editing&&!metadata)} className="min-h-11 px-6">{busy&&<LoaderCircle className="size-4 animate-spin" aria-hidden="true"/>}{busy?'Saving…':editing?'Save profile changes':'Create Employee'}</Button></div>
+  </fieldset></form>;
 }

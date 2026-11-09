@@ -7,6 +7,8 @@ const ApiError = require("../utils/ApiError");
 const { hashPassword } = require("../utils/password");
 
 const MAX_TRANSACTION_ATTEMPTS = 3;
+const CREATE_TRANSACTION_ATTEMPTS = 8;
+function transactionConflict(error){return error.code==='P2034'||['40001','40P01'].includes(error.cause?.originalCode)||error.cause?.kind==='TransactionWriteConflict';}
 const EMPLOYEE_ROLES = new Set(["ADMIN", "HR"]);
 
 const EMPLOYEE_SELECT = {
@@ -46,6 +48,11 @@ const LATEST_EMPLOYMENT = {
   take: 1,
   select: EMPLOYMENT_SELECT,
 };
+const CURRENT_ORGANIZATION = {
+ orderBy:[{effectiveFrom:'desc'},{id:'desc'}],
+ select:{id:true,departmentId:true,campaignId:true,teamId:true,designationId:true,reportingManagerId:true,effectiveFrom:true,effectiveTo:true,
+ department:{select:{name:true}},campaign:{select:{name:true}},team:{select:{name:true}},designation:{select:{name:true}},reportingManager:{select:{displayName:true}}}
+};
 
 const LIST_SELECT = {
   id: true,
@@ -57,6 +64,8 @@ const LIST_SELECT = {
 const DETAIL_SELECT = {
   ...EMPLOYEE_SELECT,
   employmentEpisodes: LATEST_EMPLOYMENT,
+  user:{select:{email:true,role:true,mustChangePassword:true}},
+  assignments:CURRENT_ORGANIZATION,
 };
 
 function toDatabaseDate(value) {
@@ -197,7 +206,7 @@ async function createEmployee({
 
   for (
     let attempt = 0;
-    attempt < MAX_TRANSACTION_ATTEMPTS;
+    attempt < CREATE_TRANSACTION_ATTEMPTS;
     attempt += 1
   ) {
     try {
@@ -205,8 +214,12 @@ async function createEmployee({
         async (tx) => {
           await assertEmployeePermission(tx, actorUserId, true);
 
+          let employeeCode=data.employeeCode;
+          if(!employeeCode){
+            do{const [allocated]=await tx.$queryRaw`SELECT nextval('employee_code_sequence')::text AS value`;employeeCode='EMP-'+allocated.value.padStart(4,'0');}while(await tx.employee.findUnique({where:{employeeCode},select:{id:true}}));
+          }
           const existingEmployee = await tx.employee.findUnique({
-            where: { employeeCode: data.employeeCode },
+            where: { employeeCode },
             select: { id: true },
           });
 
@@ -270,7 +283,7 @@ async function createEmployee({
                 passwordHash,
                 role: data.portalLogin.role,
                 status: "ACTIVE",
-                mustChangePassword: true,
+                mustChangePassword: data.portalLogin.role !== 'EMPLOYEE',
               },
               select: {
                 id: true,
@@ -283,7 +296,7 @@ async function createEmployee({
 
           const employee = await tx.employee.create({
             data: {
-              employeeCode: data.employeeCode,
+              employeeCode,
               ...(loginAccount ? { userId: loginAccount.id } : {}),
               fullName: data.fullName,
               personalEmail: data.personalEmail,
@@ -330,6 +343,11 @@ async function createEmployee({
             select: EMPLOYMENT_SELECT,
           });
 
+          if(data.organization){
+            const placement=await require('./organization.service').validatePlacement(tx,data.organization,loginAccount?.id);
+            await tx.organizationAssignment.create({data:{...placement,employeeId:employee.id,effectiveFrom:toDatabaseDate(data.employment.startDate),actorUserId,reason:'Initial organization assignment created with employee.'}});
+            await require('./organization.service').audit(tx,actorUserId,'EMPLOYEE_ORGANIZATION_ASSIGNED',employee.id);
+          }
           await tx.auditLog.create({
             data: {
               actorUserId,
@@ -378,11 +396,13 @@ async function createEmployee({
         }
       );
     } catch (error) {
-      if (error.code === "P2034") {
+      if (transactionConflict(error)) {
+        await new Promise(resolve=>setTimeout(resolve,10+Math.random()*20*(attempt+1)));
         continue;
       }
 
       if (error.code === "P2002") {
+        if(!data.employeeCode&&JSON.stringify(error.meta||{}).includes('employeeCode')&&attempt<CREATE_TRANSACTION_ATTEMPTS-1)continue;
         throw new ApiError(
           409,
           "Employee code or login email is already in use.",
@@ -411,8 +431,11 @@ function serializeSummary(employee) {
 }
 
 function serializeDetail(employee) {
-  const { employmentEpisodes, ...profile } = employee;
-  return serializeEmployee(profile, employmentEpisodes[0]);
+  const { employmentEpisodes,assignments,...profile } = employee;
+  const today=require('../utils/office-schedule').localParts(new Date(),'Asia/Karachi').date;
+  const organization=assignments?.find(a=>a.effectiveFrom.toISOString().slice(0,10)<=today&&(!a.effectiveTo||a.effectiveTo.toISOString().slice(0,10)>=today))||null;
+  const plannedOrganization=assignments?.find(a=>a.effectiveFrom.toISOString().slice(0,10)>today)||null;
+  return {...serializeEmployee(profile, employmentEpisodes[0]),organization,plannedOrganization};
 }
 
 function escapeSearch(value) {
@@ -596,6 +619,15 @@ async function updateEmployee({
               Object.hasOwn(patch, field) &&
               patch[field] !== current[field]
           );
+          if(Object.hasOwn(data,'probationEndDate')||Object.hasOwn(data,'confirmedOn')){
+            const episode=await tx.employmentEpisode.findFirst({where:{employeeId},orderBy:[{startDate:'desc'},{id:'desc'}]});
+            if(!episode)throw new ApiError(409,'No employment record exists.','EMPLOYMENT_NOT_FOUND');
+            const probationEndDate=Object.hasOwn(data,'probationEndDate')?toDatabaseDate(data.probationEndDate):episode.probationEndDate;
+            const confirmedOn=Object.hasOwn(data,'confirmedOn')?toDatabaseDate(data.confirmedOn):episode.confirmedOn;
+            if((probationEndDate&&probationEndDate<episode.startDate)||(confirmedOn&&confirmedOn<episode.startDate)||(episode.status==='PROBATION'&&confirmedOn))throw new ApiError(400,'Employment dates conflict with joining date or probation status.','INVALID_EMPLOYMENT_DATES');
+            await tx.employmentEpisode.update({where:{id:episode.id},data:{probationEndDate,confirmedOn,version:{increment:1}}});
+            changedFields.push('employmentDates');
+          }
 
           const updated = await tx.employee.updateMany({
             where: {
@@ -647,7 +679,7 @@ async function updateEmployee({
         }
       );
     } catch (error) {
-      if (error.code === "P2034") {
+      if (transactionConflict(error)) {
         continue;
       }
 

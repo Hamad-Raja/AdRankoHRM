@@ -1,0 +1,10 @@
+'use strict';
+const {z}=require('zod');
+const text=max=>z.string().trim().min(1).max(max).regex(/^[^\u0000-\u001f\u007f]+$/u);
+const optionalId=z.uuid().nullable().optional();
+const calendar=z.iso.date().refine(value=>!value.startsWith('0000'));
+const organizationFields={departmentId:optionalId,campaignId:optionalId,teamId:optionalId,designationId:z.uuid(),reportingManagerId:optionalId};
+const assignment=z.strictObject({...organizationFields,effectiveFrom:calendar,effectiveTo:calendar.nullable().optional(),reason:text(1000)}).refine(v=>!v.effectiveTo||v.effectiveTo>=v.effectiveFrom,'End date must follow start date.');
+const unit=z.strictObject({kind:z.enum(['DEPARTMENT','CAMPAIGN','TEAM','DESIGNATION']),name:text(120),description:z.string().trim().max(1000).nullable().optional(),reason:text(1000),departmentId:optionalId,campaignId:optionalId});
+const unitUpdate=z.strictObject({name:text(120),description:z.string().trim().max(1000).nullable().optional(),departmentId:optionalId,campaignId:optionalId,reason:text(1000)});
+module.exports={organizationFields,assignment,unit,unitUpdate};

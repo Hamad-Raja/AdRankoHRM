@@ -47,7 +47,7 @@ function employeeSelect(filters) {
       where: overlaps(filters.dateFrom, filters.dateTo),
       orderBy: [{ effectiveFrom: 'asc' }, { id: 'asc' }],
       select: {
-        id: true, teamId: true, effectiveFrom: true, effectiveTo: true,
+        id: true, teamId: true, departmentId:true,campaignId:true,department:{select:{name:true}},campaign:{select:{name:true}},effectiveFrom: true, effectiveTo: true,
         team: { select: {
           name: true, departmentId: true, campaignId: true,
           department: { select: { name: true } }, campaign: { select: { name: true } },

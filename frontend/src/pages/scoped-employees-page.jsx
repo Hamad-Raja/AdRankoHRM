@@ -15,7 +15,7 @@ export default function ScopedEmployeesPage() {
     <p className="text-sm text-muted-foreground">{user.role === 'MANAGER' ? 'Current team membership grants basic identity and employment information only.' : 'Self-service is read-only. Contact HR to request corrections.'}</p>
     {error && <p role="alert">{error}</p>}<Button variant="outline" onClick={() => setRevision(v => v + 1)}>Refresh profiles</Button>
     {!employees && !error && <p role="status">Loading permitted profiles…</p>}{employees?.length === 0 && <p>No linked employee profile or current team employees.</p>}
-    {employees?.map(e => <Panel key={e.id} title={`${e.fullName} · ${e.employeeCode}`}><p>{e.employmentEpisodes[0]?.status || 'No employment'} · Joined {e.employmentEpisodes[0] ? dateOnly(e.employmentEpisodes[0].startDate) : 'Not recorded'}</p>{e.assignments.map(a => <p key={a.id}>{a.team.name} · {a.designation.name} · {a.team.department.name} / {a.team.campaign.name}</p>)}</Panel>)}
+    {employees?.map(e => <Panel key={e.id} title={`${e.fullName} · ${e.employeeCode}`}><p>{e.employmentEpisodes[0]?.status || 'No employment'} · Joined {e.employmentEpisodes[0] ? dateOnly(e.employmentEpisodes[0].startDate) : 'Not recorded'}</p>{e.assignments.map(a => <p key={a.id}>{a.team?.name||'No team'} · {a.designation?.name} · {a.department?.name||a.team?.department?.name} / {a.campaign?.name||a.team?.campaign?.name||'No campaign'}</p>)}</Panel>)}
     {history && <History data={history} />}{user.role === 'EMPLOYEE' && employees?.[0] && <Documents employeeId={employees[0].id} management={false} />}
   </section>;
 }

@@ -112,7 +112,7 @@ const employmentSchema = z
   );
 
 const createEmployeeSchema = z.strictObject({
-  employeeCode: employeeCodeSchema,
+  employeeCode: employeeCodeSchema.optional(),
   fullName: textField("Full name", 120),
   personalEmail: personalEmailSchema,
   phone: phoneSchema,
@@ -129,6 +129,7 @@ const createEmployeeSchema = z.strictObject({
   ),
 
   employment: employmentSchema,
+  organization: z.strictObject(require('./organization.validation').organizationFields).optional(),
 
   // Optional for existing profile-only API clients.
   // The updated Add Employee form requires these credentials.
@@ -156,6 +157,8 @@ const updateEmployeeSchema = z
 
     emergencyContactRelationship:
       createEmployeeSchema.shape.emergencyContactRelationship.optional(),
+    probationEndDate: optionalField(calendarDateSchema).optional(),
+    confirmedOn: optionalField(calendarDateSchema).optional(),
   })
   .refine(
     (data) =>

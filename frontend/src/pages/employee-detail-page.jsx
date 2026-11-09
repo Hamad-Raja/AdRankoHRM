@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import EmployeeForm from '@/components/employees/employee-form';
+import OrganizationAssignmentEditor from '@/components/employees/organization-assignment-editor';
 import { ActionForm, Field, History, Panel } from '@/components/employees/management-widgets';
 import { formObject } from '@/components/employees/management-utils';
 import { useAuth } from '@/context/auth-context';
@@ -27,14 +28,15 @@ export function Documents({ employeeId, management, refreshKey = 0 }) {
 }
 
 function EmployeeDetail({ employeeId }) {
+  const location=useLocation();
   const { getCsrfToken, refreshSession, user } = useAuth();
-  const [employee, setEmployee] = useState(null), [history, setHistory] = useState(null), [units, setUnits] = useState([]);
+  const [employee, setEmployee] = useState(null), [history, setHistory] = useState(null), [organization, setOrganization] = useState(null);
   const [loadError, setLoadError] = useState(''), [revision, setRevision] = useState(0), [editing, setEditing] = useState(false);
   const [write, setWrite] = useState({ busy: false, error: '', uncertain: false, conflict: false, success: '' });
   const [formKey, setFormKey] = useState(0), lock = useRef(false);
   useEffect(() => {
     const c = new AbortController();
-    Promise.all([getEmployeeById(employeeId, { signal: c.signal }), org.history(employeeId, { signal: c.signal }), org.organization({ signal: c.signal })]).then(([e, h, o]) => { setEmployee(e); setHistory(h); setUnits(o.units); setLoadError(''); }).catch(e => {
+    Promise.all([getEmployeeById(employeeId, { signal: c.signal }), org.history(employeeId, { signal: c.signal }), org.organization({ signal: c.signal })]).then(([e, h, o]) => {if(c.signal.aborted)return; setEmployee(e); setHistory(h); setOrganization(o); setLoadError(''); }).catch(e => {
       if (!c.signal.aborted) { setLoadError(`${e.status === 404 ? 'Employee not found. ' : e.status === 403 ? 'Access forbidden. ' : ''}${e.message}`); if (e.status === 401) void refreshSession(); }
     }); return () => c.abort();
   }, [employeeId, revision, refreshSession]);
@@ -44,7 +46,7 @@ function EmployeeDetail({ employeeId }) {
     let started = false;
     try {
       const csrfToken = getCsrfToken(); started = true;
-      const saved = await updateEmployee(employeeId, data, { csrfToken }); setEmployee(saved); setEditing(false);
+      const saved = await updateEmployee(employeeId, data, { csrfToken }); setEmployee(saved); setEditing(false);setRevision(v=>v+1);
       setWrite({ busy: false, error: '', uncertain: false, conflict: false, success: 'Profile changes saved.' });
     } catch (e) {
       setWrite({ busy: false, success: '', conflict: e.status === 409, uncertain: started && (e.status === 0 || e.status >= 500 || e.code === 'INVALID_RESPONSE'), error: [e.message, ...(e.details || []).map(d => `${d.field}: ${d.message}`)].join(' ') });
@@ -55,10 +57,12 @@ function EmployeeDetail({ employeeId }) {
     // Explicit user action discards the draft; a failed reload leaves it intact.
     try { const latest = await getEmployeeById(employeeId); setEmployee(latest); setFormKey(v => v + 1); setWrite({ busy: false, error: '', conflict: false, uncertain: false, success: 'Current profile loaded. Review before saving.' }); } catch (e) { setWrite(w => ({ ...w, error: e.message })); }
   }
-  const active = kind => units.filter(u => u.kind === kind && !u.archivedAt).map(u => [u.id, u.name]);
-  return <section className="mx-auto max-w-4xl space-y-6"><Link className="text-primary underline" to="/employees">Employee directory</Link>
+  return <section className="min-w-0 space-y-6"><Link className="text-primary underline" to="/employees">Employee directory</Link>
+    {location.state?.created&&<p role="status" className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm">Employee created successfully. The profile, login and initial organization assignment were saved together.</p>}
     {loadError ? <Panel title="Unable to load employee"><p role="alert">{loadError}</p><Button onClick={() => setRevision(v => v + 1)}>Retry employee</Button></Panel> : !employee ? <p role="status">Loading employee…</p> : <>
-      <h1 className="break-words text-2xl font-semibold">{employee.fullName}</h1><p>{employee.employeeCode} · {employee.employment?.status || 'No employment'} · Profile version {employee.version}</p>
+      <h1 className="break-words text-2xl font-semibold">{employee.fullName}</h1><p>{employee.employeeCode} · {employee.employment?.status || 'No employment'}</p>
+      {employee.organization&&<Panel title="Current organization"><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[['Department',employee.organization.department?.name],['Campaign',employee.organization.campaign?.name],['Team',employee.organization.team?.name],['Job Title',employee.organization.designation?.name],['Reporting Manager',employee.organization.reportingManager?.displayName]].map(([label,value])=><div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{value||'Not assigned'}</dd></div>)}</dl></Panel>}
+      {employee.plannedOrganization&&<Panel title="Planned organization"><p className="text-sm">Effective {employee.plannedOrganization.effectiveFrom.slice(0,10)} · {employee.plannedOrganization.department?.name} · {employee.plannedOrganization.campaign?.name||'No campaign'} · {employee.plannedOrganization.team?.name||'No team'} · {employee.plannedOrganization.designation?.name} · {employee.plannedOrganization.reportingManager?.displayName||'No reporting manager'}</p></Panel>}
       {write.error && <p role="alert" className="break-words text-destructive">{write.error}</p>}{write.success && <p role="status">{write.success}</p>}
       {write.conflict && <p role="alert">Someone changed this profile. Your draft is preserved. Saving is blocked until you explicitly load the current profile.</p>}
       {write.uncertain && <p role="alert">The save result is unconfirmed. Your draft is preserved. Load the current profile to check the result before any new write.</p>}
@@ -66,19 +70,16 @@ function EmployeeDetail({ employeeId }) {
       {editing ? <EmployeeForm key={formKey} employee={employee} onSubmit={save} busy={write.busy} blocked={write.uncertain || write.conflict} /> : <Panel title="Employee profile"><dl className="grid gap-4 sm:grid-cols-2">{['fullName', 'personalEmail', 'phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship'].map(key => <div key={key} className="min-w-0"><dt className="text-sm text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}</dt><dd className="break-words">{employee[key] || 'Not recorded'}</dd></div>)}</dl><Button onClick={() => { setEditing(true); setFormKey(v => v + 1); }}>Edit profile</Button></Panel>}
       {editing && !write.busy && <Button variant="outline" onClick={() => setEditing(false)}>Cancel editing</Button>}
       {history && <History data={history} />}
-      <ActionForm key={`assignment-${revision}`} title="Change organization assignment" onSaved={() => setRevision(v => v + 1)} action={(form, options) => org.assignEmployee(employeeId, formObject(form), options)}>
-        <Field label="Team" name="teamId" required options={[['', 'Select team'], ...active('TEAM')]} /><Field label="Designation / job title" name="designationId" required options={[['', 'Select designation'], ...active('DESIGNATION')]} />
-        <Field label="Effective from" name="effectiveFrom" type="date" required /><Field label="Effective to (optional)" name="effectiveTo" type="date" /><Field label="Assignment change reason" name="reason" required maxLength={1000} />
-        <p className="text-sm text-muted-foreground">A later assignment ends the previous open assignment on the preceding day. Closed history is preserved.</p>
-      </ActionForm>
-      {employee.userId ? <Panel title="Login account"><p className="break-all">Linked account: {employee.userId}</p><p>Profile email and login email remain separate. Account linkage cannot be changed here.</p></Panel> : <ActionForm title="Provision or link login account" submit="Save account linkage" onSaved={() => setRevision(v => v + 1)} action={(form, options) => {
+      <OrganizationAssignmentEditor key={`assignment-${revision}-${employee.organization?.id||'none'}`} employeeId={employeeId} current={employee.organization} data={organization} onSaved={()=>setRevision(v=>v+1)}/>
+      {employee.userId ? <Panel title="Login account"><p className="break-words">Login email: {employee.user?.email||'Linked account'}</p><p>Profile email and login email remain separate. Account linkage cannot be changed here.</p></Panel> : <ActionForm title="Provision or link login account" submit="Save account linkage" onSaved={() => setRevision(v => v + 1)} action={(form, options) => {
         const data = formObject(form); if (data.mode === 'link') { delete data.password; delete data.role; }
         return org.linkAccount(employeeId, data, options);
-      }}><Field label="Account operation" name="mode" options={[['provision', 'Create new account (forced password change)'], ['link', 'Link existing account']]} /><Field label="Login email" name="email" type="email" required maxLength={254} />
+      }}><Field label="Account operation" name="mode" options={[['provision', 'Create new account'], ['link', 'Link existing account']]} /><Field label="Login email" name="email" type="email" required maxLength={254} />
         <Field label="Initial password (new account only, 8 characters minimum, 72 UTF-8 bytes maximum)" name="password" type="password" autoComplete="new-password" />
         <Field label="New account role" name="role" options={user.role === 'ADMIN' ? [['EMPLOYEE', 'Employee'], ['MANAGER', 'Manager']] : [['EMPLOYEE', 'Employee']]} />
         <p className="text-sm text-muted-foreground">No email is sent. Existing Admin/HR accounts cannot be linked. HR may only create/link ordinary Employee accounts.</p>
       </ActionForm>}
+      {employee.userId&&user.role==='ADMIN'&&<ActionForm title="Reset employee password" submit="Reset password and revoke sessions" action={(form,options)=>{if(form.get('newPassword')!==form.get('confirmPassword'))throw new Error('Passwords do not match.');return org.resetAccountPassword(employeeId,form.get('newPassword'),options);}}><Field label="New account password" name="newPassword" type="password" autoComplete="new-password" required/><Field label="Confirm account password" name="confirmPassword" type="password" autoComplete="new-password" required/><p className="text-sm text-muted-foreground">This signs the account out on all devices. Share the replacement securely. Existing account status is preserved.</p></ActionForm>}
       <Documents employeeId={employeeId} management />
     </>}
   </section>;

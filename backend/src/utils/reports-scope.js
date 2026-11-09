@@ -17,18 +17,18 @@ function fail(status, message, code = 'FORBIDDEN') {
 
 function organizationMatches(assignment, filters) {
   return (!filters.teamId || assignment.teamId === filters.teamId)
-    && (!filters.departmentId || assignment.team.departmentId === filters.departmentId)
-    && (!filters.campaignId || assignment.team.campaignId === filters.campaignId);
+    && (!filters.departmentId || (assignment.departmentId||assignment.team?.departmentId) === filters.departmentId)
+    && (!filters.campaignId || (assignment.campaignId||assignment.team?.campaignId) === filters.campaignId);
 }
 
 function organizationView(assignment) {
   if (!assignment) return null;
   return {
-    team: { id: assignment.teamId, name: assignment.team.name },
-    department: assignment.team.department
-      ? { id: assignment.team.departmentId, name: assignment.team.department.name } : null,
-    campaign: assignment.team.campaign
-      ? { id: assignment.team.campaignId, name: assignment.team.campaign.name } : null,
+    team: assignment.team ? { id: assignment.teamId, name: assignment.team.name } : null,
+    department: (assignment.department||assignment.team?.department)
+      ? { id: assignment.departmentId||assignment.team.departmentId, name: (assignment.department||assignment.team.department).name } : null,
+    campaign: (assignment.campaign||assignment.team?.campaign)
+      ? { id: assignment.campaignId||assignment.team.campaignId, name: (assignment.campaign||assignment.team.campaign).name } : null,
     designation: assignment.designation
       ? { id: assignment.designation.id, name: assignment.designation.name } : null,
   };
@@ -85,10 +85,8 @@ async function buildReportScope(tx, user, filters) {
   if (hasOrganizationFilter) AND.push({ assignments: { some: {
     ...overlaps(filters.dateFrom, filters.dateTo),
     ...(filters.teamId ? { teamId: filters.teamId } : {}),
-    team: {
-      ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
-      ...(filters.campaignId ? { campaignId: filters.campaignId } : {}),
-    },
+    ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+    ...(filters.campaignId ? { campaignId: filters.campaignId } : {}),
   } } });
 
   function matchingAssignment(employee, date) {

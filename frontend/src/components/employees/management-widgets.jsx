@@ -49,9 +49,9 @@ export function History({ data }) {
   return <Panel title="Employment and assignment history">
     {!data.episodes.length && <p>No employment episodes recorded.</p>}
     {data.episodes.map(e => <article key={e.id} className="space-y-2 border-b pb-3"><h3 className="font-medium">{dateOnly(e.startDate)} — {dateOnly(e.endDate)} · {e.status}</h3>
-      <ul className="space-y-2 text-sm">{e.statusEvents.map(s => <li key={s.id}>{dateOnly(s.effectiveDate)}: {s.fromStatus || 'Initial'} → {s.toStatus}{s.reason && <p className="break-words text-muted-foreground">{s.reason} · Actor {s.actorUserId}</p>}</li>)}</ul></article>)}
+      <ul className="space-y-2 text-sm">{e.statusEvents.map(s => <li key={s.id}>{dateOnly(s.effectiveDate)}: {s.fromStatus || 'Initial'} → {s.toStatus}{s.reason && <p className="break-words text-muted-foreground">{s.reason}</p>}</li>)}</ul></article>)}
     <h3 className="font-medium">Organization assignments</h3>
     {!data.assignments.length && <p>No assignments recorded.</p>}
-    {data.assignments.map(a => <article key={a.id} className="break-words border-b pb-2 text-sm">{dateOnly(a.effectiveFrom)} — {dateOnly(a.effectiveTo)} · {a.team.name} · {a.designation.name}<p>{a.team.department.name} / {a.team.campaign.name}</p>{a.reason && <p className="text-muted-foreground">{a.reason} · Actor {a.actorUserId}</p>}</article>)}
+    {data.assignments.map(a => <article key={a.id} className="break-words border-b pb-2 text-sm">{dateOnly(a.effectiveFrom)} — {dateOnly(a.effectiveTo)} · {a.team?.name||'No team'} · {a.designation?.name}<p>{a.department?.name||a.team?.department?.name} / {a.campaign?.name||a.team?.campaign?.name||'No campaign'}</p>{a.reportingManager&&<p>Reporting Manager: {a.reportingManager.displayName}</p>}{a.reason && <p className="text-muted-foreground">{a.reason}</p>}</article>)}
   </Panel>;
 }

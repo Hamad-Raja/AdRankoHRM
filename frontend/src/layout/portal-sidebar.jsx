@@ -13,8 +13,6 @@ import { Link, NavLink } from "react-router";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
-const ALL_ROLES = ["ADMIN", "HR", "MANAGER", "EMPLOYEE"];
-
 const ROLE_LABELS = {
   ADMIN: "Administrator",
   HR: "Human Resources",
@@ -22,122 +20,194 @@ const ROLE_LABELS = {
   EMPLOYEE: "Employee",
 };
 
-const NAVIGATION = [
-  {label:"Leave",to:"/leaves",icon:CalendarCheck,roles:ALL_ROLES,allowPasswordChange:false,end:false},
+const MANAGEMENT_NAVIGATION = [
   {
     label: "Dashboard",
     to: "/dashboard",
     icon: LayoutDashboard,
-    roles: ALL_ROLES,
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "Announcements",
-    to: "/announcements",
-    icon: Megaphone,
-    roles: ALL_ROLES,
-    allowPasswordChange: false,
-    end: false,
-  },
-  {
-    label: "Notifications",
-    to: "/notifications",
-    icon: Bell,
-    roles: ALL_ROLES,
-    allowPasswordChange: false,
-    end: false,
-  },
-  {
-    label: "Attendance",
-    to: "/attendance",
-    icon: CalendarCheck,
-    roles: ALL_ROLES,
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "Reports",
-    to: "/reports",
-    icon: FileText,
-    roles: ALL_ROLES,
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "Payroll",
-    to: "/payroll",
-    icon: FileText,
-    roles: ["ADMIN", "HR"],
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "My payslips",
-    to: "/my-payslips",
-    icon: FileText,
-    roles: ALL_ROLES,
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "Attendance Settings",
-    to: "/attendance-settings",
-    icon: Clock,
-    roles: ["ADMIN", "HR"],
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "Organization",
-    to: "/organization",
-    icon: UsersRound,
-    roles: ["ADMIN", "HR"],
-    allowPasswordChange: false,
-    end: true,
-  },
-  {
-    label: "Employee profiles",
-    to: "/my-employees",
-    icon: UsersRound,
-    roles: ["MANAGER", "EMPLOYEE"],
-    allowPasswordChange: false,
-    end: true,
   },
   {
     label: "Employees",
     to: "/employees",
     icon: UsersRound,
-    roles: ["ADMIN", "HR"],
-    allowPasswordChange: false,
     end: false,
   },
   {
-    label: "My account",
+    label: "Organization",
+    to: "/organization",
+    icon: UsersRound,
+  },
+  {
+    label: "Attendance",
+    to: "/attendance",
+    icon: CalendarCheck,
+  },
+  {
+    label: "Leave Management",
+    to: "/leaves",
+    icon: CalendarCheck,
+  },
+  {
+    label: "Payroll",
+    to: "/payroll",
+    icon: FileText,
+  },
+  {
+    label: "Reports",
+    to: "/reports",
+    icon: FileText,
+  },
+  {
+    label: "Announcements",
+    to: "/announcements",
+    icon: Megaphone,
+  },
+  {
+    label: "Notifications",
+    to: "/notifications",
+    icon: Bell,
+  },
+  {
+    label: "My Payslips",
+    to: "/my-payslips",
+    icon: FileText,
+  },
+  {
+    label: "Attendance Settings",
+    to: "/attendance-settings",
+    icon: Clock,
+  },
+  {
+    label: "My Account",
     to: "/account",
     icon: UserRound,
-    roles: ALL_ROLES,
-    allowPasswordChange: true,
-    end: true,
   },
 ];
 
+const MANAGER_NAVIGATION = [
+  {
+    label: "Dashboard",
+    to: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "My Team",
+    to: "/my-employees",
+    icon: UsersRound,
+  },
+  {
+    label: "Attendance",
+    to: "/attendance",
+    icon: CalendarCheck,
+  },
+  {
+    label: "My Leave",
+    to: "/leaves",
+    icon: CalendarCheck,
+  },
+  {
+    label: "Reports",
+    to: "/reports",
+    icon: FileText,
+  },
+  {
+    label: "My Payslips",
+    to: "/my-payslips",
+    icon: FileText,
+  },
+  {
+    label: "Announcements",
+    to: "/announcements",
+    icon: Megaphone,
+  },
+  {
+    label: "Notifications",
+    to: "/notifications",
+    icon: Bell,
+  },
+  {
+    label: "My Account",
+    to: "/account",
+    icon: UserRound,
+  },
+];
+
+const EMPLOYEE_NAVIGATION = [
+  {
+    label: "Dashboard",
+    to: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "My Profile",
+    to: "/my-employees",
+    icon: UserRound,
+  },
+  {
+    label: "My Attendance",
+    to: "/attendance",
+    icon: CalendarCheck,
+  },
+  {
+    label: "My Leave",
+    to: "/leaves",
+    icon: CalendarCheck,
+  },
+  {
+    label: "My Reports",
+    to: "/reports",
+    icon: FileText,
+  },
+  {
+    label: "My Payslips",
+    to: "/my-payslips",
+    icon: FileText,
+  },
+  {
+    label: "Announcements",
+    to: "/announcements",
+    icon: Megaphone,
+  },
+  {
+    label: "Notifications",
+    to: "/notifications",
+    icon: Bell,
+  },
+  {
+    label: "My Account",
+    to: "/account",
+    icon: UserRound,
+  },
+];
+
+const NAVIGATION_BY_ROLE = {
+  ADMIN: MANAGEMENT_NAVIGATION,
+  HR: MANAGEMENT_NAVIGATION,
+  MANAGER: MANAGER_NAVIGATION,
+  EMPLOYEE: EMPLOYEE_NAVIGATION,
+};
+
 export default function PortalSidebar({ onNavigate }) {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
 
   const homePath = user.mustChangePassword
     ? "/account"
     : "/dashboard";
 
-  const visibleItems = NAVIGATION.filter(
-    (item) =>
-      item.roles.includes(user.role) &&
-      (!user.mustChangePassword || item.allowPasswordChange)
-  );
+  const navigation = NAVIGATION_BY_ROLE[user.role] || [];
+
+  // Preserve the existing first-login password-change restriction.
+  const visibleItems = user.mustChangePassword
+    ? navigation.filter((item) => item.to === "/account")
+    : navigation;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="border-b border-sidebar-border px-6 py-6">
+      <div className="shrink-0 border-b border-sidebar-border px-6 py-6">
         <Link
           to={homePath}
           onClick={() => onNavigate?.()}
@@ -150,9 +220,9 @@ export default function PortalSidebar({ onNavigate }) {
 
       <nav
         aria-label="Main navigation"
-        className="flex-1 overflow-y-auto px-3 py-6"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-5"
       >
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {visibleItems.map((item) => {
             const Icon = item.icon;
 
@@ -160,17 +230,17 @@ export default function PortalSidebar({ onNavigate }) {
               <li key={item.to}>
                 <NavLink
                   to={item.to}
-                  end={item.end}
+                  end={item.end ?? true}
                   onClick={() => onNavigate?.()}
                   className={({ isActive }) =>
                     cn(
-                      "flex h-10 items-center gap-3 rounded-lg px-3",
+                      "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2",
                       "text-sm transition-colors",
                       "focus-visible:outline-2 focus-visible:outline-offset-2",
                       "focus-visible:outline-sidebar-ring",
                       isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-2xs"
-                        : "font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        ? "bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-2xs"
+                        : "font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground"
                     )
                   }
                 >
@@ -178,6 +248,7 @@ export default function PortalSidebar({ onNavigate }) {
                     className="size-5 shrink-0"
                     aria-hidden="true"
                   />
+
                   <span>{item.label}</span>
                 </NavLink>
               </li>
@@ -186,7 +257,7 @@ export default function PortalSidebar({ onNavigate }) {
         </ul>
       </nav>
 
-      <footer className="border-t border-sidebar-border px-6 py-5">
+      <footer className="shrink-0 border-t border-sidebar-border px-6 py-5">
         <p className="text-xs text-sidebar-foreground/70">
           Signed in as
         </p>
