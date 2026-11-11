@@ -13,8 +13,8 @@ router.get('/salaries/:employeeId',run(req=>service.salaryHistory(req.auth.user.
 router.post('/salaries/:employeeId',csrfProtection,run(req=>service.saveSalary(req.auth.user.id,parse(schema.id,req.params.employeeId),parse(schema.salary,req.body))));
 router.post('/preview',csrfProtection,run(req=>service.preview(req.auth.user.id,parse(schema.preview,req.body))));
 router.get('/',run(req=>service.list(req.auth.user.id,parse(schema.list,req.query))));
-router.post('/',csrfProtection,run(req=>service.createDraft(req.auth.user.id,parse(schema.draft,req.body))));
+router.post('/',authorize('HR'),csrfProtection,run(req=>service.createDraft(req.auth.user.id,parse(schema.draft,req.body))));
 router.get('/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id))));
-router.patch('/:id',csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(schema.edit,req.body),'edit')));
-for(const action of ['hr-approve','return','approve','pay'])router.post(`/:id/${action}`,csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(action==='pay'?schema.payment:schema.decision,req.body),action)));
+router.patch('/:id',authorize('HR'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(schema.edit,req.body),'edit')));
+for(const action of ['hr-approve','return','approve','pay'])router.post(`/:id/${action}`,authorize(action==='hr-approve'?'HR':'ADMIN'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(action==='pay'?schema.payment:schema.decision,req.body),action)));
 module.exports=router;

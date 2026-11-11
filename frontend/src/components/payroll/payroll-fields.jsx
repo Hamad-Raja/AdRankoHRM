@@ -15,6 +15,6 @@ export function PayrollField({label, children, hint, error}) {
     {message && <p id={id+'-error'} className="text-sm text-destructive">{message}</p>}
   </div>;
 }
-export function PayrollStatus({status}) {
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status==='PAID'||status==='APPROVED'?'bg-primary/10 text-primary':'bg-muted text-muted-foreground'}`}>{readable(status)}</span>;
+export function PayrollStatus({status,needsCorrection=false}) {
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status==='PAID'||status==='APPROVED'?'bg-primary/10 text-primary':'bg-muted text-muted-foreground'}`}>{status==='DRAFT'&&needsCorrection?'Needs Correction':readable(status)}</span>;
 }

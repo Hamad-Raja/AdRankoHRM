@@ -1,5 +1,16 @@
 @media print {
   @page { size: A4; margin: 14mm; }
+  html, body { overflow: visible !important; }
+  body > #root { display: none !important; }
+  .payroll-dialog[open] {
+    position: absolute !important; inset: 0 !important; display: block !important;
+    width: 100% !important; max-width: none !important; height: auto !important; max-height: none !important;
+    overflow: visible !important; padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important;
+  }
+  .payroll-dialog::backdrop { background: transparent !important; backdrop-filter: none !important; }
+  .payroll-dialog > header, .payroll-dialog > footer { display: none !important; }
+  .payroll-details-body { overflow: visible !important; padding: 0 !important; }
+  .payroll-details-body > :not(.payroll-slip) { display: none !important; }
   body * { visibility: hidden !important; }
   .payroll-slip, .payroll-slip * { visibility: visible !important; }
   .payroll-slip {

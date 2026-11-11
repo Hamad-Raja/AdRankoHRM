@@ -16,9 +16,9 @@ export default function SalaryRevisionDialog({employee,history,currentSalary,mon
     const saved=await onSave('/salaries/'+employee.id,{effectiveMonth,monthlyBasic:amount,expectedPreviousId:previous?.id||null,reason});
     if(saved)onClose();
   }
-  return <PayrollDialog title="Revise Pay" description="Save an effective-dated salary revision while preserving previous records." busy={busy} dirty={dirty} error={error} uncertain={uncertain} onReload={onReload} onClose={onClose}>
-    {close=><form onSubmit={save} aria-label="Salary revision" className="space-y-5" aria-busy={busy}>
-      <fieldset disabled={busy||uncertain} className="min-w-0 space-y-4">
+  return <PayrollDialog title="Revise Pay" description="Save a salary change from the selected month while preserving previous salaries." busy={busy} dirty={dirty} error={error} uncertain={uncertain} onReload={onReload} onClose={onClose}>
+    {close=><form onSubmit={save} aria-label="Salary Change" className="flex min-h-0 flex-col overflow-hidden" aria-busy={busy}>
+      <div className="payroll-form-body min-h-0 overflow-y-auto overscroll-contain px-1 pb-5"><fieldset disabled={busy||uncertain} className="min-w-0 space-y-4">
         <PayrollField label="Employee"><input className={inputClass} readOnly value={`${employee.fullName} · ${employee.employeeCode}`}/></PayrollField>
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <PayrollField label="Effective Month"><input className={inputClass} type="month" required value={effectiveMonth} onChange={event=>setMonth(event.target.value)}/></PayrollField>
@@ -26,8 +26,8 @@ export default function SalaryRevisionDialog({employee,history,currentSalary,mon
         </div>
         <PayrollField label="New Monthly Basic Salary (PKR)" hint="Enter a positive amount without commas, with at most two decimal places."><input className={inputClass} required inputMode="decimal" value={amount} onChange={event=>setAmount(event.target.value)} placeholder="44000.00"/></PayrollField>
         <PayrollField label="Reason for Salary Change" hint="Required for the existing salary audit history."><textarea className={`${inputClass} h-auto min-h-24 py-3`} required maxLength={1000} value={reason} onChange={event=>setReason(event.target.value)}/></PayrollField>
-      </fieldset>
-      <footer className="flex flex-wrap justify-end gap-3 border-t border-border pt-4"><Button type="button" variant="outline" disabled={busy} onClick={close}>Cancel</Button><Button type="submit" disabled={busy||uncertain}>{busy?'Saving…':'Save Revision'}</Button></footer>
+      </fieldset></div>
+      <footer className="relative flex shrink-0 flex-wrap justify-end gap-3 border-t border-border bg-card pt-4"><Button type="button" variant="outline" disabled={busy} onClick={close}>Cancel</Button><Button type="submit" disabled={busy||uncertain}>{busy?'Saving…':'Save Change'}</Button></footer>
     </form>}
   </PayrollDialog>;
 }

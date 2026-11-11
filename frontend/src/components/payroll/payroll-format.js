@@ -2,7 +2,7 @@ export const inputClass = 'h-11 w-full min-w-0 rounded-lg border border-input bg
 export const earningTypes = ['ALLOWANCE', 'BONUS', 'COMMISSION', 'OVERTIME', 'OTHER'];
 export const deductionTypes = ['TAX', 'ADVANCE_RECOVERY', 'LOAN_RECOVERY', 'OTHER'];
 export function readable(value = '') {
-  return value === 'HR_APPROVED' ? 'HR approved' : value.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  return value === 'HR_APPROVED' ? 'HR Approved' : value === 'APPROVED' ? 'Finalized' : value.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 // Display canonical decimal strings without calculating or rounding money.
 export function pkr(value) {

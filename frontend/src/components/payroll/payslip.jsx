@@ -3,7 +3,7 @@ import {PayrollStatus} from './payroll-fields';
 
 export default function Payslip({record,own}) {
   return <section aria-label="Payslip" className="payroll-slip min-w-0 space-y-6 rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-8">
-    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5"><div><p className="text-xl font-bold tracking-tight">Office<span className="text-primary">HR</span></p><h2 className="mt-2 text-2xl font-semibold">Payslip</h2><p className="mt-1 text-sm text-muted-foreground">Payroll month {record.month}</p></div><PayrollStatus status={record.status}/></header>
+    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5"><div><p className="text-xl font-bold tracking-tight">Office<span className="text-primary">HR</span></p><h2 className="mt-2 text-2xl font-semibold">Payslip</h2><p className="mt-1 text-sm text-muted-foreground">Payroll month {record.month}</p></div><PayrollStatus status={record.status} needsCorrection={record.needsCorrection}/></header>
     <dl className="grid min-w-0 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
       {[['Employee',record.employeeName],['Employee Code',record.employeeCode],['Department',record.organization?.department||'Not recorded'],['Designation',record.organization?.designation||'Not recorded']].map(([label,value])=><div className="min-w-0" key={label}><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-semibold">{value}</dd></div>)}
     </dl>

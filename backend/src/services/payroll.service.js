@@ -51,8 +51,14 @@ function view(record,privateView=false){
  if(!privateView)Object.assign(value,{salaryVersionId:record.salaryVersionId,changeReason:record.changeReason,createdByUserId:record.createdByUserId,hrApprovedByUserId:record.hrApprovedByUserId,adminApprovedByUserId:record.adminApprovedByUserId,paidByUserId:record.paidByUserId,createdAt:record.createdAt.toISOString(),updatedAt:record.updatedAt.toISOString()});
  return value;
 }
+async function corrections(tx,records){
+ const ids=records.filter(record=>record.status==='DRAFT').map(record=>record.id);
+ if(!ids.length)return new Map();
+ const events=await tx.auditLog.findMany({where:{targetType:'Payroll',targetId:{in:ids},action:'PAYROLL_RETURN',success:true},orderBy:[{createdAt:'desc'},{id:'desc'}],select:{targetId:true,metadata:true}});
+ const result=new Map();for(const entry of events)if(!result.has(entry.targetId))result.set(entry.targetId,entry.metadata?.reason||'Review the correction history.');return result;
+}
 async function createDraft(userId,input){return transaction(async tx=>{
- const user=await actor(tx,userId),emp=await employee(tx,input.employeeId);await lock(tx,emp.id);
+ const user=await actor(tx,userId);if(user.role!=='HR')fail(403,'HR prepares payroll drafts.','FORBIDDEN');const emp=await employee(tx,input.employeeId);await lock(tx,emp.id);
  const {salary,result}=await calculation(tx,emp.id,input.month,input);
  const record=await tx.payrollRecord.create({data:{employeeId:emp.id,salaryVersionId:salary.id,payrollMonth:date(input.month),...financial(result),employeeCodeSnapshot:emp.employeeCode,employeeNameSnapshot:emp.fullName,createdByUserId:user.id,updatedByUserId:user.id,changeReason:input.reason}});
  await event(tx,user.id,'PAYROLL_CREATED',record.id,{reason:input.reason,version:record.version});return view(record);
@@ -66,7 +72,8 @@ async function list(userId,filters={},own=false){return transaction(async tx=>{
  if(month)where.payrollMonth=date(month);if(status)where.status=status;
  if(search)where.OR=[{employeeNameSnapshot:{contains:search,mode:'insensitive'}},{employeeCodeSnapshot:{contains:search,mode:'insensitive'}}];
  const records=await tx.payrollRecord.findMany({where,include:{payment:true},orderBy:[{payrollMonth:'desc'},{employeeNameSnapshot:'asc'},{id:'asc'}],skip:(page-1)*pageSize,take:pageSize});const total=await tx.payrollRecord.count({where});
- return {records:records.map(r=>view(r,own)),total,page,pageSize,totalPages:Math.ceil(total/pageSize)};
+ const returned=own?new Map():await corrections(tx,records);
+ return {records:records.map(r=>({...view(r,own),...(!own?{needsCorrection:returned.has(r.id)}:{})})),total,page,pageSize,totalPages:Math.ceil(total/pageSize)};
 });}
 async function detail(userId,id,own=false){return transaction(async tx=>{
  const user=await actor(tx,userId,false);if(!own&&!management(user))fail(403,'Payroll management access required.','FORBIDDEN');
@@ -75,11 +82,14 @@ async function detail(userId,id,own=false){return transaction(async tx=>{
  if(!record)fail(404,'Payroll not found.','NOT_FOUND');
  const result=view(record,own);
  result.organization=await organizationAt(tx,record.employeeId,new Date(result.period.dateTo+'T00:00:00Z'));
- if(!own){const events=await tx.auditLog.findMany({where:{targetType:'Payroll',targetId:id},orderBy:[{createdAt:'asc'},{id:'asc'}],include:{actor:{select:{displayName:true}}}});result.history=events.map(e=>({action:e.action,at:e.createdAt.toISOString(),actor:e.actor?.displayName||'Authorized account',metadata:e.metadata}));}
+ if(!own){const events=await tx.auditLog.findMany({where:{targetType:'Payroll',targetId:id},orderBy:[{createdAt:'asc'},{id:'asc'}],include:{actor:{select:{displayName:true}}}});result.history=events.map(e=>({action:e.action,at:e.createdAt.toISOString(),actor:e.actor?.displayName||'Authorized account',metadata:e.metadata}));const returned=record.status==='DRAFT'?events.findLast(e=>e.action==='PAYROLL_RETURN'):null;result.needsCorrection=Boolean(returned);result.correctionReason=returned?.metadata?.reason||null;}
  return result;
 });}
 async function mutate(userId,id,input,action){return transaction(async tx=>{
- const user=await actor(tx,userId);let record=await tx.payrollRecord.findUnique({where:{id}});if(!record)fail(404,'Payroll not found.','NOT_FOUND');await lock(tx,record.employeeId);
+ const user=await actor(tx,userId);
+ const role={edit:'HR','hr-approve':'HR',return:'ADMIN',approve:'ADMIN',pay:'ADMIN'}[action];
+ if(role&&user.role!==role)fail(403,`This action requires ${role}.`,'FORBIDDEN');
+ let record=await tx.payrollRecord.findUnique({where:{id}});if(!record)fail(404,'Payroll not found.','NOT_FOUND');await lock(tx,record.employeeId);
  if(record.version!==input.expectedVersion)fail(409,'Payroll changed. Reload before trying again.','VERSION_CONFLICT');
  if(record.version>=2147483647)fail(409,'Payroll revision limit reached. No changes were saved.','VERSION_EXHAUSTED');
  const data={updatedByUserId:user.id,changeReason:input.reason,version:{increment:1}};const now=new Date();
@@ -100,6 +110,7 @@ async function mutate(userId,id,input,action){return transaction(async tx=>{
   await tx.payrollPayment.create({data:{payrollRecordId:id,amount:record.netPay,currency:'PKR',method:input.method,paidOn:new Date(input.paidOn+'T00:00:00Z'),reference:input.reference||null,note:input.note||null,actorUserId:user.id,recordedAt:now}});Object.assign(data,{status:'PAID',paidByUserId:user.id,paidAt:now});
  }else fail(400,'Unknown payroll action.');
  record=await tx.payrollRecord.update({where:{id,version:input.expectedVersion},data,include:{payment:true}});
- await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
+ const resubmitted=action==='hr-approve'&&Boolean(await tx.auditLog.findFirst({where:{targetType:'Payroll',targetId:id,action:'PAYROLL_RETURN',success:true},select:{id:true}}));
+ await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status,...(resubmitted?{resubmitted:true}:{})});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
 });}
 module.exports={salaryHistory,saveSalary,preview,createDraft,list,detail,mutate};
