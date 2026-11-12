@@ -81,6 +81,7 @@ const employmentSchema = z
 
     probationEndDate: optionalField(calendarDateSchema),
     confirmedOn: optionalField(calendarDateSchema),
+    employmentType: optionalField(z.enum(['FULL_TIME','PART_TIME','CONTRACT','INTERNSHIP','TEMPORARY'])),
     reason: textField("Employment creation reason", 1000),
   })
   .refine(
@@ -117,6 +118,8 @@ const createEmployeeSchema = z.strictObject({
   personalEmail: personalEmailSchema,
   phone: phoneSchema,
   address: optionalField(textField("Address", 1000)),
+  cnic: optionalField(z.string().transform(value=>/^\d{13}$/.test(value)?value.slice(0,5)+'-'+value.slice(5,12)+'-'+value.slice(12):value).pipe(z.string().regex(/^\d{5}-\d{7}-\d$/, 'Use 13 CNIC digits, for example 12345-1234567-1.'))),
+  location: optionalField(textField('Location',160).refine(value=>!/[\r\n\t]/.test(value),'Use a single-line location.')),
 
   emergencyContactName: optionalField(
     textField("Emergency contact name", 120)
@@ -130,6 +133,7 @@ const createEmployeeSchema = z.strictObject({
 
   employment: employmentSchema,
   organization: z.strictObject(require('./organization.validation').organizationFields).optional(),
+  startingSalary: require('./payroll-api.validation').salary.pick({monthlyBasic:true,effectiveMonth:true}).optional(),
 
   // Optional for existing profile-only API clients.
   // The updated Add Employee form requires these credentials.
@@ -189,6 +193,7 @@ function positiveIntegerParameter(label, maximum, fallback) {
 const listEmployeesQuerySchema = z.strictObject({
   page: positiveIntegerParameter("Page", 10000, 1),
   pageSize: positiveIntegerParameter("Page size", 100, 20),
+  departmentId: z.uuid().optional(),
 
   q: z
     .string()

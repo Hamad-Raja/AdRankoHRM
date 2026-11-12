@@ -86,13 +86,10 @@ export default function App() {
                   <Route
                     path="/employees"
                     element={<EmployeesPage />}
-                  />
+                  >
+                    <Route path="new" element={<EmployeeCreatePage />} />
+                  </Route>
                   <Route path="/payroll" element={<Suspense fallback={<p role="status">Loading payroll…</p>}><PayrollPage key="payroll-management" /></Suspense>} />
-
-                  <Route
-                    path="/employees/new"
-                    element={<EmployeeCreatePage />}
-                  />
 
                   <Route
                     path="/employees/:employeeId"

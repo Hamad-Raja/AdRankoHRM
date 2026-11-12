@@ -139,6 +139,8 @@ model Employee {
   personalEmail                String?  @db.VarChar(254)
   phone                        String?  @db.VarChar(32)
   address                      String?  @db.VarChar(1000)
+  cnic                         String?  @unique(map: "employees_cnic_key") @db.VarChar(15)
+  location                     String?  @db.VarChar(160)
   emergencyContactName         String?  @db.VarChar(120)
   emergencyContactPhone        String?  @db.VarChar(32)
   emergencyContactRelationship String?  @db.VarChar(60)
@@ -270,6 +272,7 @@ model EmploymentEpisode {
   statusEffectiveDate DateTime         @db.Date
   probationEndDate    DateTime?        @db.Date
   confirmedOn         DateTime?        @db.Date
+  employmentType      String?          @db.VarChar(24)
   version             Int              @default(1)
   createdAt           DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime         @updatedAt @db.Timestamptz(3)

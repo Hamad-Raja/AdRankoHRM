@@ -10,12 +10,14 @@ import { Outlet, useLocation } from "react-router";
 
 import PortalHeader from "@/layout/portal-header";
 import PortalSidebar from "@/layout/portal-sidebar";
+import {lockPageScroll} from '@/lib/scroll-lock';
 
 export default function PortalLayout() {
   const location = useLocation();
 
   const dialogRef = useRef(null);
   const mainRef = useRef(null);
+  const previousPath = useRef(location.pathname);
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -41,7 +43,9 @@ export default function PortalLayout() {
 
   useEffect(() => {
     closeMenu();
-
+    const modalNavigation = [previousPath.current,location.pathname].every(path=>path==='/employees'||path==='/employees/new') && previousPath.current!==location.pathname;
+    previousPath.current=location.pathname;
+    if(modalNavigation)return;
     window.scrollTo(0, 0);
     mainRef.current?.focus({ preventScroll: true });
   }, [location.pathname, closeMenu]);
@@ -66,14 +70,7 @@ export default function PortalLayout() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    const root = document.documentElement;
-    const previousOverflow = root.style.overflow;
-
-    root.style.overflow = "hidden";
-
-    return () => {
-      root.style.overflow = previousOverflow;
-    };
+    return lockPageScroll();
   }, [menuOpen]);
 
   return (

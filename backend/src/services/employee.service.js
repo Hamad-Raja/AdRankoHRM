@@ -19,6 +19,8 @@ const EMPLOYEE_SELECT = {
   personalEmail: true,
   phone: true,
   address: true,
+  cnic: true,
+  location: true,
   emergencyContactName: true,
   emergencyContactPhone: true,
   emergencyContactRelationship: true,
@@ -35,6 +37,7 @@ const EMPLOYMENT_SELECT = {
   statusEffectiveDate: true,
   probationEndDate: true,
   confirmedOn: true,
+  employmentType: true,
   version: true,
   createdAt: true,
   updatedAt: true,
@@ -51,14 +54,16 @@ const LATEST_EMPLOYMENT = {
 const CURRENT_ORGANIZATION = {
  orderBy:[{effectiveFrom:'desc'},{id:'desc'}],
  select:{id:true,departmentId:true,campaignId:true,teamId:true,designationId:true,reportingManagerId:true,effectiveFrom:true,effectiveTo:true,
- department:{select:{name:true}},campaign:{select:{name:true}},team:{select:{name:true}},designation:{select:{name:true}},reportingManager:{select:{displayName:true}}}
+ department:{select:{name:true}},campaign:{select:{name:true}},team:{select:{name:true,department:{select:{id:true,name:true}}}},designation:{select:{name:true}},reportingManager:{select:{displayName:true,employee:{select:{fullName:true,employeeCode:true}}}}}
 };
 
 const LIST_SELECT = {
   id: true,
   employeeCode: true,
   fullName: true,
+  location: true,
   employmentEpisodes: LATEST_EMPLOYMENT,
+  _count: {select:{salaryVersions:true}},
 };
 
 const DETAIL_SELECT = {
@@ -66,6 +71,7 @@ const DETAIL_SELECT = {
   employmentEpisodes: LATEST_EMPLOYMENT,
   user:{select:{email:true,role:true,mustChangePassword:true}},
   assignments:CURRENT_ORGANIZATION,
+  _count: {select:{salaryVersions:true}},
 };
 
 function toDatabaseDate(value) {
@@ -114,6 +120,7 @@ function serializeEmployment(employment) {
     statusEffectiveDate: toDateString(employment.statusEffectiveDate),
     probationEndDate: toDateString(employment.probationEndDate),
     confirmedOn: toDateString(employment.confirmedOn),
+    employmentType: employment.employmentType||null,
     version: employment.version,
     createdAt: employment.createdAt.toISOString(),
     updatedAt: employment.updatedAt.toISOString(),
@@ -302,6 +309,8 @@ async function createEmployee({
               personalEmail: data.personalEmail,
               phone: data.phone,
               address: data.address,
+              cnic: data.cnic,
+              location: data.location,
               emergencyContactName: data.emergencyContactName,
               emergencyContactPhone: data.emergencyContactPhone,
               emergencyContactRelationship:
@@ -326,6 +335,7 @@ async function createEmployee({
               confirmedOn: toDatabaseDate(
                 data.employment.confirmedOn
               ),
+              employmentType: data.employment.employmentType,
               statusEvents: {
                 create: {
                   fromStatus: null,
@@ -348,6 +358,9 @@ async function createEmployee({
             await tx.organizationAssignment.create({data:{...placement,employeeId:employee.id,effectiveFrom:toDatabaseDate(data.employment.startDate),actorUserId,reason:'Initial organization assignment created with employee.'}});
             await require('./organization.service').audit(tx,actorUserId,'EMPLOYEE_ORGANIZATION_ASSIGNED',employee.id);
           }
+          const startingSalary=data.startingSalary?await require('./payroll.service').saveSalaryInTransaction(tx,actorUserId,employee.id,{
+            ...data.startingSalary,expectedPreviousId:null,reason:'Starting monthly basic salary set when creating the employee.'
+          }):null;
           await tx.auditLog.create({
             data: {
               actorUserId,
@@ -386,6 +399,8 @@ async function createEmployee({
 
           return {
             ...serializeEmployee(employee, employment),
+            salaryConfigured:Boolean(startingSalary),
+            ...(startingSalary?{startingSalary}:{}),
             ...(loginAccount ? { loginAccount } : {}),
           };
         },
@@ -402,6 +417,7 @@ async function createEmployee({
       }
 
       if (error.code === "P2002") {
+        if(JSON.stringify(error.meta||{}).includes('cnic'))throw new ApiError(409,'CNIC is already linked to an employee.','EMPLOYEE_CNIC_IN_USE',[{field:'cnic',message:'Use the employee’s own unique CNIC.'}]);
         if(!data.employeeCode&&JSON.stringify(error.meta||{}).includes('employeeCode')&&attempt<CREATE_TRANSACTION_ATTEMPTS-1)continue;
         throw new ApiError(
           409,
@@ -426,24 +442,29 @@ function serializeSummary(employee) {
     id: employee.id,
     employeeCode: employee.employeeCode,
     fullName: employee.fullName,
+    location: employee.location||null,
+    organization: employee.assignments?.[0]||null,
+    salaryConfigured:(employee._count?.salaryVersions||0)>0,
     employment: serializeEmployment(employee.employmentEpisodes[0]),
   };
 }
 
 function serializeDetail(employee) {
-  const { employmentEpisodes,assignments,...profile } = employee;
+  const { employmentEpisodes,assignments,_count,...profile } = employee;
   const today=require('../utils/office-schedule').localParts(new Date(),'Asia/Karachi').date;
   const organization=assignments?.find(a=>a.effectiveFrom.toISOString().slice(0,10)<=today&&(!a.effectiveTo||a.effectiveTo.toISOString().slice(0,10)>=today))||null;
   const plannedOrganization=assignments?.find(a=>a.effectiveFrom.toISOString().slice(0,10)>today)||null;
-  return {...serializeEmployee(profile, employmentEpisodes[0]),organization,plannedOrganization};
+  return {...serializeEmployee(profile, employmentEpisodes[0]),organization,plannedOrganization,salaryConfigured:(_count?.salaryVersions||0)>0};
 }
 
 function escapeSearch(value) {
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
-function buildEmployeeFilter({ q, status }) {
+function currentPlacement(asOf){return {effectiveFrom:{lte:asOf},OR:[{effectiveTo:null},{effectiveTo:{gte:asOf}}]};}
+function buildEmployeeFilter({ q, status, departmentId },asOf) {
   const conditions = [];
+  if(departmentId)conditions.push({assignments:{some:{...currentPlacement(asOf),AND:[{OR:[{departmentId},{team:{departmentId}}]}]}}});
 
   if (q) {
     const search = escapeSearch(q);
@@ -503,14 +524,15 @@ async function readTransaction(actorUserId, operation) {
 
 async function listEmployees({ actorUserId, filters }) {
   const { page, pageSize } = filters;
-  const where = buildEmployeeFilter(filters);
+  const asOf=toDatabaseDate(require('../utils/office-schedule').localParts(new Date(),'Asia/Karachi').date);
+  const where = buildEmployeeFilter(filters,asOf);
 
   return readTransaction(actorUserId, async (tx) => {
     const total = await tx.employee.count({ where });
 
     const employees = await tx.employee.findMany({
       where,
-      select: LIST_SELECT,
+      select: {...LIST_SELECT,assignments:{...CURRENT_ORGANIZATION,take:1,where:currentPlacement(asOf)}},
       orderBy: [
         { fullName: "asc" },
         { id: "asc" },

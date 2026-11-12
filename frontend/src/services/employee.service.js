@@ -113,7 +113,7 @@ function validateCsrfToken(csrfToken) {
 }
 
 export async function listEmployees(
-  { page = 1, pageSize = 20, q = "", status = "" } = {},
+  { page = 1, pageSize = 20, q = "", status = "", departmentId = "" } = {},
   { signal } = {}
 ) {
   const query = new URLSearchParams({
@@ -128,6 +128,7 @@ export async function listEmployees(
   if (status) {
     query.set("status", status);
   }
+  if(departmentId)query.set('departmentId',departmentId);
 
   const payload = await apiRequest(
     `/employees?${query.toString()}`,

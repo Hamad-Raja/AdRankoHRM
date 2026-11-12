@@ -31,7 +31,7 @@ function EmployeeDetail({ employeeId }) {
   const location=useLocation();
   const { getCsrfToken, refreshSession, user } = useAuth();
   const [employee, setEmployee] = useState(null), [history, setHistory] = useState(null), [organization, setOrganization] = useState(null);
-  const [loadError, setLoadError] = useState(''), [revision, setRevision] = useState(0), [editing, setEditing] = useState(false);
+  const [loadError, setLoadError] = useState(''), [revision, setRevision] = useState(0), [editing, setEditing] = useState(()=>location.state?.editProfile===true);
   const [write, setWrite] = useState({ busy: false, error: '', uncertain: false, conflict: false, success: '' });
   const [formKey, setFormKey] = useState(0), lock = useRef(false);
   useEffect(() => {
@@ -61,6 +61,7 @@ function EmployeeDetail({ employeeId }) {
     {location.state?.created&&<p role="status" className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm">Employee created successfully. The profile, login and initial organization assignment were saved together.</p>}
     {loadError ? <Panel title="Unable to load employee"><p role="alert">{loadError}</p><Button onClick={() => setRevision(v => v + 1)}>Retry employee</Button></Panel> : !employee ? <p role="status">Loading employee…</p> : <>
       <h1 className="break-words text-2xl font-semibold">{employee.fullName}</h1><p>{employee.employeeCode} · {employee.employment?.status || 'No employment'}</p>
+      <p className="text-sm text-muted-foreground">{employee.salaryConfigured?'Salary configured':'Salary not configured'}</p>
       {employee.organization&&<Panel title="Current organization"><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[['Department',employee.organization.department?.name],['Campaign',employee.organization.campaign?.name],['Team',employee.organization.team?.name],['Job Title',employee.organization.designation?.name],['Reporting Manager',employee.organization.reportingManager?.displayName]].map(([label,value])=><div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{value||'Not assigned'}</dd></div>)}</dl></Panel>}
       {employee.plannedOrganization&&<Panel title="Planned organization"><p className="text-sm">Effective {employee.plannedOrganization.effectiveFrom.slice(0,10)} · {employee.plannedOrganization.department?.name} · {employee.plannedOrganization.campaign?.name||'No campaign'} · {employee.plannedOrganization.team?.name||'No team'} · {employee.plannedOrganization.designation?.name} · {employee.plannedOrganization.reportingManager?.displayName||'No reporting manager'}</p></Panel>}
       {write.error && <p role="alert" className="break-words text-destructive">{write.error}</p>}{write.success && <p role="status">{write.success}</p>}

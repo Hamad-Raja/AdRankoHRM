@@ -2,21 +2,18 @@ import {useEffect, useId, useRef} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {lockPageScroll} from '@/lib/scroll-lock';
 
-export default function PayrollDialog({title,titleAccessory,description,wide=false,busy=false,dirty=false,error,uncertain,onReload,onClose,returnFocus,children}) {
+export default function PayrollDialog({title,titleAccessory,description,wide=false,busy=false,dirty=false,error,uncertain,onReload,onClose,returnFocus,recoveryLabel='Reload saved data',recoveryDescription='Reload saved records before another write. No automatic retry was sent.',children}) {
   const id=useId(), dialog=useRef(null), opener=useRef(returnFocus||document.activeElement);
   useEffect(()=>{
     const element=dialog.current, previous=opener.current;
-    const root=document.documentElement, body=document.body;
     const scroll={left:window.scrollX,top:window.scrollY};
-    const styles={overflow:root.style.overflow,gutter:root.style.scrollbarGutter,bodyOverflow:body.style.overflow};
-    if(window.innerWidth>root.clientWidth)root.style.scrollbarGutter='stable';
-    root.style.overflow='hidden';
-    body.style.overflow='hidden';
+    const unlock=lockPageScroll();
     element.showModal();
     window.scrollTo({...scroll,behavior:'instant'});
     return ()=>{
-      element.close();root.style.overflow=styles.overflow;root.style.scrollbarGutter=styles.gutter;body.style.overflow=styles.bodyOverflow;
+      element.close();unlock();
       if(previous?.isConnected)previous.focus({preventScroll:true});
       window.scrollTo({...scroll,behavior:'instant'});
     };
@@ -40,7 +37,7 @@ export default function PayrollDialog({title,titleAccessory,description,wide=fal
     className={`payroll-dialog fixed inset-0 m-auto max-h-[94svh] w-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl backdrop:bg-black/65 backdrop:backdrop-blur-[5px] open:flex sm:w-[calc(100%-3rem)] sm:p-6 ${wide?'max-w-5xl':'max-w-xl'}`}>
     <header className="mb-5 flex shrink-0 items-start justify-between gap-3 border-b border-border pb-4"><div><div className="flex flex-wrap items-center gap-3"><h2 id={id+'-title'} className="text-xl font-semibold">{title}</h2>{titleAccessory}</div><p id={id+'-description'} className="mt-1 text-sm text-muted-foreground">{description}</p></div><Button type="button" variant="ghost" size="icon" aria-label="Close dialog" disabled={busy} onClick={close}><X aria-hidden="true"/></Button></header>
     {error && <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error.message||error}</p>}
-    {uncertain && <div className="mb-4 space-y-2 rounded-lg border border-border p-3 text-sm"><p>Reload saved records before another write. No automatic retry was sent.</p><Button type="button" variant="outline" disabled={busy} onClick={()=>void onReload()}>Reload saved data</Button></div>}
+    {uncertain && <div className="mb-4 space-y-2 rounded-lg border border-border p-3 text-sm"><p>{recoveryDescription}</p><Button type="button" variant="outline" disabled={busy} onClick={()=>void onReload()}>{recoveryLabel}</Button></div>}
     {children(close)}
   </dialog>,document.body);
 }

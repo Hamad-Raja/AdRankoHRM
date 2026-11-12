@@ -34,13 +34,17 @@ async function salaryHistory(userId,employeeId){return transaction(async tx=>{
   return {...salaryView(version),changeAmount:difference===null?null:(difference<0n?'-':'+')+moneyFromMinor(difference<0n?-difference:difference)};
  })};
 });}
-async function saveSalary(userId,employeeId,input){return transaction(async tx=>{
+async function saveSalaryInTransaction(tx,userId,employeeId,input){
+ const parsed=require('../validation/payroll-api.validation').salary.safeParse(input);
+ if(!parsed.success)fail(400,'Enter a valid positive monthly salary and effective month.','VALIDATION_ERROR');
+ input=parsed.data;
  const user=await actor(tx,userId);await employee(tx,employeeId);await lock(tx,employeeId);
  const previous=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:date(input.effectiveMonth)},orderBy:{revision:'desc'}});
  if((previous?.id||null)!==input.expectedPreviousId)fail(409,'Salary revision changed. Reload salary history.','SALARY_CONFLICT');
  const record=await tx.employeeSalaryVersion.create({data:{employeeId,effectiveMonth:date(input.effectiveMonth),monthlyBasic:moneyFromMinor(moneyToMinor(input.monthlyBasic)),currency:'PKR',revision:(previous?.revision||0)+1,previousId:previous?.id||null,actorUserId:user.id,reason:input.reason}});
  await event(tx,user.id,'SALARY_REVISION_CREATED',record.id,{employeeId,effectiveMonth:input.effectiveMonth,revision:record.revision,reason:input.reason});return salaryView(record);
-});}
+}
+async function saveSalary(userId,employeeId,input){return transaction(tx=>saveSalaryInTransaction(tx,userId,employeeId,input));}
 async function calculation(tx,employeeId,month,input){const salary=await applicable(tx,employeeId,month);const result=calculatePayrollPreview({month,monthlyBasic:salary.monthlyBasic.toFixed(2),currency:'PKR',totalPayableDays:input.totalPayableDays,workedDays:input.workedDays,earnings:input.earnings,deductions:input.deductions});return {salary,result};}
 async function preview(userId,input){return transaction(async tx=>{await actor(tx,userId);const emp=await employee(tx,input.employeeId);const {salary,result}=await calculation(tx,emp.id,input.month,input);return {...result,salaryVersionId:salary.id,employee:emp};});}
 function financial(result){const {month,period,...fields}=result;void month;void period;return fields;}
@@ -113,4 +117,4 @@ async function mutate(userId,id,input,action){return transaction(async tx=>{
  const resubmitted=action==='hr-approve'&&Boolean(await tx.auditLog.findFirst({where:{targetType:'Payroll',targetId:id,action:'PAYROLL_RETURN',success:true},select:{id:true}}));
  await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status,...(resubmitted?{resubmitted:true}:{})});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
 });}
-module.exports={salaryHistory,saveSalary,preview,createDraft,list,detail,mutate};
+module.exports={salaryHistory,saveSalary,saveSalaryInTransaction,preview,createDraft,list,detail,mutate};
