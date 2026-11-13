@@ -7,8 +7,10 @@ function parse(s,value){const result=s.safeParse(value);if(!result.success)throw
 const run=work=>async(req,res,next)=>{try{res.json({success:true,data:await work(req)});}catch(e){next(e);}};
 router.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});router.use(authenticate());
 router.get('/payslips',run(req=>service.list(req.auth.user.id,parse(schema.list,req.query),true)));
+router.get('/payslips/annual-summary',run(req=>service.annualSummary(req.auth.user.id,parse(schema.annual,req.query),true)));
 router.get('/payslips/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id),true)));
 router.use(authorize('ADMIN','HR'));
+router.get('/annual-summary',run(req=>service.annualSummary(req.auth.user.id,parse(schema.annual,req.query))));
 router.get('/salaries/:employeeId',run(req=>service.salaryHistory(req.auth.user.id,parse(schema.id,req.params.employeeId))));
 router.post('/salaries/:employeeId',csrfProtection,run(req=>service.saveSalary(req.auth.user.id,parse(schema.id,req.params.employeeId),parse(schema.salary,req.body))));
 router.post('/preview',csrfProtection,run(req=>service.preview(req.auth.user.id,parse(schema.preview,req.body))));

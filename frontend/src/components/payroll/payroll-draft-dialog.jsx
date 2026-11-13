@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import {payrollRequest} from '@/services/payroll.service';
 import {useAuth} from '@/context/auth-context';
 import PayrollDialog from './payroll-dialog';
+import {usePayrollResource} from './use-payroll-resource';
 import {PayrollField} from './payroll-fields';
 import {currentMonth,inputClass,pkr,readable,earningTypes,deductionTypes} from './payroll-format';
 
@@ -29,6 +30,7 @@ export default function PayrollDraftDialog({employee,record,month,busy,uncertain
   const [earnings,setEarnings]=useState(()=>initial.earnings.map(item=>({...item,key:crypto.randomUUID()})));
   const [deductions,setDeductions]=useState(()=>initial.deductions.map(item=>({...item,key:crypto.randomUUID()})));
   const [preview,setPreview]=useState(null), [previewBusy,setPreviewBusy]=useState(false), [previewError,setPreviewError]=useState(null);
+  const salary=usePayrollResource('/salaries/'+employee.id);
   useEffect(()=>()=>pendingPreview.current?.abort(),[]);
   const input={employeeId:employee.id,month:values.month,totalPayableDays:values.totalPayableDays,workedDays:values.workedDays,
     earnings:earnings.map(({type,label,amount})=>({type,label,amount})),deductions:deductions.map(({type,label,amount})=>({type,label,amount}))};
@@ -36,9 +38,11 @@ export default function PayrollDraftDialog({employee,record,month,busy,uncertain
   const initialSignature=JSON.stringify({employeeId:employee.id,...initial});
   const dirty=Boolean(reason)||signature!==initialSignature;
   const visiblePreview=preview?.signature===signature?preview.data:null;
+  const applicableSalary=salary.data?.versions.find(version=>version.effectiveMonth<=values.month)||null;
   const failure=error||previewError;
   const fieldError=name=>failure?.details?.field===name?failure.message:undefined;
-  function change(event){setValues(old=>({...old,[event.target.name]:event.target.value}));setPreviewError(null);}
+  function invalidatePreview(){pendingPreview.current?.abort();pendingPreview.current=null;setPreviewBusy(false);setPreview(null);setPreviewError(null);}
+  function change(event){invalidatePreview();setValues(old=>({...old,[event.target.name]:event.target.value}));}
   async function calculate() {
     if(pendingPreview.current)return;
     for(const field of form.current.elements){if(field.name==='reason'||!field.reportValidity)continue;if(!field.reportValidity())return;}
@@ -48,18 +52,21 @@ export default function PayrollDraftDialog({employee,record,month,busy,uncertain
     finally{if(pendingPreview.current===controller)pendingPreview.current=null;if(!controller.signal.aborted)setPreviewBusy(false);}
   }
   async function save(event){event.preventDefault();const body=record?{totalPayableDays:input.totalPayableDays,workedDays:input.workedDays,earnings:input.earnings,deductions:input.deductions,reason,expectedVersion:record.version}:{...input,reason};const saved=await onSave(record?'/'+record.id:'',body,record?'PATCH':'POST');if(saved)onClose();}
-  return <PayrollDialog title={record?'Edit Payroll Draft':'Prepare Payroll Draft'} description="Enter approved payable and worked days, then calculate and review this period's pay." wide busy={busy} dirty={dirty} error={failure} uncertain={uncertain} onReload={onReload} onClose={onClose} returnFocus={returnFocus}>
+  return <PayrollDialog title={record?'Edit Payroll Draft':'Prepare Payroll Draft'} description="Enter approved payable and worked days, then calculate and review this period's pay." confirmDiscard wide busy={busy} dirty={dirty} error={failure} uncertain={uncertain} onReload={onReload} onClose={onClose} returnFocus={returnFocus}>
     {close=><form ref={form} onSubmit={save} aria-label="Payroll draft" className="flex min-h-0 flex-col overflow-hidden" aria-busy={busy}>
       <div className="payroll-form-body min-h-0 overflow-y-auto overscroll-contain px-1 pb-5"><fieldset disabled={busy||uncertain} className="min-w-0 space-y-5">
-        <PayrollField label="Employee"><input className={inputClass} readOnly value={`${employee.fullName} · ${employee.employeeCode}`}/></PayrollField>
-        <section aria-label="Payroll information" className="space-y-3"><h3 className="font-semibold">Payroll Information</h3><div className="grid min-w-0 gap-4 sm:grid-cols-3">
+        <section aria-label="Employee and period" className="space-y-4 rounded-xl border border-border bg-background/40 p-4"><h3 className="font-semibold">Employee &amp; Period</h3><PayrollField label="Employee"><input className={inputClass} readOnly value={`${employee.fullName} · ${employee.employeeCode}`}/></PayrollField>
           <PayrollField label="Payroll Month" error={fieldError('month')}><input className={inputClass} type="month" name="month" required disabled={Boolean(record)} value={values.month} onChange={change}/></PayrollField>
+          {salary.loading?<p role="status" className="text-sm text-muted-foreground">Loading applicable salary…</p>:salary.error?<div role="alert" className="space-y-2 text-sm text-destructive"><p>Applicable salary unavailable: {salary.error.message}</p><Button type="button" variant="outline" onClick={()=>void salary.reload().catch(()=>{})}>Retry applicable salary</Button></div>:<div className="grid gap-3 text-sm sm:grid-cols-2"><div><p className="text-muted-foreground">Applicable Monthly Basic Salary</p><p className="mt-1 font-semibold tabular-nums">{applicableSalary?pkr(applicableSalary.monthlyBasic):'No salary effective for this month'}</p></div><div><p className="text-muted-foreground">Salary Effective Month</p><p className="mt-1 font-semibold">{applicableSalary?.effectiveMonth||'Not configured'}</p></div></div>}
+          {record&&<p className="text-xs text-muted-foreground">Saved draft basic: {pkr(record.monthlyBasic)}. Preview and save use the applicable salary above; finalized records retain their snapshots.</p>}
+        </section>
+        <section aria-label="Payroll information" className="space-y-3"><h3 className="font-semibold">Pay Calculation Basis</h3><div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <PayrollField label="Total Payable Days" error={fieldError('totalPayableDays')}><input className={inputClass} name="totalPayableDays" inputMode="decimal" required value={values.totalPayableDays} onChange={change}/></PayrollField>
           <PayrollField label="Worked Days" error={fieldError('workedDays')}><input className={inputClass} name="workedDays" inputMode="decimal" required value={values.workedDays} onChange={change}/></PayrollField>
         </div><p className="text-xs text-muted-foreground">Enter up to 31 payable days with at most two decimal places. Attendance does not replace your entered days.</p></section>
-        <Adjustments kind="earnings" items={earnings} onChange={setEarnings} error={failure?.details?.field?.startsWith('earnings')?failure.message:null}/>
-        <Adjustments kind="deductions" items={deductions} onChange={setDeductions} error={failure?.details?.field?.startsWith('deductions')?failure.message:null}/>
-        <section aria-label="Payroll calculation preview" className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4"><h3 className="font-semibold">Payroll Calculation Preview</h3>{visiblePreview?<><p className="text-xs text-muted-foreground">{visiblePreview.month} · Monthly basic {pkr(visiblePreview.monthlyBasic)}</p><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[['Prorated Basic Salary',visiblePreview.earnedBasic],['Total Additional Earnings',visiblePreview.additionalEarnings],['Total Deductions',visiblePreview.totalDeductions],['Net Payable Salary',visiblePreview.netPay]].map(([label,value])=><div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-semibold tabular-nums">{pkr(value)}</dd></div>)}</dl></>:<p className="text-sm text-muted-foreground">Calculate a preview after entering the payroll details. Changed inputs require a new preview.</p>}</section>
+        <Adjustments kind="earnings" items={earnings} onChange={items=>{invalidatePreview();setEarnings(items);}} error={failure?.details?.field?.startsWith('earnings')?failure.message:null}/>
+        <Adjustments kind="deductions" items={deductions} onChange={items=>{invalidatePreview();setDeductions(items);}} error={failure?.details?.field?.startsWith('deductions')?failure.message:null}/>
+        <section aria-label="Payroll calculation preview" className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4"><h3 className="font-semibold">Payroll Calculation Preview</h3>{visiblePreview?<><p className="text-xs text-muted-foreground">{visiblePreview.month} · Monthly basic {pkr(visiblePreview.monthlyBasic)}</p><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[['Prorated Basic Salary',visiblePreview.earnedBasic],['Unearned Basic (reference only)',visiblePreview.unearnedBasic],['Total Additional Earnings',visiblePreview.additionalEarnings],['Gross Pay',visiblePreview.grossPay],['Total Deductions',visiblePreview.totalDeductions]].map(([label,value])=><div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-semibold tabular-nums">{pkr(value)}</dd></div>)}</dl><div className="flex flex-wrap items-center justify-between gap-2 border-t border-primary/25 pt-4"><p className="font-semibold">Net Payable Salary</p><p className="text-2xl font-bold tabular-nums text-primary">{pkr(visiblePreview.netPay)}</p></div></>:<p className="text-sm text-muted-foreground">Calculate a preview after entering the payroll details. Changed inputs require a new preview.</p>}</section>
         <PayrollField label="Draft Change Reason" hint="Required for the payroll audit history."><input className={inputClass} name="reason" required maxLength={1000} value={reason} onChange={event=>setReason(event.target.value)}/></PayrollField>
       </fieldset></div>
       <footer className="relative flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-card pt-4"><Button type="button" variant="outline" disabled={busy||uncertain||previewBusy} onClick={()=>void calculate()}>{previewBusy?<LoaderCircle className="animate-spin" aria-hidden="true"/>:<Calculator aria-hidden="true"/>}{previewBusy?'Calculating…':'Calculate Preview'}</Button><div className="flex flex-wrap gap-3"><Button type="button" variant="outline" disabled={busy} onClick={close}>Cancel</Button><Button type="submit" disabled={busy||uncertain||previewBusy}>{busy?'Saving…':record?'Save Draft Changes':'Save Draft'}</Button></div></footer>

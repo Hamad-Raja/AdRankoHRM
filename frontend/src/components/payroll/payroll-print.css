@@ -1,6 +1,6 @@
 @media print {
   @page { size: A4; margin: 14mm; }
-  html, body { overflow: visible !important; }
+  html, body { overflow: visible !important; background: #fff !important; color: #000 !important; }
   body > #root { display: none !important; }
   .payroll-dialog[open] {
     position: absolute !important; inset: 0 !important; display: block !important;
@@ -18,5 +18,6 @@
     border: 0; color: #000 !important; background: #fff !important;
   }
   .payroll-slip * { color: #000 !important; background: transparent !important; }
+  .payroll-slip > details { display: none !important; }
   .payroll-slip section > div { break-inside: avoid; }
 }

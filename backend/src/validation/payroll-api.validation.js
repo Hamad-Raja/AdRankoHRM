@@ -15,4 +15,5 @@ const edit=z.object({...inputs,expectedVersion:version,reason}).strict();
 const decision=z.object({expectedVersion:version,reason}).strict();
 const payment=decision.extend({method:z.enum(['CASH','BANK_TRANSFER','OTHER']),paidOn:z.string().refine(isCalendarDate),reference:z.string().trim().min(1).max(120).optional(),note:reason.optional()}).strict().refine(v=>v.method==='CASH'||!!v.reference,'A reference is required.');
 const list=z.object({page:z.coerce.number().int().min(1).max(1000000).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(20),month:month.optional(),employeeId:z.uuid().optional(),status:z.enum(['DRAFT','HR_APPROVED','APPROVED','PAID']).optional(),search:z.string().trim().max(120).optional()}).strict();
-module.exports={salary,preview,draft,edit,decision,payment,list,month,id:z.uuid()};
+const annual=z.object({year:z.string().regex(/^(?!0000)[0-9]{4}$/,'Use a calendar year from 0001 to 9999.'),employeeId:z.uuid().optional()}).strict();
+module.exports={salary,preview,draft,edit,decision,payment,list,annual,month,id:z.uuid()};

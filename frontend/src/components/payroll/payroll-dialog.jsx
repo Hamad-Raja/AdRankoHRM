@@ -1,11 +1,12 @@
-import {useEffect, useId, useRef} from 'react';
+import {useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {lockPageScroll} from '@/lib/scroll-lock';
 
-export default function PayrollDialog({title,titleAccessory,description,wide=false,busy=false,dirty=false,error,uncertain,onReload,onClose,returnFocus,recoveryLabel='Reload saved data',recoveryDescription='Reload saved records before another write. No automatic retry was sent.',children}) {
+export default function PayrollDialog({title,titleAccessory,description,wide=false,busy=false,dirty=false,error,uncertain,onReload,onClose,returnFocus,confirmDiscard=false,recoveryLabel='Reload saved data',recoveryDescription='Reload saved records before another write. No automatic retry was sent.',children}) {
   const id=useId(), dialog=useRef(null), opener=useRef(returnFocus||document.activeElement);
+  const [discard,setDiscard]=useState(false);
   useEffect(()=>{
     const element=dialog.current, previous=opener.current;
     const scroll={left:window.scrollX,top:window.scrollY};
@@ -20,6 +21,7 @@ export default function PayrollDialog({title,titleAccessory,description,wide=fal
   },[]);
   function close() {
     if(busy)return;
+    if(confirmDiscard&&(dirty||uncertain)){setDiscard(true);return;}
     if((dirty||uncertain)&&!window.confirm(uncertain?'A save may already have completed. Close this form and review saved records?':'Discard unsaved changes?'))return;
     onClose();
   }
@@ -39,5 +41,8 @@ export default function PayrollDialog({title,titleAccessory,description,wide=fal
     {error && <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error.message||error}</p>}
     {uncertain && <div className="mb-4 space-y-2 rounded-lg border border-border p-3 text-sm"><p>{recoveryDescription}</p><Button type="button" variant="outline" disabled={busy} onClick={()=>void onReload()}>{recoveryLabel}</Button></div>}
     {children(close)}
+    {discard&&<PayrollDialog title={uncertain?'Leave unconfirmed action?':'Discard unsaved changes?'} description={uncertain?'A save may already have completed. Review saved records before submitting again.':'Your unsaved changes will be lost. Keep editing to retain them.'} busy={busy} onClose={()=>setDiscard(false)}>
+      {cancel=><footer className="flex flex-wrap justify-end gap-3"><Button variant="outline" disabled={busy} onClick={cancel}>Keep editing</Button><Button disabled={busy} onClick={onClose}>{uncertain?'Close and review':'Discard changes'}</Button></footer>}
+    </PayrollDialog>}
   </dialog>,document.body);
 }

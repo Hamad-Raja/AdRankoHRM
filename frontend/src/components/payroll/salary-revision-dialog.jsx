@@ -16,7 +16,7 @@ export default function SalaryRevisionDialog({employee,history,currentSalary,mon
     const saved=await onSave('/salaries/'+employee.id,{effectiveMonth,monthlyBasic:amount,expectedPreviousId:previous?.id||null,reason});
     if(saved)onClose();
   }
-  return <PayrollDialog title="Revise Pay" description="Save a salary change from the selected month while preserving previous salaries." busy={busy} dirty={dirty} error={error} uncertain={uncertain} onReload={onReload} onClose={onClose}>
+  return <PayrollDialog title="Revise Pay" description="Save a salary change from the selected month while preserving previous salaries." confirmDiscard busy={busy} dirty={dirty} error={error} uncertain={uncertain} onReload={onReload} onClose={onClose}>
     {close=><form onSubmit={save} aria-label="Salary Change" className="flex min-h-0 flex-col overflow-hidden" aria-busy={busy}>
       <div className="payroll-form-body min-h-0 overflow-y-auto overscroll-contain px-1 pb-5"><fieldset disabled={busy||uncertain} className="min-w-0 space-y-4">
         <PayrollField label="Employee"><input className={inputClass} readOnly value={`${employee.fullName} · ${employee.employeeCode}`}/></PayrollField>

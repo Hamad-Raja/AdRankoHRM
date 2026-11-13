@@ -2,7 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {payrollRequest} from '@/services/payroll.service';
 import {ApiError} from '@/lib/api';
 
-export function usePayrollResource(path,request=payrollRequest) {
+export function usePayrollResource(path,request=payrollRequest,refreshKey=0) {
   const [result,setResult]=useState(null);
   const pending=useRef(new Set()), version=useRef(0);
   const reload=useCallback(()=>{
@@ -26,7 +26,7 @@ export function usePayrollResource(path,request=payrollRequest) {
     const requests=pending.current;
     void reload().catch(()=>{});
     return ()=>{for(const controller of requests)controller.abort();requests.clear();};
-  },[reload]);
+  },[reload,refreshKey]);
   const current=result?.path===path?result:null;
   return {data:current?.data||null,error:current?.error||null,loading:Boolean(path&&!current),reload};
 }

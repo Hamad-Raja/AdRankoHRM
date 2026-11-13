@@ -117,4 +117,21 @@ async function mutate(userId,id,input,action){return transaction(async tx=>{
  const resubmitted=action==='hr-approve'&&Boolean(await tx.auditLog.findFirst({where:{targetType:'Payroll',targetId:id,action:'PAYROLL_RETURN',success:true},select:{id:true}}));
  await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status,...(resubmitted?{resubmitted:true}:{})});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
 });}
-module.exports={salaryHistory,saveSalary,saveSalaryInTransaction,preview,createDraft,list,detail,mutate};
+async function annualSummary(userId,input,own=false){return transaction(async tx=>{
+ const user=await actor(tx,userId,false);
+ if(!own&&!management(user))fail(403,'Payroll management access required.','FORBIDDEN');
+ const employeeId=own?(await ownEmployee(tx,user)).id:input.employeeId;
+ if(own&&input.employeeId&&input.employeeId!==employeeId)fail(403,'Own payslips only.','FORBIDDEN');
+ if(!employeeId)fail(400,'Select an employee for the annual summary.','EMPLOYEE_REQUIRED');
+ const emp=await employee(tx,employeeId);
+ // One unique payroll record per employee/month; read the complete calendar
+ // year in the same transaction, independently of monthly table pagination.
+ const records=await tx.payrollRecord.findMany({where:{employeeId,status:{in:['APPROVED','PAID']},payrollMonth:{gte:date(input.year+'-01'),lte:date(input.year+'-12')}},orderBy:{payrollMonth:'asc'},select:{id:true,payrollMonth:true,status:true,grossPay:true,totalDeductions:true,netPay:true}});
+ const sums={grossPay:0n,totalDeductions:0n,netPay:0n,paidTotal:0n,awaitingPayment:0n};
+ const months=records.map(record=>{for(const key of ['grossPay','totalDeductions','netPay'])sums[key]+=moneyToMinor(record[key].toFixed(2));sums[record.status==='PAID'?'paidTotal':'awaitingPayment']+=moneyToMinor(record.netPay.toFixed(2));return {id:record.id,month:monthOf(record.payrollMonth),status:record.status,grossPay:record.grossPay.toFixed(2),totalDeductions:record.totalDeductions.toFixed(2),netPay:record.netPay.toFixed(2)};});
+ // Yearly sums can exceed the per-record input limit. Format exact integer
+ // paisa without applying a transaction limit to a read-only aggregate.
+ const totals=Object.fromEntries(Object.entries(sums).map(([key,value])=>[key,`${value/100n}.${String(value%100n).padStart(2,'0')}`]));
+ return {employee:emp,year:input.year,currency:'PKR',recordCount:months.length,totals,months};
+});}
+module.exports={salaryHistory,saveSalary,saveSalaryInTransaction,preview,createDraft,list,detail,mutate,annualSummary};
