@@ -10,10 +10,12 @@ import { Outlet, useLocation } from "react-router";
 
 import PortalHeader from "@/layout/portal-header";
 import PortalSidebar from "@/layout/portal-sidebar";
+import {useAuth} from '@/context/auth-context';
 import {lockPageScroll} from '@/lib/scroll-lock';
 
 export default function PortalLayout() {
   const location = useLocation();
+  const {user}=useAuth();
 
   const dialogRef = useRef(null);
   const mainRef = useRef(null);
@@ -74,7 +76,7 @@ export default function PortalLayout() {
   }, [menuOpen]);
 
   return (
-    <div className="min-h-svh bg-background text-foreground [overflow-wrap:anywhere]">
+    <div data-hr-dashboard={user?.role==='HR'&&location.pathname==='/dashboard'?'true':undefined} className="min-h-svh bg-background text-foreground [overflow-wrap:anywhere]">
       <a
         href="#officehr-main"
         className="fixed top-4 left-4 z-50 -translate-y-24 rounded-md bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-md focus:translate-y-0 focus-visible:outline-2 focus-visible:outline-ring"
