@@ -225,7 +225,7 @@ export default function AccountPage() {
             Password and security
           </h2>
 
-          {user.role==='EMPLOYEE' ? <p className="mt-4 text-sm text-muted-foreground">{passwordChangeRequired ? 'An administrator must update your credentials before you can continue. ' : ''}Contact an administrator to reset your password.</p> : <>
+          {['EMPLOYEE','MANAGER'].includes(user.role) ? <p className="mt-4 text-sm text-muted-foreground">{passwordChangeRequired ? 'An administrator must update your credentials before you can continue. ' : ''}Contact Admin or HR to reset your password.</p> : <>
           {passwordChangeRequired && (
             <p
               role="status"

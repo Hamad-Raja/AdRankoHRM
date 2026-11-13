@@ -59,7 +59,7 @@ async function changePassword(auth, credentials, context = {}) {
   if (!user || user.status !== "ACTIVE") {
     throw sessionError();
   }
-  if(user.role==='EMPLOYEE')throw new ApiError(403,'Contact an administrator to update your password.','ADMIN_PASSWORD_RESET_REQUIRED');
+  if(['EMPLOYEE','MANAGER'].includes(user.role))throw new ApiError(403,'Contact an administrator to update your password.','ADMIN_PASSWORD_RESET_REQUIRED');
 
   const passwordMatches = await verifyPassword(
     currentPassword,
@@ -127,7 +127,7 @@ async function changePassword(auth, credentials, context = {}) {
         "CREDENTIALS_CHANGED"
       );
     }
-    if(currentUser.role==='EMPLOYEE')throw new ApiError(403,'Contact an administrator to update your password.','ADMIN_PASSWORD_RESET_REQUIRED');
+    if(['EMPLOYEE','MANAGER'].includes(currentUser.role))throw new ApiError(403,'Contact an administrator to update your password.','ADMIN_PASSWORD_RESET_REQUIRED');
 
     await tx.user.update({
       where: {

@@ -50,6 +50,7 @@ const changePasswordSchema = z
   );
 
 module.exports = {
+  managedResetSchema: z.strictObject({requestId:z.uuid(),newPassword:newPasswordSchema,confirmPassword:newPasswordSchema,reason:z.string().trim().min(1).max(1000),confirmed:z.literal(true)}).refine(value=>value.newPassword===value.confirmPassword,'Passwords must match.'),
   emailSchema,
   newPasswordSchema,
   loginSchema,

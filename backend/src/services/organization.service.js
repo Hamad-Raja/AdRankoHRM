@@ -11,7 +11,8 @@ const assignmentRelations={department:{select:{name:true}},campaign:{select:{nam
 async function actor(tx, id, management = true) {
   const user = await tx.user.findUnique({ where: { id } });
   if (!user || user.status !== 'ACTIVE') fail(401, 'Account unavailable.', 'UNAUTHENTICATED');
-  if (user.mustChangePassword) fail(403, 'Change your password first.', 'PASSWORD_CHANGE_REQUIRED');
+  await require('./employment-access.service').assertAllowed(tx,user);
+  if (user.mustChangePassword&&!['EMPLOYEE','MANAGER'].includes(user.role)) fail(403, 'Change your password first.', 'PASSWORD_CHANGE_REQUIRED');
   if (management && !['ADMIN', 'HR'].includes(user.role)) fail(403, 'Management access required.', 'FORBIDDEN');
   return user;
 }
@@ -112,11 +113,24 @@ async function replaceInterval(model, field, owner, tx, data) {
   }
   return { effectiveFrom: from, effectiveTo: to };
 }
+// Keep new dated placements consistent with an approved exit, including the review/processing gap.
+async function assertEmploymentPlacement(tx,employeeId,userId,effectiveFrom){
+ if(!await require('./employment-access.service').ready(tx))return;
+ const scope=[...(employeeId?[{employeeId}]:[]),...(userId?[{employeeUserId:userId}]:[])];
+ if(!scope.length)return;
+ const exits=await tx.employmentCase.findMany({where:{OR:scope,kind:{in:['RESIGNATION','TERMINATION']},state:{in:['APPROVED','COMPLETED']},confirmedLastDate:{lt:date(effectiveFrom)}},orderBy:{confirmedLastDate:'desc'}});
+ for(const exit of exits){
+  const rehired=await tx.employmentEpisode.findFirst({where:{employeeId:exit.employeeId,startDate:{gt:exit.confirmedLastDate,lte:date(effectiveFrom)},OR:[{endDate:null},{endDate:{gte:date(effectiveFrom)}}]}});
+  if(!rehired)fail(409,'This placement starts after an approved exit. Resolve the exit or complete an approved rehire first.','EMPLOYMENT_PLACEMENT_CONFLICT');
+ }
+}
 async function assignEmployee(id, employeeId, data) {
   return transaction(async tx => {
     await actor(tx, id);
     const employee=await tx.employee.findUnique({where:{id:employeeId}});
     if (!employee) fail(404, 'Employee not found.', 'NOT_FOUND');
+    await assertEmploymentPlacement(tx,employeeId,null,data.effectiveFrom);
+    await assertEmploymentPlacement(tx,null,data.reportingManagerId,data.effectiveFrom);
     const placement=await validatePlacement(tx,data,employee.userId);
     const dates = await replaceInterval('organizationAssignment', 'employeeId', employeeId, tx, data);
     const assignment = await tx.organizationAssignment.create({ data: { ...data,...placement, ...dates, employeeId, actorUserId: id } });
@@ -128,6 +142,7 @@ async function assignManager(id, teamId, data) {
     await actor(tx, id); await team(tx, teamId);
     const manager = await tx.user.findUnique({ where: { id: data.managerUserId } });
     if (!manager || manager.role !== 'MANAGER' || manager.status !== 'ACTIVE') fail(400, 'Select an active MANAGER account.');
+    await assertEmploymentPlacement(tx,null,data.managerUserId,data.effectiveFrom);
     const dates = await replaceInterval('teamManagerAssignment', 'teamId', teamId, tx, data);
     const assignment = await tx.teamManagerAssignment.create({ data: { ...data, ...dates, teamId, actorUserId: id } });
     await audit(tx, id, 'TEAM_MANAGER_ASSIGNED', teamId, { assignmentId: assignment.id, effectiveFrom: data.effectiveFrom }); return assignment;
@@ -163,4 +178,4 @@ async function history(id, employeeId) {
     await audit(tx, id, 'EMPLOYEE_HISTORY_READ', employeeId); return { episodes, assignments };
   });
 }
-module.exports = { actor, audit, transaction, fail, listOrganization, createUnit, updateUnit, archiveUnit, assignEmployee, assignManager, scopedEmployees, history, validatePlacement };
+module.exports = { actor, audit, transaction, fail, listOrganization, createUnit, updateUnit, archiveUnit, assignEmployee, assignManager, scopedEmployees, history, validatePlacement, assertEmploymentPlacement };

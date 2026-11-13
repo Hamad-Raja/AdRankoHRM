@@ -17,6 +17,9 @@ import OrganizationPage from "@/pages/organization-page";
 import AttendanceSettingsPage from "@/pages/attendance-settings-page";
 import AttendancePage from "@/pages/attendance-page";
 import ReportsPage from "@/pages/reports-page";
+import AuditPage from "@/pages/audit-page";
+import MyProfilePage from "@/pages/my-profile-page";
+import EmploymentPage from "@/pages/employment-page";
 const PayrollPage = lazy(() => import("@/pages/payroll-page"));
 const AnnouncementsPage = lazy(() => import("@/pages/announcements-page"));
 const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
@@ -63,6 +66,9 @@ export default function App() {
                   path="/dashboard"
                   element={<DashboardPage />}
                 />
+                <Route path="/my-profile" element={<MyProfilePage/>}/>
+                <Route path="/employment" element={<EmploymentPage/>}/>
+                <Route element={<ProtectedRoute allowedRoles={["ADMIN"]}/>}><Route path="/audit" element={<AuditPage/>}/></Route>
 
                 <Route
                   path="/attendance"

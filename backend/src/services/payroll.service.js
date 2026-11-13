@@ -18,7 +18,7 @@ async function transaction(work){
 async function event(tx,userId,action,targetId,metadata){await tx.auditLog.create({data:{actorUserId:userId,action,success:true,targetType:'Payroll',targetId,metadata}});}
 async function employee(tx,id){const emp=await tx.employee.findUnique({where:{id},select:{id:true,fullName:true,employeeCode:true}});if(!emp)fail(404,'Employee not found.','NOT_FOUND');return emp;}
 async function lock(tx,id){await tx.$queryRaw`SELECT id FROM employees WHERE id=${id}::uuid FOR UPDATE`;}
-async function applicable(tx,employeeId,month){const salary=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:{lte:date(month)}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});if(!salary)fail(409,'Set an effective salary for this payroll month first.','SALARY_REQUIRED');return salary;}
+async function applicable(tx,employeeId,month){const boundary=(await require('./employment.service').salaryBoundaries(tx,employeeId)).find(item=>item.month<=month);const salary=await tx.employeeSalaryVersion.findFirst({where:{employeeId,effectiveMonth:{lte:date(month),...(boundary?{gte:date(boundary.month)}:{})},...(boundary?{id:{notIn:boundary.excludedVersionIds}}:{})},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});if(!salary)fail(409,'Set an effective salary for this payroll month and employment episode first.','SALARY_REQUIRED');return salary;}
 const salaryView=s=>({id:s.id,employeeId:s.employeeId,effectiveMonth:monthOf(s.effectiveMonth),revision:s.revision,previousId:s.previousId,monthlyBasic:s.monthlyBasic.toFixed(2),currency:s.currency,reason:s.reason,actorUserId:s.actorUserId,actorName:s.actor?.displayName||null,createdAt:s.createdAt.toISOString()});
 async function organizationAt(tx,employeeId,asOf){
  const assignment=await tx.organizationAssignment.findFirst({where:{employeeId,effectiveFrom:{lte:asOf},OR:[{effectiveTo:null},{effectiveTo:{gte:asOf}}]},orderBy:[{effectiveFrom:'desc'},{id:'desc'}],select:{department:{select:{name:true}},designation:{select:{name:true}},team:{select:{department:{select:{name:true}}}}}});
@@ -28,7 +28,7 @@ async function salaryHistory(userId,employeeId){return transaction(async tx=>{
  await actor(tx,userId);const emp=await employee(tx,employeeId);
  const versions=await tx.employeeSalaryVersion.findMany({where:{employeeId},include:{actor:{select:{displayName:true}}},orderBy:[{effectiveMonth:'desc'},{revision:'desc'}]});
  const today=require('../utils/office-schedule').localParts(new Date(),'Asia/Karachi').date;
- return {employee:{...emp,organization:await organizationAt(tx,emp.id,new Date(today+'T00:00:00Z'))},versions:versions.map(version=>{
+ return {employee:{...emp,organization:await organizationAt(tx,emp.id,new Date(today+'T00:00:00Z'))},rehireBoundaries:await require('./employment.service').salaryBoundaries(tx,emp.id),versions:versions.map(version=>{
   const previous=versions.find(other=>other.id===version.previousId)||versions.find(other=>other.effectiveMonth<version.effectiveMonth);
   const difference=previous?moneyToMinor(version.monthlyBasic.toFixed(2))-moneyToMinor(previous.monthlyBasic.toFixed(2)):null;
   return {...salaryView(version),changeAmount:difference===null?null:(difference<0n?'-':'+')+moneyFromMinor(difference<0n?-difference:difference)};

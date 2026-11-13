@@ -7,7 +7,7 @@ import {ApiError} from '@/lib/api';
 import {payrollRequest, payrollQuery} from '@/services/payroll.service';
 import {usePayrollResource} from '@/components/payroll/use-payroll-resource';
 import {PayrollField, PayrollStatus} from '@/components/payroll/payroll-fields';
-import {currentMonth, inputClass, pkr, readable} from '@/components/payroll/payroll-format';
+import {currentMonth, inputClass, pkr, readable,salaryForMonth} from '@/components/payroll/payroll-format';
 import SalaryRevisionDialog from '@/components/payroll/salary-revision-dialog';
 import PayrollDraftDialog from '@/components/payroll/payroll-draft-dialog';
 import EmployeeCombobox from '@/components/payroll/employee-combobox';
@@ -42,9 +42,9 @@ function PayrollWorkspace({own}) {
   const todayMonth=currentMonth();
   // History is ordered by effective month and revision by the existing API.
   // Match its effective-salary lookup without calculating any financial values.
-  const currentSalary=salary.data?.versions.find(version=>version.effectiveMonth<=todayMonth)||null;
+  const currentSalary=salaryForMonth(salary.data,todayMonth);
   const payrollMonth=month||todayMonth;
-  const payrollSalary=monthPattern.test(payrollMonth)?salary.data?.versions.find(version=>version.effectiveMonth<=payrollMonth)||null:null;
+  const payrollSalary=monthPattern.test(payrollMonth)?salaryForMonth(salary.data,payrollMonth):null;
   const canRevise=['ADMIN','HR'].includes(user.role);
   const rowEmployee=record=>({id:record.employeeId,fullName:record.employeeName,employeeCode:record.employeeCode});
   const readFailure=records.error||salary.error||detail.error;

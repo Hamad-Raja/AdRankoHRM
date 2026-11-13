@@ -152,6 +152,7 @@ async function assertEmployeePermission(
   const actor = await tx.user.findUnique({
     where: { id: actorUserId },
     select: {
+      id: true,
       status: true,
       role: true,
       mustChangePassword: true,
@@ -166,6 +167,7 @@ async function assertEmployeePermission(
     );
   }
 
+  await require('./employment-access.service').assertAllowed(tx,actor);
   if (actor.mustChangePassword) {
     throw new ApiError(
       403,
@@ -290,7 +292,7 @@ async function createEmployee({
                 passwordHash,
                 role: data.portalLogin.role,
                 status: "ACTIVE",
-                mustChangePassword: data.portalLogin.role !== 'EMPLOYEE',
+                mustChangePassword: false,
               },
               select: {
                 id: true,
@@ -437,6 +439,19 @@ async function createEmployee({
   );
 }
 
+// A rehire keeps salary history, but prior-contract versions do not configure the new episode.
+async function salaryConfiguration(tx, employees) {
+  const configured = new Map(employees.map(e => [e.id, (e._count?.salaryVersions || 0) > 0]));
+  if (!employees.length || !await require('./employment-access.service').ready(tx)) return configured;
+  const cases = await tx.employmentCase.findMany({where:{employeeId:{in:employees.map(e=>e.id)},kind:'REHIRE',state:'COMPLETED'},orderBy:{accessCutoff:'desc'},select:{employeeId:true,rehirePlan:true}});
+  const latest = new Map();
+  for (const c of cases) if (!latest.has(c.employeeId)) latest.set(c.employeeId,c.rehirePlan);
+  if (!latest.size) return configured;
+  const versions = await tx.employeeSalaryVersion.findMany({where:{employeeId:{in:[...latest.keys()]}},select:{id:true,employeeId:true,effectiveMonth:true}});
+  for (const [id, plan] of latest) configured.set(id, versions.some(v=>v.employeeId===id && v.effectiveMonth.toISOString().slice(0,7)>=plan.joiningDate.slice(0,7) && !(plan.priorSalaryVersionIds||[]).includes(v.id)));
+  return configured;
+}
+
 function serializeSummary(employee) {
   return {
     id: employee.id,
@@ -541,8 +556,9 @@ async function listEmployees({ actorUserId, filters }) {
       take: pageSize,
     });
 
+    const configured=await salaryConfiguration(tx,employees);
     return {
-      employees: employees.map(serializeSummary),
+      employees: employees.map(e=>({...serializeSummary(e),salaryConfigured:configured.get(e.id)})),
       pagination: {
         page,
         pageSize,
@@ -568,7 +584,7 @@ async function getEmployeeById({ actorUserId, employeeId }) {
       );
     }
 
-    return serializeDetail(employee);
+    return {...serializeDetail(employee),salaryConfigured:(await salaryConfiguration(tx,[employee])).get(employee.id)};
   });
 }
 
@@ -584,6 +600,8 @@ async function updateEmployee({
     "personalEmail",
     "phone",
     "address",
+    "cnic",
+    "location",
     "emergencyContactName",
     "emergencyContactPhone",
     "emergencyContactRelationship",
@@ -641,13 +659,14 @@ async function updateEmployee({
               Object.hasOwn(patch, field) &&
               patch[field] !== current[field]
           );
-          if(Object.hasOwn(data,'probationEndDate')||Object.hasOwn(data,'confirmedOn')){
+          if(Object.hasOwn(data,'probationEndDate')||Object.hasOwn(data,'confirmedOn')||Object.hasOwn(data,'employmentType')){
             const episode=await tx.employmentEpisode.findFirst({where:{employeeId},orderBy:[{startDate:'desc'},{id:'desc'}]});
+            if(Object.hasOwn(data,'employmentType')&&(episode?.id!==data.employmentEpisodeId||episode?.version!==data.expectedEmploymentVersion))throw new ApiError(409,'Employment episode changed. Reload before editing its type.','EMPLOYMENT_VERSION_CONFLICT');
             if(!episode)throw new ApiError(409,'No employment record exists.','EMPLOYMENT_NOT_FOUND');
             const probationEndDate=Object.hasOwn(data,'probationEndDate')?toDatabaseDate(data.probationEndDate):episode.probationEndDate;
             const confirmedOn=Object.hasOwn(data,'confirmedOn')?toDatabaseDate(data.confirmedOn):episode.confirmedOn;
             if((probationEndDate&&probationEndDate<episode.startDate)||(confirmedOn&&confirmedOn<episode.startDate)||(episode.status==='PROBATION'&&confirmedOn))throw new ApiError(400,'Employment dates conflict with joining date or probation status.','INVALID_EMPLOYMENT_DATES');
-            await tx.employmentEpisode.update({where:{id:episode.id},data:{probationEndDate,confirmedOn,version:{increment:1}}});
+            await tx.employmentEpisode.update({where:{id:episode.id},data:{probationEndDate,confirmedOn,...(Object.hasOwn(data,'employmentType')?{employmentType:data.employmentType}:{}),version:{increment:1}}});
             changedFields.push('employmentDates');
           }
 
@@ -692,7 +711,7 @@ async function updateEmployee({
             select: DETAIL_SELECT,
           });
 
-          return serializeDetail(employee);
+          return {...serializeDetail(employee),salaryConfigured:(await salaryConfiguration(tx,[employee])).get(employee.id)};
         },
         {
           isolationLevel: "Serializable",
@@ -705,6 +724,7 @@ async function updateEmployee({
         continue;
       }
 
+      if(error.code==='P2002'&&JSON.stringify(error.meta||{}).includes('cnic'))throw new ApiError(409,'CNIC is already linked to an employee.','EMPLOYEE_CNIC_IN_USE',[{field:'cnic',message:'Use a unique CNIC.'}]);
       throw error;
     }
   }

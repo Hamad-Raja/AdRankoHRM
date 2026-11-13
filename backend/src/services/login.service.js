@@ -52,7 +52,7 @@ function getPublicUser(user) {
     displayName: user.displayName,
     role: user.role,
     status: user.status,
-    mustChangePassword: user.mustChangePassword,
+    mustChangePassword: ['EMPLOYEE','MANAGER'].includes(user.role) ? false : user.mustChangePassword,
   };
 }
 
@@ -97,6 +97,7 @@ async function login({ email, password }, context = {}) {
     password,
     user ? user.passwordHash : dummyHash
   );
+  if(user&&passwordMatches)await require('./employment-access.service').processForUser(user.id);
 
   const result = await runLoginTransaction(async (tx) => {
     // Re-read account state after password verification.
@@ -161,6 +162,7 @@ async function login({ email, password }, context = {}) {
       return { authenticated: false };
     }
 
+    await require('./employment-access.service').assertAllowed(tx,currentUser);
     const sessionToken = generateToken();
     const csrfToken = generateToken();
 
@@ -184,6 +186,7 @@ async function login({ email, password }, context = {}) {
         failedLoginAttempts: 0,
         lockedUntil: null,
         lastLoginAt: now,
+        ...(['EMPLOYEE','MANAGER'].includes(currentUser.role)?{mustChangePassword:false}:{}),
       },
     });
 

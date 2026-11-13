@@ -575,7 +575,13 @@ async function getAttendanceList(
     else if (status) where.status = status;
     if (search) where.employee = { OR: [{ fullName: { contains: search, mode: 'insensitive' } }, { employeeCode: { contains: search, mode: 'insensitive' } }] };
     if (departmentId || campaignId || teamId) {
-      const assignments = await tx.organizationAssignment.findMany({ where: { ...(teamId ? { teamId } : {}), team: { ...(departmentId ? { departmentId } : {}), ...(campaignId ? { campaignId } : {}) } } });
+      // New placements can name a department/campaign without a team. Match
+      // the dated assignment's own links; use team links only for legacy nulls.
+      const placement = [];
+      if (teamId) placement.push({ teamId });
+      if (departmentId) placement.push({ OR: [{ departmentId }, { departmentId: null, team: { departmentId } }] });
+      if (campaignId) placement.push({ OR: [{ campaignId }, { campaignId: null, team: { campaignId } }] });
+      const assignments = await tx.organizationAssignment.findMany({ where: { AND: placement } });
       where.AND.push({ OR: assignments.length ? assignments.map(a => ({ employeeId: a.employeeId, shiftDate: { gte: a.effectiveFrom, ...(a.effectiveTo ? { lte: a.effectiveTo } : {}) } })) : [{ employeeId: '00000000-0000-0000-0000-000000000000' }] });
     }
 

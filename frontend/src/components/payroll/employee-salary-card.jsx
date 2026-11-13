@@ -5,16 +5,18 @@ import {pkr} from './payroll-format';
 export default function EmployeeSalaryCard({employee,resource,currentSalary,payrollSalary,month,todayMonth,disabled,canRevise,onRevise}) {
   const versions=resource.data?.versions||[];
   const hasHistory=versions.length>0;
+  const boundary=resource.data?.rehireBoundaries?.find(b=>b.month<=todayMonth);
+  const unconfigured=boundary&&!currentSalary&&!versions.some(v=>v.effectiveMonth>=boundary.month&&!boundary.excludedVersionIds.includes(v.id));
   return <section aria-label="Employee salary" aria-busy={resource.loading} className="min-w-0 rounded-2xl border border-border bg-card text-card-foreground">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:px-6">
       <div className="min-w-0"><h2 className="text-lg font-semibold">Employee Salary</h2><p className="mt-1 break-words text-sm text-muted-foreground">{employee?<>{employee.fullName} <span className="whitespace-nowrap">· {employee.employeeCode}</span></>:'Select an employee to review their salary.'}</p>{resource.data?.employee.organization&&<p className="mt-1 break-words text-xs text-muted-foreground">{[resource.data.employee.organization.department,resource.data.employee.organization.designation].filter(Boolean).join(' · ')}</p>}</div>
-      {employee&&canRevise&&<Button variant="outline" disabled={disabled||!resource.data} onClick={onRevise}><History aria-hidden="true"/>{resource.data&&!hasHistory?'Set Up Salary':'Revise Pay'}</Button>}
+      {employee&&canRevise&&<Button variant="outline" disabled={disabled||!resource.data} onClick={onRevise}><History aria-hidden="true"/>{resource.data&&(!hasHistory||unconfigured)?'Set Up Salary':'Revise Pay'}</Button>}
     </div>
     {!employee?<div className="flex flex-col items-center gap-3 px-5 py-10 text-center"><span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><UserRound aria-hidden="true" className="size-5"/></span><p className="text-sm text-muted-foreground">Choose an employee above to view monthly basic pay, effective month and salary history.</p></div>
       :resource.loading?<p role="status" className="p-6 text-sm text-muted-foreground">Loading salary history…</p>
       :resource.error?<div role="alert" className="space-y-3 p-6"><p className="text-sm text-destructive">Salary history unavailable: {resource.error.message}</p><Button variant="outline" disabled={disabled} onClick={()=>void resource.reload().catch(()=>{})}>Retry salary history</Button></div>
       :resource.data&&<div className="space-y-5 p-5 sm:p-6">
-        {!hasHistory?<div className="rounded-xl border border-dashed border-border bg-background/40 p-5"><p className="font-medium">Salary not configured</p><p className="mt-1 text-sm text-muted-foreground">{canRevise?'Use Set Up Salary to save an effective monthly basic salary before preparing payroll.':'An authorized HR or Admin must configure an effective salary before payroll can be prepared.'}</p></div>
+        {!hasHistory||unconfigured?<div className="rounded-xl border border-dashed border-border bg-background/40 p-5"><p className="font-medium">Salary not configured</p><p className="mt-1 text-sm text-muted-foreground">{canRevise?'Use Set Up Salary to save an effective monthly basic salary before preparing payroll.':'An authorized HR or Admin must configure an effective salary before payroll can be prepared.'}</p></div>
           :<>
             <dl className="grid min-w-0 gap-5 rounded-xl border border-border bg-background/40 p-4 sm:grid-cols-2">
               <div><dt className="text-sm text-muted-foreground">Current Monthly Basic Salary</dt><dd className="mt-2 break-words text-2xl font-semibold tabular-nums text-primary sm:text-3xl">{currentSalary?pkr(currentSalary.monthlyBasic):'No salary effective yet'}</dd><p className="mt-1 text-xs text-muted-foreground">Current month: {todayMonth}</p></div>

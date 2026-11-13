@@ -4,7 +4,7 @@ export const history = async (id, options) => (await apiRequest(`/organization/e
 export const scopeEmployees = async (options) => (await apiRequest('/organization/scope/employees', options)).data;
 export const createUnit = async (data, options) => (await apiRequest('/organization', { ...options, method: 'POST', body: data })).data;
 export const updateUnit = async (id,data,options)=>(await apiRequest(`/organization/${encodeURIComponent(id)}`,{...options,method:'PATCH',body:data})).data;
-export const resetAccountPassword=async(id,newPassword,options)=>(await apiRequest(`/organization/employees/${encodeURIComponent(id)}/reset-password`,{...options,method:'POST',body:{newPassword}})).data;
+export const resetAccountPassword=async(id,input,options)=>(await apiRequest(`/organization/employees/${encodeURIComponent(id)}/reset-password`,{...options,method:'POST',body:input})).data;
 export const archiveUnit = async (id, data, options) => (await apiRequest(`/organization/${encodeURIComponent(id)}/archive`, { ...options, method: 'POST', body: data })).data;
 export const assignManager = async (id, data, options) => (await apiRequest(`/organization/teams/${encodeURIComponent(id)}/managers`, { ...options, method: 'POST', body: data })).data;
 export const assignEmployee = async (id, data, options) => (await apiRequest(`/organization/employees/${encodeURIComponent(id)}/assignments`, { ...options, method: 'POST', body: data })).data;

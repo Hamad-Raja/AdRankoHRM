@@ -86,6 +86,13 @@ model User {
   announcementReads  AnnouncementRead[] @relation("UserAnnouncementReads")
   notifications      Notification[]     @relation("UserNotifications")
   actorNotifications Notification[]     @relation("NotificationActor")
+  recordedEmploymentCases EmploymentCase[] @relation("CaseRecorder")
+  subjectEmploymentCases EmploymentCase[] @relation("CaseSubject")
+  reviewedEmploymentCases EmploymentCase[] @relation("CaseReviewer")
+  preparedEmploymentCases EmploymentCase[] @relation("CasePreparer")
+  approvedEmploymentCases EmploymentCase[] @relation("CaseApprover")
+  employmentAccessControl EmploymentAccessControl? @relation("AccessSubject")
+  employmentAccessDisables EmploymentAccessControl[] @relation("AccessDisabler")
 
   @@index([status, role])
   @@map("users")
@@ -158,9 +165,70 @@ model Employee {
 
   salaryVersions EmployeeSalaryVersion[]
   payrollRecords PayrollRecord[]
+  lifecycleCases EmploymentCase[]
 
   @@index([fullName, id])
   @@map("employees")
+}
+
+model EmploymentCase {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @db.Uuid
+  episodeId String? @db.Uuid
+  resultEpisodeId String? @db.Uuid
+  kind String @db.VarChar(20)
+  state String @db.VarChar(24)
+  source String @db.VarChar(20)
+  recordedById String @db.Uuid
+  employeeUserId String? @db.Uuid
+  reason String @db.VarChar(1000)
+  submittedAt DateTime @default(now()) @db.Timestamptz(3)
+  receivedDate DateTime? @db.Date
+  proposedLastDate DateTime? @db.Date
+  confirmedLastDate DateTime? @db.Date
+  noticeDays Int?
+  finalShiftStart DateTime? @db.Timestamptz(3)
+  accessCutoff DateTime? @db.Timestamptz(3)
+  supportingDocumentId String? @db.Uuid
+  supportingInfo String? @db.VarChar(1000)
+  managerReviewerId String? @db.Uuid
+  managerReviewedAt DateTime? @db.Timestamptz(3)
+  managerNote String? @db.VarChar(1000)
+  fallbackReason String? @db.VarChar(1000)
+  preparedById String? @db.Uuid
+  approvedById String? @db.Uuid
+  approvedAt DateTime? @db.Timestamptz(3)
+  overrideReason String? @db.VarChar(1000)
+  handoverStatus String @default("NOT_STARTED") @db.VarChar(20)
+  clearanceStatus String @default("PENDING") @db.VarChar(20)
+  rehirePlan Json?
+  completedAt DateTime? @db.Timestamptz(3)
+  version Int @default(1)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  episode EmploymentEpisode? @relation("CaseEpisode",fields:[episodeId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  resultEpisode EmploymentEpisode? @relation("CaseResultEpisode",fields:[resultEpisodeId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  employeeUser User? @relation("CaseSubject",fields:[employeeUserId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  reviewer User? @relation("CaseReviewer",fields:[managerReviewerId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  preparer User? @relation("CasePreparer",fields:[preparedById],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  approver User? @relation("CaseApprover",fields:[approvedById],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  supportingDocument EmployeeDocument? @relation("CaseDocument",fields:[supportingDocumentId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  employee Employee @relation(fields:[employeeId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  recorder User @relation("CaseRecorder",fields:[recordedById],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@index([state,accessCutoff])
+  @@index([employeeId,submittedAt])
+  @@map("employment_cases")
+}
+
+model EmploymentAccessControl {
+  userId String @id @db.Uuid
+  manualDisabledAt DateTime? @db.Timestamptz(3)
+  disabledById String? @db.Uuid
+  reason String? @db.VarChar(1000)
+  version Int @default(1)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  user User @relation("AccessSubject",fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  disabledBy User? @relation("AccessDisabler",fields:[disabledById],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@map("employment_access_controls")
 }
 
 enum OrganizationKind {
@@ -243,6 +311,7 @@ model TeamManagerAssignment {
 }
 
 model EmployeeDocument {
+  employmentCases EmploymentCase[] @relation("CaseDocument")
   id           String   @id @default(uuid()) @db.Uuid
   employeeId   String   @db.Uuid
   replacesId   String?  @unique @db.Uuid
@@ -264,6 +333,8 @@ model EmployeeDocument {
 }
 
 model EmploymentEpisode {
+  exitCases EmploymentCase[] @relation("CaseEpisode")
+  rehireCases EmploymentCase[] @relation("CaseResultEpisode")
   id                  String           @id @default(uuid()) @db.Uuid
   employeeId          String           @db.Uuid
   startDate           DateTime         @db.Date

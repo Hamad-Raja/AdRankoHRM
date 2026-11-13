@@ -68,6 +68,11 @@ function authenticate({ allowPasswordChange = false } = {}) {
         return rejectSession(res, next);
       }
 
+      if(await require('../services/employment-access.service').processForUser(session.user.id)) {
+        return rejectSession(res,next);
+      }
+      await require('../services/employment-access.service').assertAllowed(prisma,session.user);
+
       const now = new Date();
 
       const isExpired = session.expiresAt <= now;
@@ -91,7 +96,7 @@ function authenticate({ allowPasswordChange = false } = {}) {
       }
 
       if (
-        session.user.mustChangePassword &&
+        session.user.mustChangePassword && !['EMPLOYEE','MANAGER'].includes(session.user.role) &&
         !allowPasswordChange
       ) {
         return next(
@@ -132,7 +137,7 @@ function authenticate({ allowPasswordChange = false } = {}) {
       }
 
       req.auth = {
-        user: session.user,
+        user: {...session.user,mustChangePassword:['EMPLOYEE','MANAGER'].includes(session.user.role)?false:session.user.mustChangePassword},
         session: {
           id: session.id,
           expiresAt: session.expiresAt,

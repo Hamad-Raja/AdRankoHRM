@@ -139,7 +139,7 @@ const EMPLOYEE_NAVIGATION = [
     icon: LayoutDashboard,
   },
   {
-    label: "My Profile",
+    label: "My Organization",
     to: "/my-employees",
     icon: UserRound,
   },
@@ -181,7 +181,7 @@ const EMPLOYEE_NAVIGATION = [
 ];
 
 const NAVIGATION_BY_ROLE = {
-  ADMIN: MANAGEMENT_NAVIGATION,
+  ADMIN: [...MANAGEMENT_NAVIGATION,{label:'Global Audit Log',to:'/audit',icon:FileText}],
   HR: MANAGEMENT_NAVIGATION,
   MANAGER: MANAGER_NAVIGATION,
   EMPLOYEE: EMPLOYEE_NAVIGATION,
@@ -198,7 +198,7 @@ export default function PortalSidebar({ onNavigate }) {
     ? "/account"
     : "/dashboard";
 
-  const navigation = NAVIGATION_BY_ROLE[user.role] || [];
+  const navigation = [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'My Profile',to:'/my-profile',icon:UserRound},{label:'Employment',to:'/employment',icon:UsersRound}];
 
   // Preserve the existing first-login password-change restriction.
   const visibleItems = user.mustChangePassword

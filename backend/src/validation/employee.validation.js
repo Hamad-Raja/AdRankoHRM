@@ -153,6 +153,11 @@ const updateEmployeeSchema = z
     personalEmail: personalEmailSchema.optional(),
     phone: phoneSchema.optional(),
     address: createEmployeeSchema.shape.address.optional(),
+    cnic: createEmployeeSchema.shape.cnic.optional(),
+    location: createEmployeeSchema.shape.location.optional(),
+    employmentType: optionalField(z.enum(['FULL_TIME','PART_TIME','CONTRACT','INTERNSHIP','TEMPORARY'])).optional(),
+    employmentEpisodeId: z.uuid().optional(),
+    expectedEmploymentVersion: z.number().int().positive().max(2147483647).optional(),
 
     emergencyContactName:
       createEmployeeSchema.shape.emergencyContactName.optional(),
@@ -166,11 +171,9 @@ const updateEmployeeSchema = z
   })
   .refine(
     (data) =>
-      Object.keys(data).some(
-        (field) => field !== "version" && data[field] !== undefined
-      ),
+      ['fullName','personalEmail','phone','address','cnic','location','emergencyContactName','emergencyContactPhone','emergencyContactRelationship','probationEndDate','confirmedOn','employmentType'].some(field=>Object.hasOwn(data,field)&&data[field]!==undefined),
     "Provide at least one editable profile field."
-  );
+  ).refine(data=>!Object.hasOwn(data,'employmentType')||(!!data.employmentEpisodeId&&!!data.expectedEmploymentVersion),'Employment type changes require the episode ID and current version.');
 
 function positiveIntegerParameter(label, maximum, fallback) {
   return z

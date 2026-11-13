@@ -156,8 +156,8 @@ function monthlyRows(rows) {
       groups.set(row.employee.id, group);
     }
     addMetrics(group.metrics, row);
-    if (row.organization && !group.organizations.some(item => item.team.id === row.organization.team.id
-      && item.designation?.id === row.organization.designation?.id)) {
+    if (row.organization && !group.organizations.some(item =>
+      ['team','department','campaign','designation'].every(key => item[key]?.id === row.organization[key]?.id))) {
       group.organizations.push(row.organization);
     }
   }

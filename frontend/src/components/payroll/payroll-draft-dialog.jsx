@@ -6,7 +6,7 @@ import {useAuth} from '@/context/auth-context';
 import PayrollDialog from './payroll-dialog';
 import {usePayrollResource} from './use-payroll-resource';
 import {PayrollField} from './payroll-fields';
-import {currentMonth,inputClass,pkr,readable,earningTypes,deductionTypes} from './payroll-format';
+import {currentMonth,inputClass,pkr,readable,earningTypes,deductionTypes,salaryForMonth} from './payroll-format';
 
 function Adjustments({kind,items,onChange,disabled,error}) {
   const earnings=kind==='earnings', singular=earnings?'earning':'deduction', types=earnings?earningTypes:deductionTypes;
@@ -38,7 +38,7 @@ export default function PayrollDraftDialog({employee,record,month,busy,uncertain
   const initialSignature=JSON.stringify({employeeId:employee.id,...initial});
   const dirty=Boolean(reason)||signature!==initialSignature;
   const visiblePreview=preview?.signature===signature?preview.data:null;
-  const applicableSalary=salary.data?.versions.find(version=>version.effectiveMonth<=values.month)||null;
+  const applicableSalary=salaryForMonth(salary.data,values.month);
   const failure=error||previewError;
   const fieldError=name=>failure?.details?.field===name?failure.message:undefined;
   function invalidatePreview(){pendingPreview.current?.abort();pendingPreview.current=null;setPreviewBusy(false);setPreview(null);setPreviewError(null);}

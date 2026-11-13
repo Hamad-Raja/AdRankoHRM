@@ -74,6 +74,8 @@ app.use("/api/announcements", require("./routes/announcement.routes"));
 app.use("/api/notifications", require("./routes/notification.routes"));
 app.use("/api/leaves", require("./routes/leave.routes"));
 app.use("/api/dashboard", require("./routes/dashboard.routes"));
+app.use("/api/audit", require("./routes/audit.routes"));
+app.use("/api/employment", require("./routes/employment.routes"));
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Endpoint not found.", "NOT_FOUND"));
@@ -137,6 +139,10 @@ async function startServer() {
     }
 
     console.log("Database connection verified.");
+    // Auth/login also enforce approved cutoffs synchronously. This worker is
+    // supplementary and never runs merely from importing the app in tests.
+    const lifecycleTimer=setInterval(()=>void require('./src/services/employment-access.service').processDue().catch(()=>console.error('Lifecycle worker unavailable.')),60000);
+    lifecycleTimer.unref();
 
     server = app.listen(PORT, HOST, (error) => {
       // Express 5 also invokes this callback on a listen failure.
