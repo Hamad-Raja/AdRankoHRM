@@ -141,6 +141,7 @@ export default function AttendancePage() {
   const [correctionPage, setCorrectionPage] = useState(1);
   const [correctionPages, setCorrectionPages] = useState(1);
   const [correctionStatus, setCorrectionStatus] = useState('PENDING');
+  const [reviewableOnly,setReviewableOnly] = useState(dashboardQuery.get('reviewableOnly') === 'true');
   const [loadingCorrections, setLoadingCorrections] = useState(false);
   const [correctionsError, setCorrectionsError] = useState("");
   const correctionsRequest = useRef(0);
@@ -162,6 +163,7 @@ export default function AttendancePage() {
         page: correctionPage,
         pageSize: 50,
         status: correctionStatus || undefined,
+        reviewableOnly: reviewableOnly ? 'true' : undefined,
       });
       if (request !== correctionsRequest.current) return;
       setCorrections(data.corrections || []);
@@ -174,7 +176,7 @@ export default function AttendancePage() {
     } finally {
       if (request === correctionsRequest.current) setLoadingCorrections(false);
     }
-  }, [isAdminOrHr, correctionPage, correctionStatus, refreshSession]);
+  }, [isAdminOrHr, correctionPage, correctionStatus, reviewableOnly, refreshSession]);
 
   useEffect(() => {
     if (isAdminOrHr && activeTab === "corrections") {
@@ -183,6 +185,7 @@ export default function AttendancePage() {
   }, [isAdminOrHr, activeTab, loadCorrections, refreshTrigger]);
 
   function openReviewDialog(c, decision) {
+    if (!c.canReview) return;
     setSelectedCorrection(c);
     setReviewDecision(decision);
     setReviewReason(decision === "APPROVED" ? "Approved as requested." : "");
@@ -750,6 +753,7 @@ export default function AttendancePage() {
       {isAdminOrHr && activeTab === "corrections" && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewableOnly} onChange={e=>{setReviewableOnly(e.target.checked);setCorrectionPage(1);}}/>Only pending corrections I can review</label>
             <label className="text-xs">Correction status<select aria-label="Correction status" className="ml-2 rounded border bg-background p-2" value={correctionStatus} onChange={e => { setCorrectionStatus(e.target.value); setCorrectionPage(1); }}><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All decisions</option></select></label>
             <Button variant="outline" disabled={loadingCorrections || correctionPage <= 1} onClick={() => setCorrectionPage(p => p - 1)}>Previous requests</Button>
             <span className="text-xs">Page {correctionPage} of {correctionPages}</span>
@@ -830,12 +834,12 @@ export default function AttendancePage() {
                           {c.reason}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="ml-auto flex max-w-64 flex-wrap justify-end gap-2">
                             <Button
                               size="sm"
                               variant="success"
                               onClick={() => openReviewDialog(c, "APPROVED")}
-                              disabled={c.status !== 'PENDING'}
+                              disabled={!c.canReview}
                               className="h-8 px-3 text-xs gap-1 font-semibold"
                             >
                               <Check className="size-3.5" />
@@ -845,12 +849,13 @@ export default function AttendancePage() {
                               size="sm"
                               variant="destructive"
                               onClick={() => openReviewDialog(c, "REJECTED")}
-                              disabled={c.status !== 'PENDING'}
+                              disabled={!c.canReview}
                               className="h-8 px-3 text-xs gap-1 font-semibold"
                             >
                               <X className="size-3.5" />
                               <span>Reject</span>
                             </Button>
+                            {c.status === 'PENDING' && c.reviewBlockedReason && <p className="basis-full text-xs">{c.reviewBlockedReason}</p>}
                             {c.status !== 'PENDING' && <p className="text-xs">{c.status}: {c.reviewReason}. Reviewed {c.reviewedAt} by {c.reviewedBy?.displayName || 'authorized reviewer'}.</p>}
                           </div>
                         </td>

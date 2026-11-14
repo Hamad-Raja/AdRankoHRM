@@ -86,10 +86,11 @@ async function queues(userId, month) {
     if(!management(user)) fail(403,'Management queues are restricted.','FORBIDDEN');
     const payrollMonth=month||periods(now).leaveMonth;
     const payrollDate=at(payrollMonth+'-01');
-    const pendingCorrections=await tx.attendanceCorrectionRequest.count({where:{status:'PENDING'}});
+    const pendingCorrectionsOverall=await tx.attendanceCorrectionRequest.count({where:{status:'PENDING'}});
+    const pendingCorrections=await tx.attendanceCorrectionRequest.count({where:require('../utils/attendance-review').reviewableWhere(user.id)});
     const pendingLeaves=await tx.leaveRequest.count({where:{status:'PENDING'}});
     const payments=await tx.payrollRecord.count({where:{payrollMonth:payrollDate,status:'APPROVED'}});
-    const common={payrollMonth,pendingCorrections,pendingLeavesOverall:pendingLeaves,awaitingManualPayment:payments};
+    const common={payrollMonth,pendingCorrections,pendingCorrectionsOverall,pendingLeavesOverall:pendingLeaves,awaitingManualPayment:payments};
     if(user.role==='HR') {
       const reviewable=await tx.leaveRequest.count({where:{status:'PENDING',requestedByUserId:{not:user.id},employee:{is:{OR:[{userId:null},{userId:{not:user.id}}]}}}});
       return {...common,role:'HR',draftPayroll:await tx.payrollRecord.count({where:{payrollMonth:payrollDate,status:'DRAFT'}}),reviewableLeaves:reviewable};

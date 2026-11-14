@@ -14,7 +14,7 @@ const historyFields = { ...pagination, dateFrom:date.optional(), dateTo:date.opt
 const range = v => !v.dateFrom || !v.dateTo || v.dateFrom <= v.dateTo;
 const history = z.object(historyFields).strict().refine(range);
 const list = z.object({ ...historyFields, employeeId:z.uuid().optional(), search:z.string().trim().max(120).optional(), departmentId:z.uuid().optional(), campaignId:z.uuid().optional(), teamId:z.uuid().optional(), status:z.enum(['OPEN','COMPLETED','MISSING_CHECKOUT','CORRECTED']).optional() }).strict().refine(range);
-const corrections = z.object({ ...pagination, status:z.enum(['PENDING','APPROVED','REJECTED']).optional(), employeeId:z.uuid().optional() }).strict();
+const corrections = z.object({ ...pagination, status:z.enum(['PENDING','APPROVED','REJECTED']).optional(), employeeId:z.uuid().optional(), reviewableOnly:z.enum(['true','false']).optional() }).strict();
 const timestamp = z.iso.datetime({ offset:true }).nullable().optional();
 const correction = z.object({ attendanceRecordId:z.uuid().nullable().optional(), shiftDate:date, requestType:z.enum(['MISSING_CHECKOUT','WRONG_TIME','OTHER']), correctedClockIn:timestamp, correctedClockOut:timestamp, reason:z.string().trim().min(1).max(1000) }).strict();
 const review = z.object({ decision:z.enum(['APPROVED','REJECTED']), reviewReason:z.string().trim().min(1).max(1000), expectedVersion:z.number().int().positive() }).strict();

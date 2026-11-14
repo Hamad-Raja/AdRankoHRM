@@ -733,9 +733,13 @@ async function reviewCorrection(
 
     const correction = await tx.attendanceCorrectionRequest.findUnique({
       where: { id: correctionId },
+      include: { employee: { select: { userId: true } } },
     });
     if (!correction) {
       fail(404, 'Correction request not found.', 'NOT_FOUND');
+    }
+    if (require('../utils/attendance-review').selfReview(user.id, correction)) {
+      fail(403, 'You cannot approve or reject your own attendance correction. Ask another authorized HR or Admin to review it.', 'CORRECTION_SELF_REVIEW');
     }
     if (correction.status !== 'PENDING') {
       fail(409, 'This correction has already been reviewed.', 'ALREADY_REVIEWED');
@@ -791,7 +795,7 @@ async function reviewCorrection(
 // ─── List Corrections ────────────────────────────────────────────────
 async function listCorrections(
   userId,
-  { page = 1, pageSize = 20, status: filterStatus, employeeId, ownOnly = false } = {}
+  { page = 1, pageSize = 20, status: filterStatus, employeeId, ownOnly = false, reviewableOnly } = {}
 ) {
   return transaction(async (tx) => {
     const user = await actor(tx, userId, false);
@@ -820,6 +824,7 @@ async function listCorrections(
     // ADMIN/HR see all
 
     if (filterStatus) where.status = filterStatus;
+    if (!ownOnly && ['ADMIN','HR'].includes(user.role) && reviewableOnly === 'true') where.AND = [require('../utils/attendance-review').reviewableWhere(user.id)];
     if (!ownOnly && employeeId && ['ADMIN', 'HR'].includes(user.role)) {
       where.employeeId = employeeId;
     }
@@ -828,7 +833,7 @@ async function listCorrections(
       await tx.attendanceCorrectionRequest.findMany({
         where,
         include: {
-          employee: { select: { id: true, employeeCode: true, fullName: true } },
+          employee: { select: { id: true, employeeCode: true, fullName: true, userId: true } },
           requestedBy: { select: { id: true, displayName: true } },
           reviewedBy: { select: { id: true, displayName: true } },
         },
@@ -842,7 +847,9 @@ async function listCorrections(
     return {
       corrections: corrections.map((c) => ({
         ...formatCorrectionRequest(c),
-        employee: c.employee,
+        employee: { id: c.employee.id, employeeCode: c.employee.employeeCode, fullName: c.employee.fullName },
+        canReview: ['ADMIN','HR'].includes(user.role) && c.status === 'PENDING' && !require('../utils/attendance-review').selfReview(user.id,c),
+        reviewBlockedReason: require('../utils/attendance-review').selfReview(user.id,c) ? 'Another authorized HR or Admin must review this correction. If none is available, contact your administrator to arrange an independent reviewer.' : null,
         requestedBy: c.requestedBy,
         reviewedBy: c.reviewedBy,
       })),

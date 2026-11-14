@@ -125,7 +125,7 @@ export async function reviewCorrection(id, body, csrfToken, options = {}) {
 }
 
 export async function listAllCorrections(
-  { page = 1, pageSize = 20, status, employeeId } = {},
+  { page = 1, pageSize = 20, status, employeeId, reviewableOnly } = {},
   options = {}
 ) {
   const query = new URLSearchParams();
@@ -133,6 +133,7 @@ export async function listAllCorrections(
   if (pageSize) query.set("pageSize", String(pageSize));
   if (status) query.set("status", status);
   if (employeeId) query.set("employeeId", employeeId);
+  if (reviewableOnly) query.set("reviewableOnly", String(reviewableOnly));
 
   const qs = query.toString();
   const path = `/attendance/corrections/all${qs ? `?${qs}` : ""}`;
