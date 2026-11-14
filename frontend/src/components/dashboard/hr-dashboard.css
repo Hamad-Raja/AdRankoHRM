@@ -167,3 +167,19 @@
 .hr-clock-actions button {min-height:40px;}
 .hr-clock-actions a {font-size:11px;font-weight:600;text-decoration:underline;text-underline-offset:3px;}
 .hr-clock a:focus-visible {outline:2px solid var(--ring);outline-offset:3px;}
+
+/* HR-authorized announcement preview; existing lower-row columns and theme stay authoritative. */
+.hr-announcements-all {font-size:11px;font-weight:600;text-decoration:underline;text-underline-offset:3px;color:var(--primary);}
+.hr-announcement-list {display:grid;gap:12px;}
+.hr-announcement-list li {display:flex;align-items:flex-start;gap:10px;min-width:0;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.hr-announcement-list li:last-child {border-bottom:0;padding-bottom:0;}
+.hr-announcement-list li>svg {width:18px;height:18px;color:var(--primary);margin-top:2px;}
+.hr-announcement-list li>div {min-width:0;flex:1;}
+.hr-announcement-title {font-size:12px;line-height:1.5;font-weight:600;overflow-wrap:anywhere;display:block;}
+.hr-announcement-title:hover {text-decoration:underline;text-underline-offset:3px;}
+.hr-announcement-meta {display:flex;flex-wrap:wrap;gap:5px;margin-block:5px;}
+.hr-announcement-meta span {display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);border-radius:5px;background:var(--muted);color:var(--foreground);font-size:10px;padding:2px 5px;}
+.hr-announcement-meta svg {width:11px;height:11px;}
+.hr-announcement-list time {font-size:10px;color:var(--muted-foreground);line-height:1.5;}
+.hr-announcements-empty {min-height:170px;display:grid;place-items:center;color:var(--muted-foreground);font-size:12px;text-align:center;}
+.hr-announcements a:focus-visible {outline:2px solid var(--ring);outline-offset:3px;border-radius:3px;}

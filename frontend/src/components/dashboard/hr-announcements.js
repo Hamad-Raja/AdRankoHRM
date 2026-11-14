@@ -1,0 +1,6 @@
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function validAnnouncementSummary(data){return Number.isFinite(Date.parse(data?.asOf))&&Array.isArray(data?.items)&&data.items.every(item=>item&&uuid.test(item.id)&&typeof item.title==='string'&&typeof item.category==='string'&&typeof item.priority==='string'&&typeof item.pinned==='boolean'&&Number.isFinite(Date.parse(item.publishedAt))&&(item.expiresAt===null||Number.isFinite(Date.parse(item.expiresAt)))&&item.link==='/announcements?id='+item.id);}
+export function announcementLabel(value){return value.toLowerCase().replaceAll('_',' ').replace(/(^|\s)\S/g,char=>char.toUpperCase());}
+// Same server-asOf expiry/refetch strategy as the existing role dashboard; no client filtering.
+export function announcementRefreshDelay(data){const delays=(data?.items||[]).filter(item=>item.expiresAt).map(item=>Date.parse(item.expiresAt)-Date.parse(data.asOf)).filter(value=>value>0&&Number.isFinite(value));return delays.length?Math.min(Math.min(...delays)+50,2147483647):null;}
+export const announcementPublished=value=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Karachi',dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
