@@ -1,0 +1,28 @@
+/* Admin presentation only. Existing application theme tokens remain authoritative. */
+[data-admin-dashboard]{--hr-emerald:var(--primary);--hr-seafoam:color-mix(in srgb,var(--primary) 25%,var(--card));--hr-red:var(--destructive);--hr-amber:var(--warning);}
+[data-admin-dashboard] #officehr-main{padding:20px 22px;max-width:1760px;}
+.admin-dashboard .admin-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;min-width:0;}
+.admin-dashboard .hr-welcome{padding-right:225px;min-height:145px;}
+.admin-dashboard .hr-welcome h1{overflow-wrap:anywhere;}
+.admin-dashboard .hr-headset-visual{right:7%;}
+.admin-dashboard .admin-note{font-size:11px;color:var(--muted-foreground);line-height:1.65;margin-block:8px;overflow-wrap:anywhere;}
+.admin-dashboard .admin-month{display:grid;gap:4px;font-size:11px;max-width:100%;}
+.admin-dashboard input{border:1px solid var(--input);border-radius:8px;background:var(--background);color:var(--foreground);padding:6px 8px;min-width:0;max-width:100%;}
+.admin-dashboard a:focus-visible,.admin-dashboard input:focus-visible{outline:2px solid var(--ring);outline-offset:3px;}
+.admin-dashboard .admin-link{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-size:12px;font-weight:600;margin-block:6px;border-radius:4px;}
+.admin-dashboard .admin-link svg{width:15px;height:15px;}
+.admin-dashboard .admin-state{padding:18px 0;font-size:13px;color:var(--muted-foreground);line-height:1.7;}
+.admin-dashboard .admin-state h3{color:var(--foreground);font-weight:650;margin-bottom:8px;}
+.admin-dashboard .admin-attendance-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-block:18px;}
+.admin-dashboard .admin-attendance-summary>div{border:1px solid var(--border);border-radius:10px;background:var(--background);padding:12px 9px;}
+.admin-dashboard .admin-attendance-summary dt{font-size:11px;color:var(--muted-foreground);}
+.admin-dashboard .admin-attendance-summary dd{font-size:25px;font-weight:700;}
+.admin-dashboard .admin-payroll-preview{display:grid;gap:2px;}
+.admin-dashboard .admin-payroll-preview li{display:flex;justify-content:space-between;align-items:start;gap:12px;border-bottom:1px solid var(--border);padding:10px 0;font-size:13px;}
+.admin-dashboard .admin-payroll-preview li>div{min-width:0;overflow-wrap:anywhere;}
+.admin-dashboard .admin-payroll-preview .admin-link{flex-shrink:0;white-space:nowrap;}
+.admin-dashboard .hr-announcements{min-height:0;}
+.admin-dashboard .hr-announcements-empty{min-height:0;padding-block:24px;}
+@media(min-width:1024px){[data-admin-shell] aside>div>div:first-child{padding:17px 24px;}[data-admin-shell] aside nav{padding-block:9px;}[data-admin-shell] aside nav ul{display:grid;gap:2px;}[data-admin-shell] aside nav li{margin:0;}[data-admin-shell] aside nav a{min-height:38px;padding-block:6px;}[data-admin-shell] aside footer{padding:12px 24px;}[data-admin-shell] aside footer p{margin-top:3px;}}
+@media(max-width:1100px){.admin-dashboard .hr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}.admin-dashboard .admin-row{grid-template-columns:1fr;}}
+@media(max-width:600px){[data-admin-dashboard] #officehr-main{padding:14px 12px;}.admin-dashboard .hr-welcome{padding:20px;}.admin-dashboard .hr-headset-visual{display:none;}.admin-dashboard .hr-refresh{position:static;margin-left:auto;flex-shrink:0;}.admin-dashboard .hr-kpis{grid-template-columns:1fr;}.admin-dashboard .admin-attendance-summary{grid-template-columns:repeat(2,minmax(0,1fr));}}

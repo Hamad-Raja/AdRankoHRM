@@ -95,19 +95,9 @@ async function queues(userId, month) {
       const reviewable=await tx.leaveRequest.count({where:{status:'PENDING',requestedByUserId:{not:user.id},employee:{is:{OR:[{userId:null},{userId:{not:user.id}}]}}}});
       return {...common,role:'HR',draftPayroll:await tx.payrollRecord.count({where:{payrollMonth:payrollDate,status:'DRAFT'}}),reviewableLeaves:reviewable};
     }
-    const rows=await tx.$queryRaw`
-      SELECT count(*)::int AS total,
-        count(*) FILTER(WHERE p."hrApprovedByUserId"<>${user.id}::uuid AND s.id=p."salaryVersionId" AND p.version<2147483647)::int AS eligible,
-        count(*) FILTER(WHERE p."hrApprovedByUserId"=${user.id}::uuid)::int AS same_approver,
-        count(*) FILTER(WHERE s.id IS DISTINCT FROM p."salaryVersionId")::int AS stale_salary,
-        count(*) FILTER(WHERE p.version>=2147483647)::int AS revision_limit
-      FROM payroll_records p LEFT JOIN LATERAL (
-        SELECT id FROM employee_salary_versions v WHERE v."employeeId"=p."employeeId" AND v."effectiveMonth"<=p."payrollMonth"
-        ORDER BY v."effectiveMonth" DESC,v.revision DESC LIMIT 1
-      ) s ON true WHERE p.status='HR_APPROVED' AND p."payrollMonth"=${payrollDate}::date`;
-    const q=rows[0];
+    const q=await require('./payroll-dashboard-query').payrollQueue(tx,user.id,payrollDate);
     return {...common,role:'ADMIN',hrApprovedPayroll:q.total,eligibleFinalApprovals:q.eligible,
-      blockedSameApprover:q.same_approver,blockedStaleSalary:q.stale_salary,blockedRevisionLimit:q.revision_limit};
+      blockedSameApprover:q.blockedSameApprover,blockedStaleSalary:q.blockedStaleSalary,blockedRevisionLimit:q.blockedRevisionLimit};
   });
 }
 
@@ -138,4 +128,14 @@ async function announcements(userId) {
     return {items:rows.map(a=>({id:a.id,title:a.title,category:a.category,priority:a.priority,pinned:a.pinned,publishedAt:a.publishedAt.toISOString(),expiresAt:a.expiresAt?.toISOString()||null,link:`/announcements?id=${a.id}`}))};
   });
 }
-module.exports={employees,attendance,queues,personal,payslip,announcements,periods};
+async function adminQueues(userId,month){return read(userId,async(tx,user,now)=>{
+ if(user.role!=='ADMIN')fail(403,'Admin dashboard queues require Admin access.','FORBIDDEN');
+ const payrollMonth=month||periods(now).leaveMonth;
+ const payroll=await require('./payroll-dashboard-query').payrollQueue(tx,user.id,at(payrollMonth+'-01'));
+ const paymentsOverall=await tx.payrollRecord.count({where:{payrollMonth:at(payrollMonth+'-01'),status:'APPROVED'}});
+ const payments=await tx.payrollRecord.count({where:{payrollMonth:at(payrollMonth+'-01'),status:'APPROVED',version:{lt:2147483647}}});
+ const corrections={reviewable:await tx.attendanceCorrectionRequest.count({where:require('../utils/attendance-review').reviewableWhere(user.id)}),overall:await tx.attendanceCorrectionRequest.count({where:{status:'PENDING'}})};
+ const employment={reviewable:await tx.employmentCase.count({where:require('../utils/employment-approval').approvalWhere(user.id)}),overall:await tx.employmentCase.count({where:{state:'ADMIN_APPROVAL'}})};
+ return {payrollMonth,payroll,payments,paymentsOverall,blockedPaymentsRevisionLimit:paymentsOverall-payments,corrections,employment};
+ });}
+module.exports={employees,attendance,queues,personal,payslip,announcements,periods,adminQueues};
