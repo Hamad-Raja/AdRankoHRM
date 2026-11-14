@@ -8,6 +8,7 @@ import {
   clockOut,
 } from "@/services/attendance.service";
 import AttendanceCorrectionModal from "./attendance-correction-modal";
+import AttendanceClockCompact from "./attendance-clock-compact";
 import {
   Clock,
   LogIn,
@@ -24,7 +25,7 @@ export default function AttendanceClock(props) {
   const {user}=useAuth();
   return <AttendanceClockSession key={user.id} {...props}/>;
 }
-function AttendanceClockSession({ onRecordUpdated }) {
+function AttendanceClockSession({ onRecordUpdated, presentation = "default", scheduleResource, refreshKey = 0 }) {
   const { user, getCsrfToken, refreshSession } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,11 +37,16 @@ function AttendanceClockSession({ onRecordUpdated }) {
   const lockRef = useRef(false);
   const [pending, setPending] = useState(() => pendingPunches.get(user.id) || null);
 
+  const onRecordUpdatedRef = useRef(onRecordUpdated);
+  useEffect(() => { onRecordUpdatedRef.current = onRecordUpdated; }, [onRecordUpdated]);
+  const notifyUpdated = useCallback(() => { try { onRecordUpdatedRef.current?.(); } catch { setError("Attendance saved; overview refresh unavailable. Refresh the overview to retry."); } }, []);
+
   // Live clock tick
   useEffect(() => {
+    if (presentation === "compact") return;
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [presentation]);
 
   const readState=useRef({pending:null,controller:null});
   const loadStatus=useCallback((signal)=>{
@@ -50,6 +56,7 @@ function AttendanceClockSession({ onRecordUpdated }) {
     signal?.addEventListener('abort',abort,{once:true});
     if(signal?.aborted)controller.abort();
     state.controller=controller;
+    setLoading(true);
     const pending=(async()=>{
       try{
         const res=await getAttendanceStatus({signal:controller.signal});
@@ -60,22 +67,23 @@ function AttendanceClockSession({ onRecordUpdated }) {
           const history=await getOwnHistory({dateFrom:action.shiftDate,dateTo:action.shiftDate},{signal:controller.signal});
           if(controller.signal.aborted)return;
           if(history.records.some(r=>(action.kind==='in'?r.clockInRequestId:r.clockOutRequestId)===action.requestId)){
-            pendingPunches.delete(user.id);setPending(null);setActionNotice('Pending punch confirmed from server history.');
+            pendingPunches.delete(user.id);setPending(null);setActionNotice('Pending punch confirmed from server history.');notifyUpdated();
           }
         }
         setError('');
+        return res;
       }catch(err){if(!controller.signal.aborted){setError(err.message||'Failed to load attendance status.');if(err.status===401||err.code==='PASSWORD_CHANGE_REQUIRED')void refreshSession();}}
       finally{if(!controller.signal.aborted)setLoading(false);}
     })().finally(()=>{signal?.removeEventListener('abort',abort);if(state.pending===pending)state.pending=null;});
     state.pending=pending;return pending;
-  },[refreshSession,user.id]);
+  },[refreshSession,user.id,notifyUpdated]);
 
   useEffect(() => {
     const ctrl = new AbortController();
     loadStatus(ctrl.signal);
     const state=readState.current;
     return () => {ctrl.abort();state.controller?.abort();};
-  }, [loadStatus]);
+  }, [loadStatus,refreshKey]);
 
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') void loadStatus(); };
@@ -90,15 +98,23 @@ function AttendanceClockSession({ onRecordUpdated }) {
     const action = { kind, requestId: crypto.randomUUID(), attendanceRecordId: data?.attendance?.id, shiftDate: kind === 'out' ? data.attendance.shiftDate : data.schedule.shiftDate };
     pendingPunches.set(user.id, action); setPending(action);
     try {
-      const record = kind === 'in' ? await clockIn(action.requestId, getCsrfToken()) : await clockOut(action.requestId, action.attendanceRecordId, getCsrfToken());
+      let record;
+      try {
+        record = kind === 'in' ? await clockIn(action.requestId, getCsrfToken()) : await clockOut(action.requestId, action.attendanceRecordId, getCsrfToken());
+      } catch (err) {
+        const uncertain = !err.status || err.status >= 500 || err.code === 'INVALID_RESPONSE';
+        if (!uncertain) { pendingPunches.delete(user.id); setPending(null); setError(err.message); }
+        else setError('Punch outcome is unconfirmed. Use Refresh Status to reconcile. No second punch will be sent. If still unconfirmed, contact HR with request ID ' + action.requestId);
+        if (err.status === 401 || err.code === 'PASSWORD_CHANGE_REQUIRED') void refreshSession();
+        return;
+      }
       pendingPunches.delete(user.id); setPending(null);
       setActionNotice(kind === 'in' ? 'Clock In confirmed by server.' : `Clock Out confirmed. Raw elapsed: ${record.workedMinutes} minutes; not approved/payable time.`);
-      await loadStatus(); onRecordUpdated?.();
-    } catch (err) {
-      const uncertain = !err.status || err.status >= 500 || err.code === 'INVALID_RESPONSE';
-      if (!uncertain) { pendingPunches.delete(user.id); setPending(null); setError(err.message); }
-      else setError('Punch outcome is unconfirmed. Use Refresh Status to reconcile. No second punch will be sent. If still unconfirmed, contact HR with request ID ' + action.requestId);
-      if (err.status === 401 || err.code === 'PASSWORD_CHANGE_REQUIRED') void refreshSession();
+      // A pre-punch read must never overwrite the confirmed write with stale status.
+      readState.current.controller?.abort();
+      const refreshed = await loadStatus();
+      notifyUpdated();
+      if (!refreshed) setError('Punch saved successfully, but attendance status could not be refreshed. Use Refresh Status to load the latest state.');
     } finally { lockRef.current = false; setActionLoading(false); }
   }
   const handleClockIn = () => punch('in');
@@ -123,6 +139,8 @@ function AttendanceClockSession({ onRecordUpdated }) {
 
   const attendance = data?.attendance;
   const isClockedIn = attendance && ['OPEN', 'MISSING_CHECKOUT'].includes(attendance.status);
+
+  if (presentation === 'compact') return <AttendanceClockCompact data={data} loading={loading} actionLoading={actionLoading} error={error} notice={actionNotice} pending={pending} scheduleResource={scheduleResource} onRefresh={() => loadStatus()} onClockIn={handleClockIn} onClockOut={handleClockOut}/>;
 
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-xs">

@@ -29,8 +29,20 @@ export function attendancePeriod(days){
  const total={state:'READY',present:0,absent:0,leave:0,pending:0,exceptions:0,total:0,excluded:0};for(const row of states)for(const key of Object.keys(total).filter(k=>k!=='state'))total[key]+=row[key];
  return {...total,state:total.total?'READY':'EMPTY',rate:percentage(total.present,total.total)};
 }
-export function departments(profiles,total){
+export const departmentPalette=['#3B82F6','#14B8A6','#A78BFA','#F59E0B','#F472B6','#22D3EE'];
+// Allocate across the full catalog, including empty departments, independent of chart order/counts.
+export function departmentColors(units){
+ const colors=new Map(),used=new Set();
+ for(const id of [...new Set(units.filter(unit=>unit.kind==='DEPARTMENT').map(unit=>unit.id))].sort()){
+  let hash=2166136261;for(const char of id)hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+  let index=hash%departmentPalette.length;
+  if(used.size<departmentPalette.length)while(used.has(index))index=(index+1)%departmentPalette.length;
+  used.add(index);colors.set(id,departmentPalette[index]);
+ }
+ return colors;
+}
+export function departments(profiles,total,units){
  if(!Array.isArray(profiles)||!number(total)||profiles.length!==total||new Set(profiles.map(e=>e.id)).size!==total)return null;
- const groups=new Map();for(const employee of profiles){const assignment=employee.assignments?.[0],department=assignment?.department||assignment?.team?.department,key=department?.name||'unassigned',label=department?.name||'Unassigned';const old=groups.get(key)||{id:key,label,count:0};old.count++;groups.set(key,old);}
+ const groups=new Map();for(const employee of profiles){const assignment=employee.assignments?.[0],department=assignment?.department||assignment?.team?.department,label=department?.name||'Unassigned',matches=department&&units?.filter(unit=>unit.kind==='DEPARTMENT'&&unit.name===department.name),key=department?(department.id||assignment.departmentId||assignment.team?.departmentId||(matches?.length===1?matches[0].id:null)):'unassigned';if(!key)return null;const old=groups.get(key)||{id:key,label,count:0};old.count++;groups.set(key,old);}
  return [...groups.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label));
 }
