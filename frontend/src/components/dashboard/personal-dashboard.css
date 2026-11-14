@@ -1,0 +1,68 @@
+/* Only Employee/Manager overview routes. Global theme, HR and Admin stay authoritative. */
+[data-personal-dashboard] {--hr-emerald:var(--primary);--hr-mint:var(--chart-2);--hr-teal:var(--chart-3);--hr-seafoam:color-mix(in srgb,var(--primary) 25%,var(--card));--hr-sage:color-mix(in srgb,var(--primary) 45%,var(--card));--hr-slate:var(--muted-foreground);--hr-red:var(--destructive);--hr-amber:var(--warning);--hr-neutral:var(--muted);--hr-text-green:var(--primary);--hr-control:var(--primary);}
+[data-personal-dashboard] #officehr-main {padding:20px 22px;max-width:1760px;}
+.role-dashboard {gap:20px;}
+.role-dashboard .hr-welcome {min-height:155px;}
+.role-dashboard .hr-eyebrow {display:block;}
+.role-dashboard .hr-welcome h1 {overflow-wrap:anywhere;}
+.role-dashboard .role-banner-date {display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.role-banner-date svg {width:16px;height:16px;}
+.employee-primary-row,.employee-secondary-row,.manager-primary-row,.manager-secondary-row {display:grid;gap:20px;min-width:0;}
+.employee-primary-row {grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);}
+.employee-secondary-row {grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);align-items:start;}
+.manager-primary-row {grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start;}
+.manager-secondary-row {grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
+.role-dashboard .hr-card-heading {padding-bottom:13px;border-bottom:1px solid var(--border);}
+.role-duty .hr-duty-time {font-size:clamp(25px,2.7vw,39px);letter-spacing:-.04em;line-height:1.2;}
+.role-duty .hr-clock-status {font-size:17px;}
+.role-dashboard .hr-clock {gap:15px;}
+.role-dashboard .hr-clock-times {font-size:12px;}
+.role-dashboard .hr-clock-actions {margin-top:5px;}
+.role-dashboard .hr-clock-actions button {min-height:44px;padding-inline:22px;}
+.role-leave {display:flex;flex-direction:column;gap:10px;}
+.role-leave .hr-card-heading {margin-bottom:8px;}
+.role-period {font-size:16px;font-weight:500;color:var(--foreground);}
+.role-leave-balance {font-size:clamp(22px,2.4vw,32px);font-weight:600;margin-block:6px;line-height:1.4;}
+.role-leave-balance strong {color:var(--primary);}
+.role-leave-rule,.role-team-note {font-size:11px;line-height:1.6;color:var(--muted-foreground);}
+.role-outline-link {display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid var(--primary);border-radius:9px;padding:10px 14px;color:var(--foreground);font-size:13px;font-weight:600;min-height:42px;}
+.role-outline-link:hover {background:var(--accent);}
+.role-outline-link svg {width:18px;height:18px;color:var(--primary);}
+.role-leave>.role-outline-link {margin-top:auto;}
+.role-payslip-row {display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
+.role-payslip-row .role-status {margin-top:10px;}
+.role-status {display:inline-flex;align-items:center;padding:5px 9px;border:1px solid var(--border);border-radius:7px;background:var(--muted);color:var(--foreground);font-size:11px;line-height:1.5;overflow-wrap:anywhere;}
+.role-team-date {font-size:13px;color:var(--muted-foreground);margin-bottom:12px;}
+.role-snapshot-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
+.role-snapshot {display:flex;align-items:center;gap:14px;border:1px solid var(--border);border-radius:14px;padding:17px;background:var(--card);min-width:0;}
+.role-snapshot>span {display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border-radius:11px;background:color-mix(in srgb,var(--primary) 13%,var(--card));color:var(--primary);}
+.role-snapshot svg {width:23px;height:23px;}
+.role-snapshot h2 {font-size:12px;line-height:1.4;margin-bottom:3px;}
+.role-snapshot strong {font-size:24px;line-height:1.4;overflow-wrap:anywhere;}
+.role-snapshot-blue>span {color:var(--chart-3);background:color-mix(in srgb,var(--chart-3) 12%,var(--card));}
+.role-snapshot-red>span {color:var(--destructive);background:color-mix(in srgb,var(--destructive) 12%,var(--card));}
+.role-snapshot-amber>span {color:#92400e;background:color-mix(in srgb,#f59e0b 13%,var(--card));}
+.dark .role-snapshot-amber>span {color:#fbbf24;background:color-mix(in srgb,#fbbf24 12%,var(--card));}
+.role-team-picker {min-width:0;max-width:160px;}
+.role-team-picker input {width:100%;min-width:0;font-size:12px;padding:7px;border:1px solid var(--input);border-radius:8px;background:var(--background);color:var(--foreground);}
+.role-table-scroll {overflow:auto;max-width:100%;}
+.role-team-table {width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;}
+.role-team-table th {text-align:left;font-size:11px;font-weight:600;color:var(--muted-foreground);padding:8px 5px;}
+.role-team-table th:first-child {width:40%;}
+.role-team-table th:nth-child(2) {width:25%;}
+.role-team-table th:last-child {width:35%;}
+.role-team-table td {padding:12px 5px;border-top:1px solid var(--border);vertical-align:middle;overflow-wrap:anywhere;}
+.role-person {display:flex;align-items:center;gap:8px;min-width:0;font-weight:600;}
+.role-avatar {display:inline-grid;place-items:center;flex-shrink:0;width:28px;height:28px;border-radius:50%;font-size:10px;background:color-mix(in srgb,var(--primary) 15%,var(--card));color:var(--foreground);}
+.role-status[data-classification='NO_CLOCK_IN'] {border-color:var(--destructive);}
+.role-status[data-classification='PAID_LEAVE'] {border-color:var(--warning);}
+.role-status[data-classification='NOT_YET_ENDED'] {border-style:dashed;}
+.role-team-message {font-size:12px;line-height:1.7;color:var(--muted-foreground);padding-block:10px;}
+.role-team-note {margin-top:10px;}
+.role-text-link {display:inline-block;margin-top:14px;font-size:12px;font-weight:600;text-decoration:underline;text-underline-offset:4px;color:var(--primary);}
+.role-dashboard a:focus-visible,.role-dashboard input:focus-visible {outline:2px solid var(--ring);outline-offset:3px;}
+@media(min-width:1024px){[data-personal-dashboard] aside>div>div:first-child{padding:17px 24px;}[data-personal-dashboard] aside nav{padding-block:10px;}[data-personal-dashboard] aside nav ul{display:grid;gap:3px;}[data-personal-dashboard] aside nav li{margin:0;}[data-personal-dashboard] aside nav a{min-height:40px;padding-block:7px;}[data-personal-dashboard] aside footer{padding:12px 24px;}[data-personal-dashboard] aside footer p{margin-top:3px;}}
+@media(max-width:1279px){.role-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.manager-primary-row{grid-template-columns:1fr;}}
+@media(max-width:1100px){.employee-primary-row,.employee-secondary-row{grid-template-columns:1fr;}}
+@media(max-width:767px){[data-personal-dashboard] #officehr-main{padding:14px;}.role-dashboard{gap:15px;}.employee-primary-row,.employee-secondary-row,.manager-primary-row,.manager-secondary-row{grid-template-columns:1fr;gap:15px;}.role-snapshot-grid{gap:10px;}.role-snapshot{padding:12px;gap:8px;}.role-snapshot>span{width:34px;height:34px;}.role-snapshot h2{font-size:11px;}.role-snapshot strong{font-size:19px;}.role-team-table{font-size:11px;}.role-person{display:block;}.role-avatar{margin:0 5px 5px 0;}.role-team-picker{max-width:155px;}.role-duty .hr-duty-time{font-size:28px;}}
+@media(max-width:374px){.role-snapshot-grid{grid-template-columns:1fr;}.role-snapshot>span{width:40px;height:40px;}.role-snapshot{padding:13px;}.role-team-table th:first-child{width:36%;}.role-team-table th:nth-child(2){width:26%;}.role-team-table th:last-child{width:38%;}}

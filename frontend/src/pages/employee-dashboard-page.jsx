@@ -1,0 +1,5 @@
+import {usePersonalOverview} from '@/components/dashboard/use-personal-overview';
+import {useHrRead as useDashboardRead} from '@/components/dashboard/use-hr-dashboard';
+import {RecentAnnouncements} from '@/components/dashboard/dashboard-panels';
+import {Welcome,PersonalDuty,MyLeave,LatestPayslip} from '@/components/dashboard/personal-dashboard-widgets';
+export default function EmployeeDashboard(){const overview=usePersonalOverview(),payslip=useDashboardRead('/dashboard/payslip',overview.revision,overview.onAuthFailure),pending=[overview.personal,overview.shift,overview.announcements,payslip].some(resource=>resource.loading);return <div className="hr-dashboard role-dashboard employee-dashboard"><Welcome overview={overview} pending={pending}/><div className="employee-primary-row"><PersonalDuty overview={overview}/><MyLeave resource={overview.personal}/></div><div className="employee-secondary-row"><LatestPayslip resource={payslip}/><RecentAnnouncements resource={overview.announcements}/></div></div>;}

@@ -8,6 +8,8 @@ import { INBOX_CHANGED, INBOX_SNAPSHOT, getInboxSnapshot, inboxChanged } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import HrDashboard from './hr-dashboard-page';
+import EmployeeDashboard from './employee-dashboard-page';
+import ManagerDashboard from './manager-dashboard-page';
 import MyShift from '@/components/my-shift';
 import AttendanceClock from '@/components/attendance-clock';
 
@@ -51,7 +53,7 @@ function RecentAnnouncements({ widget }) {
     return <Panel title="Recent announcements" widget={widget} description="Published to your frozen recipient audience. Loading this summary does not mark anything read.">{!rows.length ? <p className="text-sm">No active announcements published to you.</p> : <div className="space-y-3">{important.length > 0 && <div role="region" aria-label="Important announcements" className="space-y-3">{important.map(item)}</div>}{other.map(item)}</div>}<Go to="/announcements">Open my announcement feed</Go></Panel>;
 }
 
-export default function DashboardPage() { const { user } = useAuth(); return user.role==='HR'?<HrDashboard key={`${user.id}:${user.role}`}/>:<Dashboard key={`${user.id}:${user.role}`} user={user} />; }
+export default function DashboardPage() { const { user } = useAuth(); const key=`${user.id}:${user.role}`;return user.role==='HR'?<HrDashboard key={key}/>:user.role==='EMPLOYEE'?<EmployeeDashboard key={key}/>:user.role==='MANAGER'?<ManagerDashboard key={key}/>:<Dashboard key={key} user={user}/>; }
 function Dashboard({ user }) {
     const { refreshSession } = useAuth();
     const [revision, setRevision] = useState(0), [payrollMonth, setPayrollMonth] = useState(karachiMonth);

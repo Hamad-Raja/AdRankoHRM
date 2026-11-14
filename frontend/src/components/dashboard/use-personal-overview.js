@@ -1,0 +1,4 @@
+import {useCallback,useRef,useState} from 'react';
+import {useAuth} from '@/context/auth-context';
+import {useHrRead as useDashboardRead} from './use-hr-dashboard';
+export function usePersonalOverview(){const {user,refreshSession}=useAuth(),[revision,setRevision]=useState(0),[initialTime]=useState(()=>new Date().toISOString()),failed=useRef(false);const onAuthFailure=useCallback(()=>{if(!failed.current){failed.current=true;void refreshSession();}},[refreshSession]);const personal=useDashboardRead('/dashboard/personal',revision,onAuthFailure),shift=useDashboardRead('/attendance-settings/my-shift',revision,onAuthFailure),announcements=useDashboardRead('/dashboard/announcements',revision,onAuthFailure);return {user,revision,setRevision,initialTime,onAuthFailure,personal,shift,announcements};}
