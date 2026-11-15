@@ -8,6 +8,7 @@ import {
   clockOut,
 } from "@/services/attendance.service";
 import AttendanceCorrectionModal from "./attendance-correction-modal";
+import {dutyPresentation} from '@/lib/attendance-clock-presentation';
 import AttendanceClockCompact from "./attendance-clock-compact";
 import {
   Clock,
@@ -237,7 +238,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
         </div>
       </div>
 
-      {data?.state === 'SETUP_REQUIRED' && <p role="status" className="mb-4 text-sm">Attendance setup is required. Clock In stays unavailable until Admin/HR approves an effective schedule. An existing open session can still be checked out.</p>}
+      {data?.state === 'SETUP_REQUIRED' && <p role="status" className="mb-4 text-sm">{dutyPresentation(data,scheduleResource?.data,scheduleResource?.settings).actual}. {dutyPresentation(data,scheduleResource?.data,scheduleResource?.settings).explanation}</p>}
       {data?.approvedException && <p role="status" className="mb-4 text-sm">This duty has an approved exception with no original punches. See My Requests for the proposed times and HR decision.</p>}
       {data?.approvedLeave&&<p role="status" className="mb-4 rounded-lg border p-3 text-sm">Approved full-day paid leave on {data.approvedLeave.shiftDate}. Clock In is unavailable. No attendance punches were created; payroll remains manual.</p>}
       {/* Action feedback */}

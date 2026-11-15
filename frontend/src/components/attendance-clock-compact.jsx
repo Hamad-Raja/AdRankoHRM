@@ -3,7 +3,7 @@ import {LogIn,LogOut,RefreshCw} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {dutyPresentation,attendanceInstant,dutyTime,nextDay} from '@/lib/attendance-clock-presentation';
 export default function AttendanceClockCompact({data,loading,actionLoading,error,notice,pending,scheduleResource,onRefresh,onClockIn,onClockOut}){
- const {schedule,actual,explanation,record,scheduleLabel}=dutyPresentation(data,scheduleResource?.data),blocked=loading||actionLoading||!!pending||!!error;
+ const {schedule,actual,explanation,record,scheduleLabel,nextDuty}=dutyPresentation(data,scheduleResource?.data,scheduleResource?.settings),blocked=loading||actionLoading||!!pending||!!error;
  return <div className="hr-clock">
   <div className="hr-clock-toolbar"><span className="hr-muted">Your attendance</span><Button variant="outline" size="sm" aria-label="Refresh attendance status" disabled={loading||actionLoading} onClick={onRefresh}><RefreshCw aria-hidden="true" className={loading?'animate-spin':''}/>Refresh Status</Button></div>
   {loading?<p role="status" className="hr-muted">Loading attendance status...</p>:<>
@@ -11,8 +11,7 @@ export default function AttendanceClockCompact({data,loading,actionLoading,error
    {scheduleResource?.loading&&!schedule&&<p role="status" className="hr-muted">Loading assigned schedule...</p>}
    {scheduleResource?.error&&<div role="alert"><p>Assigned schedule unavailable: {scheduleResource.error.message}</p><Button variant="outline" size="sm" onClick={scheduleResource.retry}>Retry my duty</Button></div>}
    {!error&&data&&<><p className="hr-clock-status" aria-label="Attendance status">{actual}</p>{explanation&&<p className="hr-muted">{explanation}</p>}
-   {scheduleResource?.data?.state==='PENDING_ACTIVATION'&&data.state==='SETUP_REQUIRED'&&<p className="hr-muted">Saved draft pending activation.</p>}
-   {scheduleResource?.data?.state==='SCHEDULED_ACTIVATION'&&data.state==='SETUP_REQUIRED'&&<p className="hr-muted">Approved activation is scheduled for a future duty start.</p>}
+   {nextDuty&&<p className="hr-muted">{nextDuty}</p>}
    {record&&<dl className="hr-clock-times"><div><dt>Recorded Clock In</dt><dd>{attendanceInstant(record.clockInAt,record.scheduleTimeZone)}</dd></div><div><dt>Recorded Clock Out</dt><dd>{attendanceInstant(record.clockOutAt,record.scheduleTimeZone)}</dd></div>{record.workedMinutes!=null&&<div><dt>Raw elapsed (not payable)</dt><dd>{record.workedMinutes} minutes</dd></div>}</dl>}
    {record?.isMissingCheckout&&<p role="status" className="hr-muted">Missing checkout requires review. Use the permitted Clock Out action or request a correction in Attendance.</p>}
    {record?.isAfterScheduleEnd&&<p className="hr-muted">Checkout after scheduled end requires review.</p>}

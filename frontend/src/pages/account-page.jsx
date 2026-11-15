@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
+import { Navigate, useLocation } from "react-router";
 
 import { useAuth } from "@/context/auth-context";
 
@@ -168,7 +169,7 @@ function PasswordChangeForm({ canCancel, onCancel }) {
   );
 }
 
-export default function AccountPage() {
+export function AccountSecurityContent() {
   const { user, pendingAction } = useAuth();
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -177,17 +178,6 @@ export default function AccountPage() {
   const passwordChangeRequired = user.mustChangePassword;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          My account
-        </h1>
-
-        <p className="mt-3 text-muted-foreground">
-          Manage your account details and security.
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
         <section
           aria-labelledby="account-details-heading"
@@ -253,12 +243,18 @@ export default function AccountPage() {
                 onClick={() => setShowPasswordForm(true)}
                 className={`${BUTTON_CLASSES} mt-5 border border-border bg-card hover:bg-accent`}
               >
-                Change password
+                Change my password
               </button>
             </>
           )}</>}
         </section>
       </div>
-    </div>
   );
+}
+
+export default function AccountPage() {
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  search.set('tab', 'security');
+  return <Navigate to={{ pathname: '/my-profile', search: `?${search}`, hash: location.hash }} state={location.state} replace />;
 }

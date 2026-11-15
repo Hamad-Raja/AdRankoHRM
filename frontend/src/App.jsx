@@ -60,13 +60,13 @@ export default function App() {
           <Route element={<ProtectedRoute allowPasswordChange />}>
             <Route element={<PortalLayout />}>
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/my-profile" element={<MyProfilePage/>}/>
 
               <Route element={<ProtectedRoute />}>
                 <Route
                   path="/dashboard"
                   element={<DashboardPage />}
                 />
-                <Route path="/my-profile" element={<MyProfilePage/>}/>
                 <Route path="/employment" element={<EmploymentPage/>}/>
                 <Route element={<ProtectedRoute allowedRoles={["ADMIN"]}/>}><Route path="/audit" element={<AuditPage/>}/></Route>
 

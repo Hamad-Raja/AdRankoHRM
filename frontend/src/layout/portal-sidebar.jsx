@@ -77,11 +77,6 @@ const MANAGEMENT_NAVIGATION = [
     to: "/attendance-settings",
     icon: Clock,
   },
-  {
-    label: "My Account",
-    to: "/account",
-    icon: UserRound,
-  },
 ];
 
 const MANAGER_NAVIGATION = [
@@ -124,11 +119,6 @@ const MANAGER_NAVIGATION = [
     label: "Notifications",
     to: "/notifications",
     icon: Bell,
-  },
-  {
-    label: "My Account",
-    to: "/account",
-    icon: UserRound,
   },
 ];
 
@@ -173,11 +163,6 @@ const EMPLOYEE_NAVIGATION = [
     to: "/notifications",
     icon: Bell,
   },
-  {
-    label: "My Account",
-    to: "/account",
-    icon: UserRound,
-  },
 ];
 
 const NAVIGATION_BY_ROLE = {
@@ -195,14 +180,14 @@ export default function PortalSidebar({ onNavigate }) {
   }
 
   const homePath = user.mustChangePassword
-    ? "/account"
+    ? "/my-profile?tab=security"
     : "/dashboard";
 
   const navigation = [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'My Profile',to:'/my-profile',icon:UserRound},{label:'Employment',to:'/employment',icon:UsersRound}];
 
   // Preserve the existing first-login password-change restriction.
   const visibleItems = user.mustChangePassword
-    ? navigation.filter((item) => item.to === "/account")
+    ? navigation.filter((item) => item.to === "/my-profile").map(item => ({ ...item, to: '/my-profile?tab=security' }))
     : navigation;
 
   return (

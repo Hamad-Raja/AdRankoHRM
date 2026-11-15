@@ -8,7 +8,7 @@ import { useAuth } from "@/context/auth-context";
 
 const PAGE_TITLES = {
   "/dashboard": "Dashboard",
-  "/account": "My account",
+  "/account": "My profile",
   "/attendance": "Attendance",
   "/reports": "Reports",
   "/payroll": "Payroll Management",
@@ -104,8 +104,8 @@ export default function PortalHeader({
           <ThemeToggle />
 
           <Link
-            to="/account"
-            aria-label={`Open account for ${user.displayName}`}
+            to="/my-profile?tab=security"
+            aria-label={`Open account and security for ${user.displayName}`}
             className="flex h-9 items-center gap-2.5 rounded-lg px-2 hover:bg-accent/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
           >
             <span
