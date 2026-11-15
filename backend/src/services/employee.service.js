@@ -254,13 +254,18 @@ async function createEmployee({
               select: { role: true },
             });
 
+            if (!['EMPLOYEE','MANAGER','HR'].includes(data.portalLogin.role) ||
+                (data.portalLogin.role === 'HR' && actor.role !== 'ADMIN')) {
+              throw new ApiError(403, 'Only Admin can create an HR account. Admin accounts cannot be created through Add Employee.', 'FORBIDDEN');
+            }
+
             if (
               actor.role === "HR" &&
-              data.portalLogin.role !== "EMPLOYEE"
+              !["EMPLOYEE","MANAGER"].includes(data.portalLogin.role)
             ) {
               throw new ApiError(
                 403,
-                "HR can create Employee accounts only.",
+                "HR can create Employee and Manager accounts only.",
                 "FORBIDDEN"
               );
             }

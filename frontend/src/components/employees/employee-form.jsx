@@ -1,3 +1,4 @@
+import {employeeCreationRoles} from './employee-account-rules';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Eye, EyeOff, LoaderCircle, UserRound, Hash, Phone, Mail, MapPin, Building2, Megaphone, UsersRound, BriefcaseBusiness, CalendarDays, LockKeyhole, ChevronDown } from 'lucide-react';
@@ -60,7 +61,7 @@ export default function EmployeeForm({ employee = null, onSubmit, busy = false, 
     locked.current=true;try{await onSubmit(editing?{version:employee.version,...profile,...(employee.employment?{employmentType:values.employmentType||null,employmentEpisodeId:employee.employment.id,expectedEmploymentVersion:employee.employment.version}:{}),probationEndDate:values.probationEndDate||null,confirmedOn:values.confirmedOn||null}:{...profile,...(!values.autoCode?{employeeCode:values.employeeCode.trim().toUpperCase()}:{}),
       employment:{startDate:values.startDate,status:values.status,probationEndDate:values.probationEndDate||null,confirmedOn:values.status==='PROBATION'?null:values.confirmedOn||null,reason:'Initial employment created through Add Employee.'},
       organization:{departmentId:values.departmentId,campaignId:values.campaignId||null,teamId:values.teamId||null,designationId:values.designationId,reportingManagerId:values.reportingManagerId||null},
-      portalLogin:{email:values.loginEmail.trim().toLowerCase(),password:values.password,role:user.role==='ADMIN'?values.loginRole:'EMPLOYEE'}});
+      portalLogin:{email:values.loginEmail.trim().toLowerCase(),password:values.password,role:values.loginRole}});
     }finally{locked.current=false;}
   }
   if(editing)return <form ref={formRef} onSubmit={submit} aria-label="Edit employee profile" className="flex min-h-0 flex-col overflow-hidden" aria-busy={busy} autoComplete="off">
@@ -97,7 +98,7 @@ export default function EmployeeForm({ employee = null, onSubmit, busy = false, 
     </Section>}
     {!editing&&<Section number="3" title="Portal Login" description="Create login access for the employee."><div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {field('loginEmail','Login Email',Mail,{type:'email',required:true,maxLength:254,placeholder:'Enter login email'})}
-      {field('loginRole','Portal Role',UserRound,{options:user.role==='ADMIN'?[['EMPLOYEE','Employee'],['MANAGER','Manager']]:[['EMPLOYEE','Employee']],disabled:user.role!=='ADMIN'})}
+      {field('loginRole','Portal Role',UserRound,{options:employeeCreationRoles(user.role)})}
       {field('password','Password',LockKeyhole,{type:showPassword?'text':'password',required:true,autoComplete:'new-password'})}
       {field('confirmPassword','Confirm Password',LockKeyhole,{type:showPassword?'text':'password',required:true,autoComplete:'new-password'})}
     </div><div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={()=>setShowPassword(value=>!value)} aria-pressed={showPassword}>{showPassword?<EyeOff aria-hidden="true"/>:<Eye aria-hidden="true"/>}{showPassword?'Hide passwords':'Show passwords'}</Button><Button type="button" variant="outline" onClick={generate}>Generate Strong Password</Button>{values.personalEmail&&<Button type="button" variant="outline" onClick={()=>setValues(old=>({...old,loginEmail:old.personalEmail}))}>Use personal email for login</Button>}</div><p className="mt-3 text-xs text-muted-foreground">Use at least 8 characters and at most 72 UTF-8 bytes. No mailbox is created. Admin or HR can reset Employee and Manager passwords.</p></Section>}

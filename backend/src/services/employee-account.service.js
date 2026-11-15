@@ -17,10 +17,10 @@ async function linkAccount(actorId, employeeId, data) {
       if (!account || (exited?account.status!=='DISABLED':account.status!=='ACTIVE') || ['ADMIN', 'HR'].includes(account.role)) fail(400, 'Eligible account not found. Elevated accounts cannot be linked here.');
     } else {
       if (!['EMPLOYEE','MANAGER'].includes(data.role)) fail(403,'Only Employee and Manager accounts can be provisioned here.','FORBIDDEN');
-      if (manager.role === 'HR' && data.role !== 'EMPLOYEE') fail(403, 'HR can provision ordinary employee accounts only.', 'FORBIDDEN');
+      if (manager.role === 'HR' && !['EMPLOYEE','MANAGER'].includes(data.role)) fail(403, 'HR can provision Employee and Manager accounts only.', 'FORBIDDEN');
       account = await tx.user.create({ data: { email: data.email, displayName: employee.fullName, passwordHash, role: data.role, status:exited?'DISABLED':'ACTIVE',mustChangePassword: false } });
     }
-    if (manager.role === 'HR' && account.role !== 'EMPLOYEE') fail(403, 'HR can link ordinary employee accounts only.', 'FORBIDDEN');
+    if (manager.role === 'HR' && !['EMPLOYEE','MANAGER'].includes(account.role)) fail(403, 'HR can link Employee and Manager accounts only.', 'FORBIDDEN');
     const linked = await tx.employee.updateMany({ where: { id: employeeId, userId: null }, data: { userId: account.id, version: { increment: 1 } } });
     if (linked.count !== 1) fail(409, 'Account linkage changed. Reload.', 'ACCOUNT_LINK_CONFLICT');
     if(await require('./employment-access.service').ready(tx))await tx.employmentCase.updateMany({where:{employeeId,state:{in:['MANAGER_REVIEW','HR_PREPARATION','ADMIN_APPROVAL','APPROVED']}},data:{employeeUserId:account.id,version:{increment:1}}});
@@ -38,7 +38,8 @@ async function resetAccountPassword(actorId,employeeId,input){
   if(!employee?.userId)fail(404,'Linked account not found.','NOT_FOUND');
   await tx.$queryRaw`SELECT id FROM users WHERE id=${employee.userId}::uuid FOR UPDATE`;
   const target=await tx.user.findUnique({where:{id:employee.userId}});
-  if(!['EMPLOYEE','MANAGER'].includes(target.role)||target.id===administrator.id)fail(403,'Admin/HR may reset only Employee and Manager accounts. Privileged accounts use their existing recovery process.','FORBIDDEN');
+  const manageable=['EMPLOYEE','MANAGER'].includes(target.role)||(administrator.role==='ADMIN'&&target.role==='HR');
+  if(!manageable||target.id===administrator.id)fail(403,'HR can reset only Employee and Manager accounts. Only Admin may reset another HR account. Admin accounts remain protected.','FORBIDDEN');
   const previous=await tx.auditLog.findFirst({where:{actorUserId:actorId,action:'MANAGED_ACCOUNT_PASSWORD_RESET',targetId:employeeId,metadata:{path:['requestId'],equals:parsed.data.requestId}}});
   if(previous)return {reset:true,replayed:true,accountStatus:target.status};
   if(await verifyPassword(parsed.data.newPassword,target.passwordHash))fail(400,'The replacement must differ from the current password.','PASSWORD_REUSE');

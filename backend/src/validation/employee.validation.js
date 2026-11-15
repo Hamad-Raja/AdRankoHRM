@@ -141,7 +141,7 @@ const createEmployeeSchema = z.strictObject({
     .strictObject({
       email: emailSchema,
       password: newPasswordSchema,
-      role: z.enum(["EMPLOYEE", "MANAGER"]).default("EMPLOYEE"),
+      role: z.enum(["EMPLOYEE", "MANAGER", "HR"]).default("EMPLOYEE"),
     })
     .optional(),
 });
