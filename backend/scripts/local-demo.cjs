@@ -18,7 +18,7 @@ function save(file, manifest, initial = false) {
 }
 
 async function setup({ prisma, databaseName, file }) {
-  if (databaseName !== 'AdRankoHRM' && !/^officehr_phase1_test_[a-f0-9]{16}$/.test(databaseName)) throw new Error('Unsupported local demo setup target.');
+  if (!require('../src/config/local-demo').APPROVED_LOCAL_DATABASES.has(databaseName) && !/^officehr_phase1_test_[a-f0-9]{16}$/.test(databaseName)) throw new Error('Unsupported local demo setup target.');
   await assertConnectedDatabase(prisma, databaseName);
   if (fs.existsSync(file)) {
     const manifest = require('../src/services/local-demo.service').readManifest(file);
