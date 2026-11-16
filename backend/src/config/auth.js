@@ -36,7 +36,8 @@ const CSRF_COOKIE_NAME = isProduction
 const SESSION_COOKIE_OPTIONS = Object.freeze({
   httpOnly: true,
   secure: isProduction,
-  sameSite: "lax",
+  // Production frontend/API are cross-site; cookies remain Secure and HttpOnly.
+  sameSite: isProduction ? "none" : "lax",
   path: "/",
 });
 
