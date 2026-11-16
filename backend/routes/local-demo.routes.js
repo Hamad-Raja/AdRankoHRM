@@ -11,13 +11,16 @@ function createLocalDemoRouter({ config, prisma }) {
   const router = require('express').Router();
   router.post('/local-demo-login', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
-    if (!config.enabled || process.env.NODE_ENV !== 'development' || process.env.OFFICEHR_LOCAL_DEMO_ENABLED !== 'true') {
+    const enabled = config.production
+      ? process.env.NODE_ENV === 'production' && process.env.OFFICEHR_PRODUCTION_DEMO_ENABLED === 'true'
+      : process.env.NODE_ENV === 'development' && process.env.OFFICEHR_LOCAL_DEMO_ENABLED === 'true';
+    if (!config.enabled || !enabled) {
       return next(new ApiError(404, 'Endpoint not found.', 'NOT_FOUND'));
     }
     let hostname;
     try { hostname = new URL('http://' + req.get('host')).hostname; } catch { /* rejected below */ }
-    if (!LOOPBACK.has(req.socket.localAddress) || !LOOPBACK.has(req.socket.remoteAddress) || !LOOPBACK.has(hostname) || req.get('origin') !== config.origin) {
-      return next(new ApiError(403, 'Local demo login requires the trusted local browser origin.', 'LOCAL_DEMO_ORIGIN_REQUIRED'));
+    if (req.get('origin') !== config.origin || !config.production && (!LOOPBACK.has(req.socket.localAddress) || !LOOPBACK.has(req.socket.remoteAddress) || !LOOPBACK.has(hostname))) {
+      return next(new ApiError(403, 'Demo login requires the configured trusted browser origin.', 'LOCAL_DEMO_ORIGIN_REQUIRED'));
     }
     return next();
   }, requireTrustedOrigin, loginLimiter, validate(z.strictObject({ role: z.enum(['HR', 'MANAGER', 'EMPLOYEE']) })), async (req, res, next) => {

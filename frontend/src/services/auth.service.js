@@ -79,8 +79,9 @@ export async function getCurrentUser({ signal } = {}) {
 // The acceptance runner injects this non-VITE flag; ordinary dev/build does not.
 const ACCEPTANCE_DEMO_ENABLED = import.meta.env.DEV && import.meta.env.OFFICEHR_ACCEPTANCE_DEMO === true;
 const LOCAL_DEMO_ENABLED = import.meta.env.DEV && import.meta.env.VITE_OFFICEHR_LOCAL_DEMO === 'true' && globalThis.location?.origin === 'http://localhost:5173';
-export const DEMO_LOGIN_ENABLED = ACCEPTANCE_DEMO_ENABLED || LOCAL_DEMO_ENABLED;
-export const DEMO_LOGIN_LABEL = ACCEPTANCE_DEMO_ENABLED ? 'Demo accounts — local testing only' : 'Temporary local demo accounts';
+const PRODUCTION_DEMO_ENABLED = import.meta.env.PROD && import.meta.env.VITE_OFFICEHR_PRODUCTION_DEMO === 'true';
+export const DEMO_LOGIN_ENABLED = ACCEPTANCE_DEMO_ENABLED || LOCAL_DEMO_ENABLED || PRODUCTION_DEMO_ENABLED;
+export const DEMO_LOGIN_LABEL = PRODUCTION_DEMO_ENABLED ? 'Try a demo account' : ACCEPTANCE_DEMO_ENABLED ? 'Demo accounts — local testing only' : 'Temporary local demo accounts';
 
 export async function demoLogin(role, { signal } = {}) {
   if (!DEMO_LOGIN_ENABLED) throw new ApiError('Demo login is unavailable.');
