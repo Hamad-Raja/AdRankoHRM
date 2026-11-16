@@ -1,8 +1,9 @@
-require("dotenv/config");
+// Hosting-provided values take precedence over local environment files.
+require("dotenv").config({ override: false, quiet: true });
 // Only ordinary executable startup loads the private opt-in file. Imported test
 // apps/acceptance runners retain their explicitly supplied environment.
-if (require.main === module) {
-  require('dotenv').config({ path: require('node:path').join(__dirname, '.env.local'), quiet: true });
+if (require.main === module && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: require('node:path').join(__dirname, '.env.local'), override: false, quiet: true });
 }
 const localDemoConfig = require('./src/config/local-demo').readLocalDemoConfig();
 
@@ -25,7 +26,7 @@ const {
 const app = express();
 
 const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || "127.0.0.1";
+const HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : process.env.HOST || "127.0.0.1";
 
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   throw new Error("PORT must be an integer between 1 and 65535.");
@@ -157,7 +158,9 @@ async function startServer() {
       // Express 5 also invokes this callback on a listen failure.
       // The server error listener below owns logging and cleanup in that case.
       if (error) return;
-      console.log(`OfficeHR API running at http://${HOST}:${PORT}`);
+      const address = server.address();
+      const boundHost = address.family === 'IPv6' ? `[${address.address}]` : address.address;
+      console.log(`OfficeHR API running at http://${boundHost}:${address.port}`);
     });
 
     server.on("error", (error) => {
