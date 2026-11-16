@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Link, NavLink } from "react-router";
+import AdRankoLogo from '@/components/adranko-logo';
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -210,9 +211,10 @@ export default function PortalSidebar({ onNavigate }) {
           to={homePath}
           onClick={() => onNavigate?.()}
           aria-label="AdRankoHRM home"
-          className="inline-block whitespace-nowrap rounded-sm text-xl font-bold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
+          className="inline-flex items-center gap-2 whitespace-nowrap rounded-sm text-xl font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
         >
-          AdRanko<span className="text-sidebar-ring">HRM</span>
+          <AdRankoLogo />
+          <span>AdRanko<span className="text-sidebar-ring">HRM</span></span>
         </Link>
       </div>
 
