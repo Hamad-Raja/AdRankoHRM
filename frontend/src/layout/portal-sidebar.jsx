@@ -210,7 +210,7 @@ export default function PortalSidebar({ onNavigate }) {
           to={homePath}
           onClick={() => onNavigate?.()}
           aria-label="AdRankoHRM home"
-          className="inline-block rounded-sm text-2xl font-bold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
+          className="inline-block whitespace-nowrap rounded-sm text-xl font-bold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
         >
           AdRanko<span className="text-sidebar-ring">HRM</span>
         </Link>
