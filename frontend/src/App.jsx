@@ -36,7 +36,7 @@ import {
 
 export default function App() {
   useEffect(() => {
-    document.title = "OfficeHR";
+    document.title = "AdRankoHRM";
   }, []);
 
   return (

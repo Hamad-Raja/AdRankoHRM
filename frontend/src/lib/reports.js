@@ -302,7 +302,7 @@ export function reportFilename(report, meta, format) {
     );
   }
 
-  return `officehr-${report}-${meta.period.dateFrom}-to-${meta.period.dateTo}.${format}`;
+  return `AdRankoHRM-${report}-${meta.period.dateFrom}-to-${meta.period.dateTo}.${format}`;
 }
 
 export async function validateReportBlob(blob, format) {

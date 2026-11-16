@@ -35,7 +35,7 @@ export default function NotFoundPage() {
             to={destination}
             className="mt-6 inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
           >
-            {status === "authenticated" ? "Return to OfficeHR" : "Go to sign in"}
+            {status === "authenticated" ? "Return to AdRankoHRM" : "Go to sign in"}
           </Link>
         </section>
       </main>

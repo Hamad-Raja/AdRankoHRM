@@ -75,7 +75,7 @@ export default function LoginPage() {
     <div className="min-h-svh bg-background lg:grid lg:grid-cols-2">
       <aside className="hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
         <div className="text-3xl font-bold tracking-tight">
-          Office<span className="text-sidebar-ring">HR</span>
+          AdRanko<span className="text-sidebar-ring">HRM</span>
         </div>
 
         <div className="max-w-md">
@@ -88,7 +88,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-5 leading-7 text-sidebar-foreground/80">
-            Access your account and manage your work with OfficeHR.
+            Access your account and manage your work with AdRankoHRM.
           </p>
         </div>
 
@@ -100,7 +100,7 @@ export default function LoginPage() {
       <div className="flex min-h-svh flex-col">
         <header className="flex items-center justify-between gap-4 p-5 sm:p-8">
           <div className="text-xl font-bold tracking-tight lg:invisible">
-            Office<span className="text-primary">HR</span>
+            AdRanko<span className="text-primary">HRM</span>
           </div>
 
           <ThemeToggle />

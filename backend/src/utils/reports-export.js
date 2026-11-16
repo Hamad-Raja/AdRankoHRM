@@ -427,7 +427,7 @@ async function encodeReport(data) {
 
   return {
     buffer,
-    filename: `officehr-${meta.report}-${meta.period.dateFrom}-to-${meta.period.dateTo}.${format}`,
+    filename: `AdRankoHRM-${meta.report}-${meta.period.dateFrom}-to-${meta.period.dateTo}.${format}`,
     contentType:
       format === 'csv'
         ? 'text/csv; charset=utf-8'

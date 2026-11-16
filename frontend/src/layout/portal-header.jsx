@@ -62,7 +62,7 @@ export default function PortalHeader({
     PAGE_TITLES[location.pathname] ||
     (location.pathname.startsWith("/employees/")
       ? "Employee details"
-      : "OfficeHR");
+      : "AdRankoHRM");
   const busy = pendingAction !== null;
 
   async function handleLogout() {

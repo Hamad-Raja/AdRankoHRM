@@ -86,7 +86,7 @@ export default function PortalLayout() {
 
       <div className="flex min-h-svh">
         <aside
-          aria-label="OfficeHR sidebar"
+          aria-label="AdRankoHRM sidebar"
           className="sticky top-0 hidden h-svh w-64 shrink-0 border-r border-sidebar-border lg:block"
         >
           <PortalSidebar />
@@ -145,7 +145,7 @@ export default function PortalLayout() {
         className="fixed inset-y-0 right-auto left-0 m-0 h-dvh max-h-none w-72 max-w-[calc(100vw-2rem)] border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground backdrop:bg-black/55 lg:hidden"
       >
         <h2 id={menuTitleId} className="sr-only">
-          OfficeHR navigation
+          AdRankoHRM navigation
         </h2>
 
         <button

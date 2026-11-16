@@ -32,7 +32,7 @@ export default function PayrollWorkflow({record,user,busy,uncertain,error,onRelo
           {editable&&<><Button type="button" variant="outline" onClick={()=>onEdit(record)}>Edit Draft</Button><Button type="button" onClick={()=>open('hr-approve')}>{record.needsCorrection?'Resubmit':'HR Approve'}</Button></>}
           {reviewable&&<><Button type="button" variant="outline" disabled={!adminActions.canReturn} onClick={()=>open('return')}>Send Back</Button><Button type="button" disabled={!adminActions.canApprove} onClick={()=>open('approve')}>Final Approve</Button></>}
         </div>
-        {payable&&<div className="space-y-3"><p className="text-sm text-muted-foreground">Record the full approved amount {pkr(record.netPay)} after an external payment. OfficeHR does not transfer funds.</p><Button type="button" onClick={()=>open('pay')}>Record Payment</Button></div>}
+        {payable&&<div className="space-y-3"><p className="text-sm text-muted-foreground">Record the full approved amount {pkr(record.netPay)} after an external payment. AdRankoHRM does not transfer funds.</p><Button type="button" onClick={()=>open('pay')}>Record Payment</Button></div>}
       </fieldset>
     </section>}
     {!editable&&!reviewable&&!payable&&record.status==='HR_APPROVED'&&<p className="text-sm text-muted-foreground">Awaiting Admin review.</p>}

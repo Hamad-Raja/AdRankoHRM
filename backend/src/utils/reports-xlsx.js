@@ -231,7 +231,7 @@ async function makeWorkbook(sheets, generatedAt) {
     'docProps/core.xml',
     XML +
       '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-      '<dc:creator>OfficeHR</dc:creator>' +
+      '<dc:creator>AdRankoHRM</dc:creator>' +
       `<dcterms:created xsi:type="dcterms:W3CDTF">${escapeXML(generatedAt)}</dcterms:created>` +
       '</cp:coreProperties>'
   );

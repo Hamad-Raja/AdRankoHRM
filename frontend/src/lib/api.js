@@ -149,7 +149,7 @@ export async function apiRequest(
     }
 
     throw new ApiError(
-      "Unable to reach OfficeHR. Check your connection and try again.",
+      "Unable to reach AdRankoHRM. Check your connection and try again.",
       {
         code: "NETWORK_ERROR",
       }

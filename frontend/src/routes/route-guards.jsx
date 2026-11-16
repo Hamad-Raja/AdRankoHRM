@@ -18,7 +18,7 @@ function SessionStatusScreen() {
       <main className="flex flex-1 items-center justify-center px-5 pb-12">
         <section className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center shadow-sm">
           <div className="text-2xl font-bold tracking-tight">
-            Office<span className="text-primary">HR</span>
+            AdRanko<span className="text-primary">HRM</span>
           </div>
 
           {loading ? (

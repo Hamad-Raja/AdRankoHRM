@@ -209,10 +209,10 @@ export default function PortalSidebar({ onNavigate }) {
         <Link
           to={homePath}
           onClick={() => onNavigate?.()}
-          aria-label="OfficeHR home"
+          aria-label="AdRankoHRM home"
           className="inline-block rounded-sm text-2xl font-bold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
         >
-          Office<span className="text-sidebar-ring">HR</span>
+          AdRanko<span className="text-sidebar-ring">HRM</span>
         </Link>
       </div>
 

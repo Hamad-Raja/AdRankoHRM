@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/context/theme-provider";
 const rootElement = document.getElementById("root");
 
 if (!rootElement) {
-  throw new Error("OfficeHR root element was not found.");
+  throw new Error("AdRankoHRM root element was not found.");
 }
 
 createRoot(rootElement).render(
