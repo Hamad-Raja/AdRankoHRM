@@ -166,7 +166,20 @@ const EMPLOYEE_NAVIGATION = [
 ];
 
 const NAVIGATION_BY_ROLE = {
-  ADMIN: [...MANAGEMENT_NAVIGATION,{label:'Global Audit Log',to:'/audit',icon:FileText}],
+  ADMIN: [
+    {label:'Dashboard',to:'/dashboard',icon:LayoutDashboard},
+    {label:'Employees',to:'/employees',icon:UsersRound,end:false},
+    {label:'Organization',to:'/organization',icon:UsersRound},
+    {label:'Attendance',to:'/attendance',icon:CalendarCheck},
+    {label:'Leave Overview',to:'/leaves?view=management',icon:CalendarCheck},
+    {label:'Payroll',to:'/payroll',icon:FileText},
+    {label:'Employment Management',to:'/employment',icon:UsersRound},
+    {label:'Reports',to:'/reports',icon:FileText},
+    {label:'Announcements',to:'/announcements',icon:Megaphone},
+    {label:'Attendance Settings',to:'/attendance-settings',icon:Clock},
+    {label:'Global Audit Log',to:'/audit',icon:FileText},
+    {label:'Account & Security',to:'/my-profile?tab=security',icon:UserRound},
+  ],
   HR: MANAGEMENT_NAVIGATION,
   MANAGER: MANAGER_NAVIGATION,
   EMPLOYEE: EMPLOYEE_NAVIGATION,
@@ -183,11 +196,11 @@ export default function PortalSidebar({ onNavigate }) {
     ? "/my-profile?tab=security"
     : "/dashboard";
 
-  const navigation = [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'My Profile',to:'/my-profile',icon:UserRound},{label:'Employment',to:'/employment',icon:UsersRound}];
+  const navigation = user.role==='ADMIN' ? NAVIGATION_BY_ROLE.ADMIN : [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'My Profile',to:'/my-profile',icon:UserRound},{label:'Employment',to:'/employment',icon:UsersRound}];
 
   // Preserve the existing first-login password-change restriction.
   const visibleItems = user.mustChangePassword
-    ? navigation.filter((item) => item.to === "/my-profile").map(item => ({ ...item, to: '/my-profile?tab=security' }))
+    ? navigation.filter((item) => item.to.split('?')[0] === "/my-profile").map(item => ({ ...item, to: '/my-profile?tab=security' }))
     : navigation;
 
   return (

@@ -19,16 +19,22 @@ export default function MyProfilePage() {
   const requestedTab = search.get('tab');
   const tab = TABS.some(item => item.id === requestedTab) ? requestedTab : 'personal';
   const restricted = user.mustChangePassword;
+  const accountOnly = user.role === 'ADMIN';
   // Security remains independent of profile loading, errors or a missing link.
   // Forced-change accounts never request or render employee resources.
-  const resource = useApiResource(!restricted && tab !== 'security' ? '/employment/self-profile' : null);
+  const resource = useApiResource(!accountOnly && !restricted && tab !== 'security' ? '/employment/self-profile' : null);
   const employee = resource.data?.employee;
 
-  if (restricted && requestedTab !== 'security') {
+  if ((restricted || accountOnly) && requestedTab !== 'security') {
     const next = new URLSearchParams(search);
     next.set('tab', 'security');
     return <Navigate to={{pathname: location.pathname, search: `?${next}`, hash: location.hash}} state={location.state} replace />;
   }
+
+  if (accountOnly) return <section className="min-w-0 space-y-6">
+    <header><h1 className="text-2xl font-semibold">Account &amp; Security</h1><p className="mt-2 text-sm text-muted-foreground">Your account details and password security.</p></header>
+    <AccountSecurityContent />
+  </section>;
 
   function selectTab(id) {
     if (id === tab) return;

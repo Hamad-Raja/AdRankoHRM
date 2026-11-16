@@ -58,6 +58,7 @@ export default function PortalHeader({
   const [logoutError, setLogoutError] = useState("");
 
   const pageTitle =
+    (user.role==='ADMIN' ? {'/leaves':'Leave Overview','/employment':'Employment Management','/my-profile':'Account & Security','/account':'Account & Security'}[location.pathname] : null) ||
     PAGE_TITLES[location.pathname] ||
     (location.pathname.startsWith("/employees/")
       ? "Employee details"
