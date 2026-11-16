@@ -48,6 +48,15 @@ app.use(
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
+// Time only the affected attendance reads, including authentication. Never log
+// request bodies, query parameters, headers or account identifiers.
+app.use((req, res, next) => {
+  if (req.method === 'GET' && /^\/api\/(attendance\/status|attendance-settings(?:\/my-shift)?)\/?$/.test(req.path)) {
+    req.attendanceReadStartedAt = performance.now();
+  }
+  next();
+});
+
 app.get("/api/health", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 

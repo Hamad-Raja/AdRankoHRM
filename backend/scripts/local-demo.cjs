@@ -17,18 +17,20 @@ function save(file, manifest, initial = false) {
   }
 }
 
-async function setup({ prisma, databaseName, file }) {
-  if (!require('../src/config/local-demo').APPROVED_LOCAL_DATABASES.has(databaseName) && !/^officehr_phase1_test_[a-f0-9]{16}$/.test(databaseName)) throw new Error('Unsupported local demo setup target.');
-  await assertConnectedDatabase(prisma, databaseName);
+async function setup({ prisma, databaseName, file, config }) {
+  const cloud = config?.targetKind === 'neon' && config.databaseName === databaseName;
+  if (!cloud && !require('../src/config/local-demo').APPROVED_LOCAL_DATABASES.has(databaseName) && !/^officehr_phase1_test_[a-f0-9]{16}$/.test(databaseName)) throw new Error('Unsupported local demo setup target.');
+  await assertConnectedDatabase(prisma, cloud ? config : databaseName);
   if (fs.existsSync(file)) {
     const manifest = require('../src/services/local-demo.service').readManifest(file);
     for (const role of ROLES) {
-      const credentials = await require('../src/services/local-demo.service').resolveDemoCredentials({ prisma, config: { databaseName, manifestPath: file }, role });
+      const credentials = await require('../src/services/local-demo.service').resolveDemoCredentials({ prisma, config: { ...config, databaseName, manifestPath: file }, role });
       const user = await prisma.user.findUnique({ where: { id: manifest.accounts[role].id } });
       if (!await require('../src/utils/password').verifyPassword(credentials.password, user.passwordHash)) throw new Error('Registered credentials changed; refusing to reset a password.');
     }
     return { reused: true, manifest };
   }
+  if (cloud) throw new Error('Cloud demo setup requires the migrated registration; no accounts will be created or passwords reset.');
   const accounts = Object.fromEntries(ROLES.map(role => [role, { email: `officehr-local-demo-${role.toLowerCase()}@example.test`, password: 'LocalQA!' + randomBytes(24).toString('hex') }]));
   const codes = ROLES.map(role => 'LOCAL-DEMO-' + role);
   // Refuse any collision before the first fixture write. Never adopt an account
@@ -103,11 +105,11 @@ async function setup({ prisma, databaseName, file }) {
   return { reused: false, manifest };
 }
 
-async function cleanupCheck({ prisma, databaseName, file }) {
-  await assertConnectedDatabase(prisma, databaseName);
+async function cleanupCheck({ prisma, databaseName, file, config }) {
+  await assertConnectedDatabase(prisma, config || databaseName);
   const manifest = require('../src/services/local-demo.service').readManifest(file);
   if (manifest.databaseName !== databaseName) throw new Error('Cleanup target does not match registration.');
-  for (const role of ROLES) await require('../src/services/local-demo.service').resolveDemoCredentials({ prisma, config: { databaseName, manifestPath: file }, role });
+  for (const role of ROLES) await require('../src/services/local-demo.service').resolveDemoCredentials({ prisma, config: { ...config, databaseName, manifestPath: file }, role });
   // PostgreSQL's actual FK graph supplies dependency counts; no deletion,
   // cascading, history rewriting or automatic cleanup is performed.
   const dependencies = [];
@@ -137,10 +139,10 @@ async function main() {
   try {
     const command = process.argv[2];
     if (command === 'setup') {
-      const result = await setup({ prisma, databaseName: config.databaseName, file: config.manifestPath });
+      const result = await setup({ prisma, databaseName: config.databaseName, file: config.manifestPath, config });
       console.log(JSON.stringify({ reused: result.reused, createdRecordCounts: Object.fromEntries(Object.entries(result.manifest.records).map(([name, ids]) => [name, ids.length])), manifest: config.manifestPath }, null, 2));
     } else if (command === 'cleanup-check') {
-      console.log(JSON.stringify(await cleanupCheck({ prisma, databaseName: config.databaseName, file: config.manifestPath }), null, 2));
+      console.log(JSON.stringify(await cleanupCheck({ prisma, databaseName: config.databaseName, file: config.manifestPath, config }), null, 2));
     } else throw new Error('Use setup or cleanup-check. No destructive cleanup command exists.');
   } finally { await prisma.$disconnect(); }
 }

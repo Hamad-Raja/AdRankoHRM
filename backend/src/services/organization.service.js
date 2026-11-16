@@ -20,7 +20,9 @@ async function audit(tx, id, action, targetId, metadata = {}) {
   await tx.auditLog.create({ data: { actorUserId: id, action, success: true, targetType: 'EmployeeManagement', targetId, metadata } });
 }
 async function transaction(work) {
-  try { return await prisma.$transaction(work, { isolationLevel: 'Serializable', timeout: 15000 }); }
+  // Neon connection startup plus BEGIN/isolation round trips can exceed the
+  // default 2s acquisition limit. Keep execution separately bounded at 15s.
+  try { return await prisma.$transaction(work, { isolationLevel: 'Serializable', maxWait: 5000, timeout: 15000 }); }
   catch (error) {
     if(['40001','40P01'].includes(error.cause?.originalCode)||error.cause?.kind==='TransactionWriteConflict')fail(409,'Conflicting record or effective dates. Reload before trying again.','RECORD_CONFLICT');
     if (['P2002', 'P2004', 'P2034'].includes(error.code) || (error.code === 'P2039' && ['23P01', '23514'].includes(error.meta?.code)) || JSON.stringify(error.meta || {}).includes('23P01')) fail(409, 'Conflicting record or effective dates. Reload before trying again.', 'RECORD_CONFLICT');

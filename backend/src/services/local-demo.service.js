@@ -4,7 +4,7 @@ const { z } = require('zod');
 const { assertConnectedDatabase } = require('../config/local-demo');
 const ApiError = require('../utils/ApiError');
 const accountSchema = z.strictObject({ id: z.uuid(), employeeId: z.uuid(), email: z.email().endsWith('@example.test'), password: z.string().min(20).max(72) });
-const manifestSchema = z.object({ version: z.literal(1), complete: z.literal(true), databaseName: z.string(), createdAt: z.string(),
+const manifestSchema = z.object({ version: z.literal(1), complete: z.literal(true), databaseName: z.string(), databaseHost: z.string().optional(), createdAt: z.string(),
   records: z.record(z.string(), z.array(z.uuid())),
   accounts: z.strictObject(Object.fromEntries(['HR','MANAGER','EMPLOYEE'].map(role => [role, accountSchema.extend({email:z.literal(`officehr-local-demo-${role.toLowerCase()}@example.test`)} )]))) });
 
@@ -15,9 +15,10 @@ function readManifest(file) {
 }
 
 async function resolveDemoCredentials({ prisma, config, role }) {
-  await assertConnectedDatabase(prisma, config.databaseName);
+  await assertConnectedDatabase(prisma, config);
   const manifest = readManifest(config.manifestPath);
   if (manifest.databaseName !== config.databaseName) throw new ApiError(503, 'Local demo registration does not match this database.', 'LOCAL_DEMO_SETUP_REQUIRED');
+  if (config.targetKind === 'neon' && manifest.databaseHost !== config.databaseHost) throw new ApiError(503, 'Demo registration does not match the selected Neon endpoint.', 'LOCAL_DEMO_SETUP_REQUIRED');
   const registered = manifest.accounts[role];
   const user = await prisma.user.findUnique({ where: { id: registered.id }, select: { id: true, email: true, role: true, employee: { select: { id: true } } } });
   if (!user || user.email !== registered.email || user.role !== role || user.employee?.id !== registered.employeeId) {
