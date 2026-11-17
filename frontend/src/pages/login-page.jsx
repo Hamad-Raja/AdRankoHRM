@@ -84,12 +84,11 @@ export default function LoginPage() {
           </p>
 
           <h1 className="mt-4 text-3xl font-semibold leading-tight">
-            A simpler way to manage your workday.
+           Manage Your Workday with Ease.
           </h1>
 
-          <p className="mt-5 leading-7 text-sidebar-foreground/80">
-            Manage attendance, access payroll information and stay informed
-            with the latest workplace updates—all in one place.
+          <p className="mt-5 leading-7 text-sidebar-foreground/80 ">
+           Manage attendance, payroll, and workplace updates with ease.
           </p>
         </div>
 
