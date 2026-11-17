@@ -68,11 +68,14 @@
 .hr-department-chart {display:grid;grid-template-columns:minmax(120px,.95fr) minmax(140px,1fr);align-items:center;gap:8px;}
 .hr-department-legend {max-height:190px;overflow-y:auto;padding-right:3px;}
 .hr-department-legend li {margin-bottom:13px;}
-.hr-bottom-row {display:grid;grid-template-columns:1fr 1.02fr 1fr;gap:16px;align-items:stretch;}
+.hr-bottom-row {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch;}
 .hr-bottom-row > .hr-work-queues,.hr-bottom-row > .hr-announcements {display:flex;flex-direction:column;align-self:stretch;}
 .hr-bottom-row > .hr-work-queues > .hr-card-heading,.hr-bottom-row > .hr-announcements > .hr-card-heading {flex-shrink:0;}
-.hr-bottom-row > .hr-work-queues .hr-queues {flex:1;grid-auto-rows:minmax(40px,1fr);gap:8px;}
+.hr-bottom-row > .hr-work-queues .hr-queues {grid-auto-rows:minmax(46px,auto);gap:11px;}
+.hr-bottom-row > .hr-work-queues .hr-queues a {min-height:46px;padding:10px 11px;font-size:12px;}
 .hr-bottom-row > .hr-announcements > .hr-announcements-empty {flex:1;min-height:0;padding-block:24px;}
+.hr-bottom-row > .hr-announcements > .hr-announcements-empty:has(>svg) {display:flex;flex-direction:column;justify-content:center;gap:12px;}
+.hr-bottom-row > .hr-announcements > .hr-announcements-empty > svg {width:28px;height:28px;stroke-width:1.6;}
 .hr-bottom-row > .hr-duty .duty-clock {gap:10px;}
 .hr-bottom-row > .hr-duty .duty-clock-heading {padding-bottom:8px;}
 .hr-bottom-row > .hr-duty .duty-clock-times {padding-block:8px;}
@@ -189,3 +192,8 @@
 .hr-announcement-list time {font-size:10px;color:var(--muted-foreground);line-height:1.5;}
 .hr-announcements-empty {min-height:170px;display:grid;place-items:center;color:var(--muted-foreground);font-size:12px;text-align:center;}
 .hr-announcements a:focus-visible {outline:2px solid var(--ring);outline-offset:3px;border-radius:3px;}
+
+@media(max-width:767px){
+ .hr-bottom-row {align-items:start;}
+ .hr-bottom-row > .hr-announcements > .hr-announcements-empty {flex:none;min-height:170px;}
+}

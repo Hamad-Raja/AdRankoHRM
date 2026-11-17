@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Megaphone, Pin } from "lucide-react";
+import { Bell, Megaphone, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { announcementLabel, announcementPublished } from "./hr-announcements";
 export function ResourceState({ resource, label, children }) {
@@ -40,7 +40,7 @@ export function DashboardCard({
     </section>
   );
 }
-export function RecentAnnouncements({ resource }) {
+export function RecentAnnouncements({ resource, quietEmpty = false }) {
   const items = resource.data?.items.slice(0, 3) || [];
   return (
     <DashboardCard
@@ -81,7 +81,12 @@ export function RecentAnnouncements({ resource }) {
             ))}
           </ul>
         ) : (
-          <p className="hr-announcements-empty">No announcements available.</p>
+          quietEmpty ? (
+            <div className="hr-announcements-empty">
+              <Bell aria-hidden="true" />
+              <p>No announcements yet</p>
+            </div>
+          ) : <p className="hr-announcements-empty">No announcements available.</p>
         )}
       </ResourceState>
     </DashboardCard>

@@ -601,7 +601,7 @@ export default function HrDashboard() {
             </p> */}
           </State>
         </Card>
-        <RecentAnnouncements resource={announcements} />
+        <RecentAnnouncements resource={announcements} quietEmpty />
         <Duty
           settings={settings.data}
           resource={shift}
