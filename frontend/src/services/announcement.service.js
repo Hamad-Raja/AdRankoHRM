@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api";
-import {inboxChanged} from '@/lib/module-events';
+import { inboxChanged } from "@/lib/module-events";
 
 function toQueryString(params = {}) {
   const query = new URLSearchParams();
@@ -13,12 +13,18 @@ function toQueryString(params = {}) {
 }
 
 export async function getAnnouncements(params = {}, options = {}) {
-  const response = await apiRequest(`/announcements${toQueryString(params)}`, options);
+  const response = await apiRequest(
+    `/announcements${toQueryString(params)}`,
+    options,
+  );
   return response.data;
 }
 
 export async function getManagementAnnouncements(params = {}, options = {}) {
-  const response = await apiRequest(`/announcements/management/list${toQueryString(params)}`, options);
+  const response = await apiRequest(
+    `/announcements/management/list${toQueryString(params)}`,
+    options,
+  );
   return response.data;
 }
 
@@ -32,7 +38,8 @@ export async function markAnnouncementRead(id, options = {}) {
     method: "POST",
     ...options,
   });
-  inboxChanged(); return response.data;
+  inboxChanged();
+  return response.data;
 }
 
 export async function markAllAnnouncementsRead(options = {}) {
@@ -40,7 +47,8 @@ export async function markAllAnnouncementsRead(options = {}) {
     method: "POST",
     ...options,
   });
-  inboxChanged(); return response.data;
+  inboxChanged();
+  return response.data;
 }
 
 export async function createAnnouncement(data, options = {}) {
@@ -70,11 +78,40 @@ export async function deleteAnnouncement(id, options = {}) {
 }
 
 export async function getAcknowledgements(id, options = {}) {
-  const response = await apiRequest(`/announcements/${id}/acknowledgements`, options);
+  const response = await apiRequest(
+    `/announcements/${id}/acknowledgements`,
+    options,
+  );
   return response.data;
 }
 
-export async function getManagementAnnouncement(id,options={}){return (await apiRequest(`/announcements/management/${id}`,options)).data;}
-export async function previewAudience(body,options={}){return (await apiRequest('/announcements/audience-preview',{method:'POST',body,...options})).data;}
-export async function publishAnnouncement(id,body,options={}){const r=await apiRequest(`/announcements/${id}/publish`,{method:'POST',body,...options});inboxChanged();return r.data;}
-export async function archiveAnnouncement(id,body,options={}){const r=await apiRequest(`/announcements/${id}/archive`,{method:'POST',body,...options});inboxChanged();return r.data;}
+export async function getManagementAnnouncement(id, options = {}) {
+  return (await apiRequest(`/announcements/management/${id}`, options)).data;
+}
+export async function previewAudience(body, options = {}) {
+  return (
+    await apiRequest("/announcements/audience-preview", {
+      method: "POST",
+      body,
+      ...options,
+    })
+  ).data;
+}
+export async function publishAnnouncement(id, body, options = {}) {
+  const r = await apiRequest(`/announcements/${id}/publish`, {
+    method: "POST",
+    body,
+    ...options,
+  });
+  inboxChanged();
+  return r.data;
+}
+export async function archiveAnnouncement(id, body, options = {}) {
+  const r = await apiRequest(`/announcements/${id}/archive`, {
+    method: "POST",
+    body,
+    ...options,
+  });
+  inboxChanged();
+  return r.data;
+}
