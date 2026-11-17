@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Download, RefreshCw, X } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ArrowRight, Download, RefreshCw, X, CalendarCheck, Clock3, CalendarDays, AlertTriangle } from "lucide-react";
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import "@/components/self-service-pages.css";
 import { organization } from "@/services/organization.service";
 import {
   getReport,
@@ -31,6 +32,11 @@ const TAB_LABELS = {
   attendance: "Attendance details",
   corrections: "Corrections & decisions",
 };
+
+function MetricDecoration({field}) {
+  const Icon=({actualRecords:CalendarCheck,late:Clock3,paidLeaveDays:CalendarDays,unresolvedMissingCheckout:AlertTriangle})[field]||CalendarCheck;
+  return <span className="report-metric-icon" data-attention={['late','unresolvedMissingCheckout'].includes(field)}><Icon aria-hidden="true"/></span>;
+}
 
 function Badge({ value }) {
   const attention = [
@@ -88,7 +94,45 @@ function Interval({
   );
 }
 
-function ReportRows({ kind, rows, onEmployee }) {
+function ReportRows({ kind, rows, onEmployee, compact = false }) {
+  if (compact && kind === "attendance") {
+    return <>
+      <thead><tr>{["Employee","Duty start date","Original punches · PKT","Classification","Details"].map(title=><th key={title} scope="col" className={`${CELL} whitespace-nowrap font-semibold`}>{title}</th>)}</tr></thead>
+      <tbody className="divide-y divide-border">{rows.map(row=>{
+        const approved=row.approvedAdjustment||row.approvedException;
+        return <tr key={`${row.employee.id}:${row.shiftDate}`} className="hover:bg-muted/30">
+          <td className={CELL}><Person employee={row.employee}/></td>
+          <td className={`${CELL} whitespace-nowrap`}>{row.shiftDate}</td>
+          <td className={CELL}><Interval value={row.actual} minutes={row.actual?.workedMinutes} empty="No server punch"/></td>
+          <td className={CELL}><Badge value={row.classification}/>{row.paidLeave&&<p className="mt-2 text-xs">1 paid full-day leave; no punches created. {row.leaveConflict?'Calendar/employment conflict requires HR review.':''}</p>}</td>
+          <td className={CELL}><details className="report-row-details"><summary>Evidence<span className="sr-only"> for {row.employee.fullName} on {row.shiftDate}</span></summary><div className="space-y-2">
+            <p>Team: {row.organization?.team?.name||'—'}</p><p className="font-medium">Approved interval · PKT</p><Interval value={approved} minutes={approved?.minutes} empty="No approved interval"/>
+            {row.approvedException&&<p>Approved exception; no server punch</p>}
+            {row.actual?.rawMissingCheckout&&!row.unresolvedMissingCheckout&&<p>Original exit is missing; an approved adjustment resolves the exception.</p>}
+            <div className="flex flex-wrap gap-1">{row.actual?.isLate&&<Badge value="LATE"/>}{row.actual?.isEarlyDeparture&&<Badge value="EARLY_DEPARTURE"/>}{row.actual?.isAfterScheduleEnd&&<Badge value="AFTER_SCHEDULE_END"/>}{row.actual&&!row.actual.isLate&&<span>Entry within grace</span>}{!row.actual&&'No original flags'}</div>
+            <p>Original elapsed and approved intervals remain separate; neither is payable time.</p>
+          </div></details></td>
+        </tr>;
+      })}</tbody>
+    </>;
+  }
+  if (compact && kind === "monthly") {
+    return <>
+      <thead><tr>{["Employee", "Scheduled duties", "Clock-ins", "Late", "Paid leave days", "Details"].map(title=><th key={title} scope="col" className={`${CELL} whitespace-nowrap font-semibold`}>{title}</th>)}</tr></thead>
+      <tbody className="divide-y divide-border">{rows.map(row=><tr key={row.employee.id} className="hover:bg-muted/30">
+        <td className={CELL}><Person employee={row.employee}/></td>
+        {["eligibleDuties","actualRecords","late","paidLeaveDays"].map(field=><td key={field} className={CELL}>{row.metrics[field]}</td>)}
+        <td className={CELL}><div className="space-y-3"><Button type="button" variant="outline" size="sm" onClick={()=>onEmployee(row.employee)}>View duties<ArrowRight className="ml-1 size-3" aria-hidden="true"/></Button>
+          <details className="report-row-details"><summary>Additional Details<span className="sr-only"> for {row.employee.fullName}</span></summary><dl>
+            <div><dt>No clock-in</dt><dd>{row.metrics.noClockIn}</dd></div>
+            <div><dt>Unresolved checkout</dt><dd>{row.metrics.unresolvedMissingCheckout}</dd></div>
+            <div><dt>Raw elapsed</dt><dd>{formatReportMinutes(row.metrics.rawWorkedMinutes)}</dd></div>
+            <div><dt>Approved intervals</dt><dd>{formatReportMinutes(row.metrics.approvedIntervalMinutes)}</dd></div>
+          </dl>{row.metrics.rawDurationUnknown>0&&<p>{row.metrics.rawDurationUnknown} raw durations unavailable</p>}<p>Approved intervals are separate from raw elapsed. Neither is payable time.</p></details>
+        </div></td>
+      </tr>)}</tbody>
+    </>;
+  }
   if (kind === "monthly") {
     const headings = [
       "Employee",
@@ -406,6 +450,8 @@ function ReportView({
   onEmployee,
 }) {
   const management = ["ADMIN", "HR"].includes(user.role);
+  const compact = ["MANAGER", "EMPLOYEE"].includes(user.role);
+  const ResultsFrame=compact?"section":Fragment;
 
   const [applied, setApplied] = useState(
     () => seed || initialReportFilters()
@@ -686,11 +732,50 @@ function ReportView({
           ["Approved intervals", "approvedIntervalMinutes", true],
         ];
 
+  const exportControls = (
+        <div className="report-export-controls flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading || dirty || Boolean(exporting)}
+            onClick={() => setRevision((value) => value + 1)}
+          >
+            <RefreshCw
+              className={`mr-2 size-4 ${
+                loading ? "animate-spin" : ""
+              }`}
+              aria-hidden="true"
+            />
+            Refresh
+          </Button>
+
+          {["csv", "xlsx"].map((format) => (
+            <Button
+              key={format}
+              type="button"
+              variant="outline"
+              disabled={
+                !data || loading || dirty || Boolean(exporting)
+              }
+              onClick={() => exportFile(format)}
+            >
+              <Download
+                className="mr-2 size-4"
+                aria-hidden="true"
+              />
+              {exporting === format
+                ? "Preparing…"
+                : format.toUpperCase()}
+            </Button>
+          ))}
+        </div>
+  );
+
   return (
-    <div className="space-y-5">
+    <div className={compact?"report-data-view":"space-y-5"}>
       <form
         onSubmit={apply}
-        className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5"
+        className="report-filters space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5"
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {kind !== "monthly" && (
@@ -874,7 +959,7 @@ function ReportView({
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="report-filter-actions flex flex-wrap items-center gap-2">
           <Button
             type="submit"
             disabled={Boolean(exporting)}
@@ -897,18 +982,19 @@ function ReportView({
             </span>
           )}
         </div>
+        {compact&&exportControls}
       </form>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="report-toolbar flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground">
           {data ? (
             <>
-              <span>
+              {!compact&&<span>
                 {data.total}{" "}
                 {kind === "monthly"
                   ? "employee summaries"
                   : "matching rows"}
-              </span>
+              </span>}
               <p className="mt-1 text-xs">
                 {data.meta.period.dateFrom} →{" "}
                 {data.meta.period.dateTo} · As of{" "}
@@ -922,49 +1008,14 @@ function ReportView({
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading || dirty || Boolean(exporting)}
-            onClick={() => setRevision((value) => value + 1)}
-          >
-            <RefreshCw
-              className={`mr-2 size-4 ${
-                loading ? "animate-spin" : ""
-              }`}
-              aria-hidden="true"
-            />
-            Refresh
-          </Button>
-
-          {["csv", "xlsx"].map((format) => (
-            <Button
-              key={format}
-              type="button"
-              variant="outline"
-              disabled={
-                !data || loading || dirty || Boolean(exporting)
-              }
-              onClick={() => exportFile(format)}
-            >
-              <Download
-                className="mr-2 size-4"
-                aria-hidden="true"
-              />
-              {exporting === format
-                ? "Preparing…"
-                : format.toUpperCase()}
-            </Button>
-          ))}
-        </div>
+        {!compact&&exportControls}
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      {!compact && <p className="text-xs text-muted-foreground">
         Exports use the applied filters and re-read the latest
         authorized data. CSV protects codes with a leading
         apostrophe; XLSX preserves their original text.
-      </p>
+      </p>}
 
       {downloadMessage && (
         <p
@@ -994,12 +1045,13 @@ function ReportView({
           </p>
         )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {cards.map(([label, field, minutes]) => (
+      <div className={compact?"report-key-metrics":"grid gap-3 sm:grid-cols-2 xl:grid-cols-3"}>
+        {cards.filter(([,field])=>!compact||kind==='corrections'||['actualRecords','late','paidLeaveDays','unresolvedMissingCheckout'].includes(field)).map(([label, field, minutes]) => (
           <div
             key={field}
             className="rounded-xl border border-border bg-card p-4"
           >
+            {compact&&<MetricDecoration field={field}/>}
             <p className="text-xs text-muted-foreground">
               {label}
             </p>
@@ -1022,6 +1074,8 @@ function ReportView({
         </p>
       )}
 
+      <ResultsFrame {...(compact?{className:"report-results-card"}:{})}>
+      {compact&&<div className="self-service-card-heading"><h2>{kind==='monthly'?'Employee summary':kind==='attendance'?'Attendance details':'Corrections & decisions'}</h2>{data&&<span>{data.total} {kind==='monthly'?(data.total===1?'employee':'employees'):(data.total===1?'record':'records')}</span>}</div>}
       <div
         role="region"
         aria-label="Report results"
@@ -1051,6 +1105,7 @@ function ReportView({
             </caption>
             <ReportRows
               kind={kind}
+              compact={compact}
               rows={data.rows}
               onEmployee={(employee) =>
                 onEmployee(employee, applied)
@@ -1094,12 +1149,22 @@ function ReportView({
         </div>
       )}
 
+      </ResultsFrame>
+
+      {compact && <details className="self-service-guide"><summary>Additional Details</summary><div>
+        {kind!=='corrections'&&<dl className="report-extra-metrics">{cards.filter(([,field])=>!['actualRecords','late','paidLeaveDays','unresolvedMissingCheckout'].includes(field)).map(([label,field,minutes])=><div key={field}><dt>{label}</dt><dd>{data?(minutes?formatReportMinutes(data.totals[field]):(data.totals[field]??'—')):'—'}</dd></div>)}</dl>}
+        <p>Duty dates use the evening start date: Friday 19:00–Saturday 05:00 belongs to Friday. Late and departure flags can overlap.</p>
+        <p>Raw elapsed comes from original punches. Approved intervals come from approved decisions and remain separate. Neither is payable time or a salary calculation.</p>
+        <p>Exports use the applied filters and re-read the latest authorized data. CSV protects codes with a leading apostrophe; XLSX preserves their original text. Exports retain the full report evidence.</p>
+      </div></details>}
       <p className="text-xs leading-5 text-muted-foreground">
+        {compact ? 'Recorded time and approved intervals are separate; neither is payable time or a payroll calculation.' : <>
         Duty dates use the evening start date: Friday
         19:00–Saturday 05:00 belongs to Friday. Late and departure
         flags can overlap. Original punches and approved
         intervals remain separate; neither is a payable-time or
         salary calculation.
+        </>}
       </p>
     </div>
   );
@@ -1124,24 +1189,19 @@ function ReportsWorkspace({ user, refreshSession }) {
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+    <div className={["MANAGER","EMPLOYEE"].includes(user.role)?"self-service-page reports-workspace min-w-0 space-y-5":"min-w-0 space-y-6"}>
+      <header className={["MANAGER","EMPLOYEE"].includes(user.role)?"self-service-page-header reports-page-header":undefined}>
+        <div><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Reports
         </h1>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          Monthly attendance, original evidence and approved
-          decisions · {REPORT_ZONE}
+          {["MANAGER","EMPLOYEE"].includes(user.role)?'Attendance summaries and records.':<>Monthly attendance, original evidence and approved
+          decisions · {REPORT_ZONE}</>}
         </p>
 
-        <p className="mt-1 text-xs text-muted-foreground">
-          {["ADMIN", "HR"].includes(user.role)
-            ? "Organization reports"
-            : user.role === "MANAGER"
-              ? "Your historical team scope and own attendance. Correction decisions are own-only."
-              : "Your own employee reports"}
-        </p>
+        </div>
+        {["MANAGER","EMPLOYEE"].includes(user.role)?<details className="self-service-guide quiet-disclosure"><summary>Report guide</summary><div><p>{user.role==='MANAGER'?'Your historical team scope and own attendance. Correction decisions are own-only.':'Your own employee reports.'}</p><p>Duty dates and report times use {REPORT_ZONE}. Original punches, approved intervals and payable time are distinct. Full evidence remains available in each record and export.</p></div></details>:<p className="mt-1 text-xs text-muted-foreground">Organization reports</p>}
       </header>
 
       <div

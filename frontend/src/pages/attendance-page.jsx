@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import {useSearchParams} from 'react-router';
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import "@/components/self-service-pages.css";
 import { organization } from "@/services/organization.service";
 import AttendanceClock from "@/components/attendance-clock";
 import AttendanceHistory from "@/components/attendance-history";
@@ -31,6 +32,7 @@ export default function AttendancePage() {
   const { user, getCsrfToken, refreshSession } = useAuth();
   const isAdminOrHr = ["ADMIN", "HR"].includes(user?.role);
   const isManager = user?.role === "MANAGER";
+  const RecordFilters = isManager ? "div" : Fragment;
 
   // Active view tab
   const [activeTab, setActiveTab] = useState(
@@ -230,16 +232,16 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="space-y-8">
-      <PaidLeaveAttendance key={user.id}/>
+    <div className={isAdminOrHr ? "space-y-8" : "self-service-page attendance-workspace space-y-5"}>
+      {isAdminOrHr && <PaidLeaveAttendance key={user.id}/>}
       {/* Page Title & Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className={isAdminOrHr?"flex flex-wrap items-center justify-between gap-4":"self-service-page-header attendance-page-header"}>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             {isAdminOrHr
               ? "Attendance Management"
               : isManager
-              ? "Team & My Attendance"
+              ? "Attendance"
               : "My Attendance"}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
@@ -251,8 +253,10 @@ export default function AttendancePage() {
           </p>
         </div>
 
+      {!isAdminOrHr && <details className="self-service-guide quiet-disclosure"><summary>Attendance guide</summary><div><p>Duty dates use the shift-start date. An overnight Friday duty belongs to Friday, including its Saturday morning hours.</p><p>Original punches and raw elapsed time are recorded facts. Approved corrections remain separate; neither is approved payable time or a payroll calculation.</p><p>Use My Clock &amp; Logs for your own punches and correction requests. Team attendance remains limited to your permitted team scope. Current restrictions and unresolved checkout warnings remain visible alongside the clock.</p></div></details>}
+
         {/* Tab switcher */}
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-border/80 p-1 bg-muted/40 shadow-inner">
+        <div className={isAdminOrHr?"flex flex-wrap items-center gap-1 rounded-xl border border-border/80 p-1 bg-muted/40 shadow-inner":"self-service-tabs attendance-view-tabs"}>
           {isAdminOrHr && (
             <>
               <button
@@ -299,6 +303,7 @@ export default function AttendancePage() {
           {isManager && (
             <button
               type="button"
+              aria-pressed={activeTab === "team"}
               onClick={() => setActiveTab("team")}
               className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                 activeTab === "team"
@@ -312,6 +317,7 @@ export default function AttendancePage() {
 
           <button
             type="button"
+            aria-pressed={activeTab === "own"}
             onClick={() => setActiveTab("own")}
             className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeTab === "own"
@@ -323,6 +329,7 @@ export default function AttendancePage() {
           </button>
         </div>
       </div>
+
 
       {/* ─── TAB: Daily Summary (Admin/HR) ─────────────────────────── */}
       {isAdminOrHr && activeTab === "daily" && (
@@ -527,6 +534,7 @@ export default function AttendancePage() {
 
       {((isAdminOrHr && activeTab === "list") || (isManager && activeTab === "team")) && (
         <div className="space-y-6">
+          <RecordFilters {...(isManager?{className:"attendance-filter-panel"}:{})}>
           <div className="flex flex-wrap gap-3">
             <label className="text-xs">Employee search<Input aria-label="Employee search" value={search} onChange={e => { setSearch(e.target.value); setRecordsPage(1); }} /></label>
             {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-xs">{kind}<select aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>)}
@@ -576,7 +584,7 @@ export default function AttendancePage() {
             </div>
             <Button
               size="sm"
-              variant="secondary"
+              variant={isManager?"default":"secondary"}
               onClick={() => {
                 setRecordsPage(1);
                 loadAttendanceRecords();
@@ -604,15 +612,18 @@ export default function AttendancePage() {
             )}
           </div>
 
+          </RecordFilters>
+
           {recordsError && (
             <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
               {recordsError}
             </p>
           )}
 
-          <p className="text-xs text-muted-foreground">Original punches and raw elapsed minutes are recorded facts, not approved/payable time. Approved corrections remain separate.</p>
+          {!isManager&&<p className="text-xs text-muted-foreground">Original punches and raw elapsed minutes are recorded facts, not approved/payable time. Approved corrections remain separate.</p>}
           {/* Table */}
-          <div className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden">
+          <div className={isManager?"attendance-logs-card rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden":"rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden"}>
+            {isManager&&<div className="self-service-card-heading"><h2>Attendance logs</h2></div>}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -686,7 +697,7 @@ export default function AttendancePage() {
                           >
                             {r.status}
                           </span>
-                          {r.approvedAdjustment && <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable).</p>}
+                          {r.approvedAdjustment && (isManager ? <details className="attendance-adjustment-details"><summary>Approved adjustment</summary><p>{r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable). Original punches remain unchanged.</p></details> : <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable).</p>)}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1.5">
@@ -716,6 +727,8 @@ export default function AttendancePage() {
                 </tbody>
               </table>
             </div>
+
+            {isManager&&<p className="attendance-evidence-note">Recorded elapsed time - Not payable hours. Approved corrections remain separate.</p>}
 
             {/* Pagination */}
             {!loadingRecords && !recordsError && recordsTotalPages > 1 && (
@@ -876,6 +889,8 @@ export default function AttendancePage() {
           <AttendanceHistory refreshTrigger={refreshTrigger} />
         </div>
       )}
+
+      {!isAdminOrHr && <details className="self-service-guide paid-leave-disclosure"><summary>Approved paid leave</summary><PaidLeaveAttendance key={user.id}/></details>}
 
       {/* ─── Review Dialog Modal ────────────────────────────────────── */}
       <dialog
