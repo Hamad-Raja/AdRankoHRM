@@ -21,6 +21,28 @@
 .admin-dashboard .admin-payroll-preview li{display:flex;justify-content:space-between;align-items:start;gap:12px;border-bottom:1px solid var(--border);padding:10px 0;font-size:13px;}
 .admin-dashboard .admin-payroll-preview li>div{min-width:0;overflow-wrap:anywhere;}
 .admin-dashboard .admin-payroll-preview .admin-link{flex-shrink:0;white-space:nowrap;}
+.admin-payroll-card .admin-payroll-heading{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:start;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.admin-payroll-card .admin-payroll-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);}
+.admin-payroll-card .admin-payroll-icon svg{width:23px;height:23px;}
+.admin-payroll-card h2{font-size:17px;line-height:1.35;font-weight:700;letter-spacing:-.025em;}
+.admin-payroll-card .admin-payroll-month{font-size:12px;line-height:1.5;color:var(--muted-foreground);margin-top:4px;}
+.admin-payroll-card .admin-payroll-count,.admin-payroll-card .admin-payroll-approved{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:99px;background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);font-size:11px;font-weight:650;line-height:1.4;white-space:nowrap;}
+.admin-payroll-card .admin-payroll-preview li{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:12px;padding-block:16px;}
+.admin-payroll-card .admin-payroll-preview li:last-child{border-bottom:0;}
+.admin-payroll-card .admin-payroll-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);font-size:13px;font-weight:700;}
+.admin-payroll-card .admin-payroll-employee strong{display:block;font-size:13px;line-height:1.5;}
+.admin-payroll-card .admin-payroll-code{font-size:11px;line-height:1.5;color:var(--muted-foreground);margin-top:2px;}
+.admin-payroll-card .admin-payroll-readiness{display:flex;align-items:start;gap:5px;margin-top:7px;font-size:10px;line-height:1.5;color:var(--muted-foreground);}
+.admin-payroll-card .admin-payroll-readiness svg{width:14px;height:14px;flex-shrink:0;color:var(--primary);}
+.admin-payroll-card .admin-payroll-readiness.is-blocked{color:var(--destructive);overflow-wrap:anywhere;}
+.admin-payroll-card .admin-payroll-row-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;}
+.admin-payroll-card .admin-payroll-approved svg{width:13px;height:13px;flex-shrink:0;}
+.admin-payroll-card .admin-payroll-review{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:38px;padding:8px 13px;border-radius:9px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:650;white-space:nowrap;}
+.admin-payroll-card .admin-payroll-review:hover{background:color-mix(in srgb,var(--primary) 90%,var(--foreground));}
+.admin-payroll-card .admin-payroll-review svg{width:16px;height:16px;}
+.admin-payroll-card .admin-payroll-footer{border-top:1px solid var(--border);padding-top:11px;text-align:right;}
+.admin-payroll-card .admin-payroll-footer .admin-link{margin:0;}
+@media(max-width:600px){.admin-payroll-card .admin-payroll-heading{gap:9px;}.admin-payroll-card h2{font-size:16px;}.admin-payroll-card .admin-payroll-preview li{grid-template-columns:38px minmax(0,1fr);gap:10px;}.admin-payroll-card .admin-payroll-row-actions{grid-column:2/-1;justify-content:space-between;gap:8px;}.admin-payroll-card .admin-payroll-count{padding-inline:7px;font-size:10px;}}
 .admin-dashboard .hr-announcements{min-height:0;}
 .admin-dashboard .hr-announcements-empty{min-height:0;padding-block:24px;}
 @media(min-width:1024px){[data-admin-shell] aside>div>div:first-child{padding:17px 24px;}[data-admin-shell] aside nav{padding-block:9px;}[data-admin-shell] aside nav ul{display:grid;gap:2px;}[data-admin-shell] aside nav li{margin:0;}[data-admin-shell] aside nav a{min-height:38px;padding-block:6px;}[data-admin-shell] aside footer{padding:12px 24px;}[data-admin-shell] aside footer p{margin-top:3px;}}

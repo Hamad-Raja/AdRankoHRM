@@ -15,6 +15,8 @@ import {
   ChevronRight,
   RefreshCw,
   ArrowUpRight,
+  ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ import {
   greeting,
 } from "@/components/dashboard/hr-dashboard-data";
 import { validAdminQueues } from "@/components/dashboard/admin-dashboard-data";
+import { monthLabel } from "@/components/dashboard/personal-dashboard-data";
 import "@/components/dashboard/hr-dashboard.css";
 import "@/components/dashboard/admin-dashboard.css";
 
@@ -133,6 +136,43 @@ function Attendance({ resource, settings, anchor }) {
     </DashboardCard>
   );
 }
+function PayrollApprovals({ resource, month, allLink }) {
+  const q = resource.data;
+  const initials = (name) => {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    return [words[0], words.length > 1 ? words.at(-1) : null].filter(Boolean).map(word => Array.from(word)[0]).join('').toLocaleUpperCase() || '?';
+  };
+  return <section aria-label="Payroll Approvals" className="hr-card admin-payroll-card">
+    <header className="admin-payroll-heading">
+      <span className="admin-payroll-icon"><FileCheck aria-hidden="true" /></span>
+      <div><h2>Payroll Approvals</h2><p className="admin-payroll-month">{monthLabel(q?.payrollMonth || month)}</p></div>
+      {!resource.loading && !resource.error && q && <span className="admin-payroll-count">{q.payroll.total} pending</span>}
+    </header>
+    <ResourceState resource={resource} label="payroll approvals">
+      {q && (q.payroll.items.length ? <ul className="admin-payroll-preview">
+        {q.payroll.items.map(item => <li key={item.id}>
+          <span className="admin-payroll-avatar" aria-hidden="true">{initials(item.employee.name)}</span>
+          <div className="admin-payroll-employee">
+            <strong>{item.employee.name}</strong>
+            <p className="admin-payroll-code">{item.employee.code}</p>
+            <p className={`admin-payroll-readiness${item.eligible ? '' : ' is-blocked'}`}>
+              {item.eligible && <CheckCircle2 aria-hidden="true" />}
+              {item.eligible ? 'Ready for final approval' : `Blocked: ${item.blockers.join('; ')}`}
+            </p>
+          </div>
+          <div className="admin-payroll-row-actions">
+            {item.status === 'HR_APPROVED' && <span className="admin-payroll-approved"><CheckCircle2 aria-hidden="true" />HR approved</span>}
+            <Link className="admin-payroll-review" to={'/payroll?' + new URLSearchParams({month:q.payrollMonth,status:'HR_APPROVED',payrollId:item.id})}>
+              Review<span className="sr-only"> payroll for {item.employee.name}</span><ArrowRight aria-hidden="true" />
+            </Link>
+          </div>
+        </li>)}
+      </ul> : <p className="admin-state">No HR-approved payroll for this month.</p>)}
+    </ResourceState>
+    <footer className="admin-payroll-footer"><Link className="admin-link" to={allLink}>View all payroll<ArrowRight aria-hidden="true" /></Link></footer>
+  </section>;
+}
+
 export default function AdminDashboard() {
   const { user, refreshSession } = useAuth(),
     [revision, setRevision] = useState(0),
@@ -299,25 +339,25 @@ export default function AdminDashboard() {
               <>
                 <div className="hr-queues">
                   <Queue
-                    label="Payroll eligible for my final approval"
+                    label="Payroll Approvals"
                     count={q.payroll.eligible}
                     to={payrollLink("HR_APPROVED")}
                     icon={FileCheck}
                   />
                   <Queue
-                    label="Approved payroll awaiting payment recording"
+                    label="Pending Payments"
                     count={q.payments}
                     to={payrollLink("APPROVED")}
                     icon={Coins}
                   />
                   <Queue
-                    label="Attendance corrections I can review"
+                    label="Attendance Corrections"
                     count={q.corrections.reviewable}
                     to="/attendance?view=corrections&reviewableOnly=true"
                     icon={CalendarCheck}
                   />
                   <Queue
-                    label="Employment cases awaiting my approval"
+                    label="Employment Approvals"
                     count={q.employment.reviewable}
                     to="/employment?state=ADMIN_APPROVAL"
                     icon={UsersRound}
@@ -347,65 +387,7 @@ export default function AdminDashboard() {
         <Attendance resource={attendance} settings={settings} anchor={anchor} />
       </div>
       <div className="admin-row">
-        <DashboardCard title="Payroll Approval Queue" icon={Coins}>
-          <ResourceState resource={queues} label="payroll approval queue">
-            {q && (
-              <>
-                <p className="admin-note">
-                  All HR-approved payroll · {q.payrollMonth} · showing{" "}
-                  {q.payroll.items.length} of {q.payroll.total}. Eligibility is
-                  for your account.
-                </p>
-                {q.payroll.items.length ? (
-                  <ul className="admin-payroll-preview">
-                    {q.payroll.items.map((item) => (
-                      <li key={item.id}>
-                        <div>
-                          <strong>{item.employee.name}</strong>
-                          <p className="admin-note">
-                            {item.employee.code} · {q.payrollMonth} · HR
-                            approved
-                          </p>
-                          <p className="admin-note">
-                            {item.eligible
-                              ? "Eligible for my approval"
-                              : `Blocked: ${item.blockers.join("; ")}`}
-                          </p>
-                        </div>
-                        <Link
-                          className="admin-link"
-                          to={
-                            "/payroll?" +
-                            new URLSearchParams({
-                              month: q.payrollMonth,
-                              status: "HR_APPROVED",
-                              payrollId: item.id,
-                            })
-                          }
-                        >
-                          Review
-                          <span className="sr-only">
-                            {" "}
-                            payroll for {item.employee.name}
-                          </span>
-                          <ArrowUpRight aria-hidden="true" />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="admin-state">
-                    No HR-approved payroll for this month.
-                  </p>
-                )}
-              </>
-            )}
-          </ResourceState>
-          <Link className="admin-link" to={payrollLink("HR_APPROVED")}>
-            View payroll queue
-            <ArrowUpRight aria-hidden="true" />
-          </Link>
-        </DashboardCard>
+        <PayrollApprovals resource={queues} month={month} allLink={payrollLink("HR_APPROVED")} />
         <RecentAnnouncements resource={announcements} />
       </div>
     </div>

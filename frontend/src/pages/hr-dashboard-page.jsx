@@ -410,7 +410,7 @@ export default function HrDashboard() {
             icon: ClipboardCheck,
           },
           {
-            label: "Draft / Returned Payroll (HR Review)",
+            label: "Draft / Returned Payroll ",
             count: q.draftPayroll,
             to:
               "/payroll?" +
@@ -551,6 +551,7 @@ export default function HrDashboard() {
       <div className="hr-bottom-row">
         <Card
           title="HR Work Queues"
+          className="hr-work-queues"
           icon={ClipboardCheck}
           controls={
             <label className="hr-month">
