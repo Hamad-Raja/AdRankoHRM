@@ -43,8 +43,8 @@ export default function LoginPage() {
       if (controller.signal.aborted) return;
       setError(
         requestError.details?.[0]?.message ||
-          requestError.message ||
-          "Unable to sign in. Please try again."
+        requestError.message ||
+        "Unable to sign in. Please try again."
       );
 
       setPassword("");
@@ -80,20 +80,21 @@ export default function LoginPage() {
 
         <div className="max-w-md">
           <p className="text-sm font-semibold text-sidebar-ring">
-            Your employee and HR portal
+            Welcome to AdRankoHRM
           </p>
 
           <h1 className="mt-4 text-3xl font-semibold leading-tight">
-            One workspace for your people and their workday.
+            A simpler way to manage your workday.
           </h1>
 
           <p className="mt-5 leading-7 text-sidebar-foreground/80">
-            Access your account and manage your work with AdRankoHRM.
+            Manage attendance, access payroll information and stay informed
+            with the latest workplace updates—all in one place.
           </p>
         </div>
 
         <p className="text-sm text-sidebar-foreground/70">
-          Emerald &amp; Charcoal
+          AdRankoHRM · People. Work. Connected.
         </p>
       </aside>
 
