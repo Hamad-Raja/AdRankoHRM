@@ -43,8 +43,8 @@ export default function LoginPage() {
       if (controller.signal.aborted) return;
       setError(
         requestError.details?.[0]?.message ||
-        requestError.message ||
-        "Unable to sign in. Please try again."
+          requestError.message ||
+          "Unable to sign in. Please try again."
       );
 
       setPassword("");
@@ -92,7 +92,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-
+        <p className="text-sm text-sidebar-foreground/70">
+          Emerald &amp; Charcoal
+        </p>
       </aside>
 
       <div className="flex min-h-svh flex-col">
