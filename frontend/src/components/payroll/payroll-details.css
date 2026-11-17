@@ -1,0 +1,53 @@
+/* Only the existing payroll-details overlay; other payroll forms stay unchanged. */
+.payroll-details-modal>header {margin-bottom:16px;padding-bottom:14px;}
+.payroll-details-modal>header h2 {font-size:24px;letter-spacing:-.035em;}
+.payroll-details-modal .payroll-details-status-hr>span {background:color-mix(in srgb,var(--primary) 13%,var(--card));color:var(--primary);}
+.payroll-details-modal .payroll-details-body {padding-right:5px;padding-bottom:16px;scrollbar-gutter:stable;}
+.payroll-details-modal .payroll-slip-compact {padding:0;border:0;border-radius:0;box-shadow:none;}
+.payroll-details-modal .payroll-slip-compact>* {margin-block:0;}
+.payroll-details-modal .payroll-slip-compact>*+* {margin-block-start:18px;}
+.payroll-details-modal .payroll-identity {display:flex;align-items:center;gap:14px;min-width:0;}
+.payroll-details-modal .payroll-identity-avatar {display:grid;place-items:center;width:52px;height:52px;flex-shrink:0;border-radius:50%;background:color-mix(in srgb,var(--primary) 17%,var(--card));color:var(--primary);font-size:21px;font-weight:700;}
+.payroll-details-modal .payroll-identity-person {min-width:0;flex:1;overflow-wrap:anywhere;}
+.payroll-details-modal .payroll-identity h3 {font-size:19px;line-height:1.35;font-weight:700;letter-spacing:-.025em;}
+.payroll-details-modal .payroll-employee-code {font-size:13px;font-weight:600;margin-top:3px;color:var(--muted-foreground);}
+.payroll-details-modal .payroll-organization {font-size:12px;line-height:1.5;margin-top:4px;color:var(--muted-foreground);}
+.payroll-details-modal .payroll-identity-brand {font-size:20px;font-weight:700;letter-spacing:-.04em;white-space:nowrap;}
+.payroll-details-modal .payroll-basic-summary {border:0;background:var(--muted);gap:14px;padding:14px 16px;text-align:center;}
+.payroll-details-modal .payroll-basic-summary>div+div {border-left:1px solid var(--border);}
+.payroll-details-modal .payroll-basic-summary>div>p:first-child {font-size:12px;}
+.payroll-details-modal .payroll-basic-summary>div>p+p {font-size:17px;font-weight:700;}
+.payroll-details-modal .payroll-money-columns {gap:24px;}
+.payroll-details-modal .payroll-money-columns h3 {font-size:17px;margin-bottom:4px;}
+.payroll-details-modal .payroll-money-columns section>div {padding-block:9px;font-size:12px;line-height:1.5;align-items:start;}
+.payroll-details-modal .payroll-money-columns section>p {font-size:12px;font-style:italic;}
+.payroll-details-modal .payroll-money-columns section>div>span:last-child {font-weight:650;}
+.payroll-details-modal .payroll-gross-summary {border-inline:0;border-radius:0;padding:11px 0;gap:18px;}
+.payroll-details-modal .payroll-gross-summary>div {display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;}
+.payroll-details-modal .payroll-gross-summary dd {margin:0;font-size:13px;white-space:nowrap;}
+.payroll-details-modal .payroll-net {padding:13px 16px;gap:8px;}
+.payroll-details-modal .payroll-net dt {font-size:18px;color:var(--primary);}
+.payroll-details-modal .payroll-net dd {font-size:25px;letter-spacing:-.025em;}
+.payroll-details-modal .payroll-approvals {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+.payroll-details-modal .payroll-approval {display:flex;align-items:center;gap:11px;min-width:0;}
+.payroll-details-modal .payroll-approval-icon {display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:color-mix(in srgb,var(--warning) 13%,var(--card));color:var(--muted-foreground);}
+.payroll-details-modal .payroll-approval-icon[data-approved="true"] {background:color-mix(in srgb,var(--primary) 13%,var(--card));color:var(--primary);}
+.payroll-details-modal .payroll-approval-icon svg {width:20px;height:20px;}
+.payroll-details-modal .payroll-approval-label {display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;font-weight:650;}
+.payroll-details-modal .payroll-approval time {font-size:11px;color:var(--muted-foreground);overflow-wrap:anywhere;}
+.payroll-details-modal .payroll-approval-pending {border-radius:99px;background:color-mix(in srgb,var(--warning) 12%,var(--card));color:var(--foreground);padding:3px 8px;font-size:10px;font-weight:600;}
+.payroll-details-modal .payroll-calculation,.payroll-details-modal details[aria-label="Payroll history"] {border-inline:0;border-radius:0;padding:12px 0;border-block:1px solid var(--border);}
+.payroll-details-modal details>summary {font-size:13px;font-weight:650;color:var(--foreground);cursor:pointer;margin-block:0;}
+.payroll-details-modal .payroll-calculation>div {font-size:12px;line-height:1.65;color:var(--muted-foreground);}
+.payroll-details-modal details[aria-label="Payroll history"] li {font-size:12px;line-height:1.6;}
+.payroll-details-modal .payroll-details-footer {padding-top:14px;}
+.payroll-details-modal .payroll-details-utility {display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.payroll-details-modal .payroll-details-action-slot {min-width:0;margin-left:auto;}
+.payroll-details-modal .payroll-workflow-actions {padding:0;border:0;border-radius:0;}
+.payroll-details-modal .payroll-workflow-actions fieldset>div {justify-content:flex-end;}
+.payroll-details-modal .payroll-details-footer button {min-height:40px;}
+.payroll-details-modal .payroll-print-only {display:none;}
+@media(min-width:768px){.payroll-details-modal .payroll-money-columns>section+section {border-left:1px solid var(--border);padding-left:24px;}}
+@media(max-width:639px){.payroll-details-modal>header h2 {font-size:21px;}.payroll-details-modal .payroll-identity {gap:10px;flex-wrap:wrap;}.payroll-details-modal .payroll-identity-avatar {width:42px;height:42px;font-size:17px;}.payroll-details-modal .payroll-identity-brand {font-size:16px;margin-left:52px;}.payroll-details-modal .payroll-basic-summary {grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding-inline:8px;}.payroll-details-modal .payroll-basic-summary>div>p:first-child {font-size:10px;}.payroll-details-modal .payroll-basic-summary>div>p+p {font-size:12px;overflow-wrap:anywhere;}.payroll-details-modal .payroll-approvals {grid-template-columns:1fr;gap:12px;}.payroll-details-modal .payroll-net dd {font-size:21px;}.payroll-details-modal .payroll-details-footer {gap:10px;}.payroll-details-modal .payroll-details-action-slot {flex-basis:100%;}.payroll-details-modal .payroll-workflow-actions fieldset>div>button {flex:1;}}
+@media(max-width:639px){.payroll-details-modal .payroll-identity {display:grid;grid-template-columns:42px minmax(0,1fr);align-items:start;}.payroll-details-modal .payroll-identity-brand {grid-column:2;margin:0;justify-self:start;}}
+@media print{.payroll-details-modal .payroll-print-only {display:block;}.payroll-details-modal .payroll-calculation {display:none;}.payroll-details-modal .payroll-identity {break-inside:avoid;}}

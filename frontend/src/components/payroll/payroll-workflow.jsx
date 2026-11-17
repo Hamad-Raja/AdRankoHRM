@@ -1,4 +1,5 @@
 ﻿import {useState} from 'react';
+import {createPortal} from 'react-dom';
 import {useAdminPayrollActions} from './admin-payroll-actions';
 import {Button} from '@/components/ui/button';
 import {PayrollField} from './payroll-fields';
@@ -7,7 +8,7 @@ import {dateTime,inputClass,pkr,readable} from './payroll-format';
 
 const historyLabels={PAYROLL_CREATED:'Draft prepared',PAYROLL_EDIT:'Draft corrected',PAYROLL_RETURN:'Sent back for correction',PAYROLL_HR_APPROVE:'HR approved',PAYROLL_APPROVE:'Final approval',PAYROLL_PAY:'Payment recorded'};
 
-export default function PayrollWorkflow({record,user,busy,uncertain,error,onReload,onEdit,onSave,initialAction=null,refreshKey=0}) {
+export default function PayrollWorkflow({record,user,busy,uncertain,error,onReload,onEdit,onSave,initialAction=null,refreshKey=0,compact=false,actionsTarget=null}) {
   const adminActions=useAdminPayrollActions(record,user,refreshKey);
   const [decision,setDecision]=useState(()=>initialAction==='pay'&&adminActions.canPay?'pay':null),[reason,setReason]=useState('');
   const [method,setMethod]=useState('CASH'),[paidOn,setPaidOn]=useState(''),[reference,setReference]=useState(''),[note,setNote]=useState('');
@@ -23,10 +24,7 @@ export default function PayrollWorkflow({record,user,busy,uncertain,error,onRelo
     if(name==='pay')Object.assign(body,{method,paidOn,...(reference?{reference}:{}),...(note?{note}:{})});
     const saved=await onSave('/'+record.id+'/'+name,body);if(saved)setDecision(null);
   }
-  return <>
-    {record.needsCorrection&&<div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm"><p className="font-semibold">Needs Correction</p><p className="mt-2 whitespace-pre-wrap break-words">{record.correctionReason||'Review the approval history for correction details.'}</p></div>}
-    {admin&&adminActions.blockers.length>0&&<div role="status" className="space-y-2 text-sm text-muted-foreground"><p>{adminActions.blockers.join(' ')}</p>{adminActions.salary.error&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void adminActions.salary.reload().catch(()=>{})}>Retry salary check</Button>}</div>}
-    {(editable||reviewable||payable)&&<section aria-label="Payroll actions" className="space-y-4 rounded-2xl border border-border bg-card p-5"><h3 className="text-lg font-semibold">Approval Actions</h3>
+  const actions=(editable||reviewable||payable)&&<section aria-label="Payroll actions" className="payroll-workflow-actions space-y-4 rounded-2xl border border-border bg-card p-5">{!compact&&<h3 className="text-lg font-semibold">Approval Actions</h3>}
       <fieldset disabled={busy||uncertain} className="space-y-4">
         <div className="flex flex-wrap gap-3">
           {editable&&<><Button type="button" variant="outline" onClick={()=>onEdit(record)}>Edit Draft</Button><Button type="button" onClick={()=>open('hr-approve')}>{record.needsCorrection?'Resubmit':'HR Approve'}</Button></>}
@@ -34,7 +32,11 @@ export default function PayrollWorkflow({record,user,busy,uncertain,error,onRelo
         </div>
         {payable&&<div className="space-y-3"><p className="text-sm text-muted-foreground">Record the full approved amount {pkr(record.netPay)} after an external payment. AdRankoHRM does not transfer funds.</p><Button type="button" onClick={()=>open('pay')}>Record Payment</Button></div>}
       </fieldset>
-    </section>}
+    </section>;
+  return <>
+    {record.needsCorrection&&<div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm"><p className="font-semibold">Needs Correction</p><p className="mt-2 whitespace-pre-wrap break-words">{record.correctionReason||'Review the approval history for correction details.'}</p></div>}
+    {admin&&adminActions.blockers.length>0&&<div role="status" className="space-y-2 text-sm text-muted-foreground"><p>{adminActions.blockers.join(' ')}</p>{adminActions.salary.error&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void adminActions.salary.reload().catch(()=>{})}>Retry salary check</Button>}</div>}
+    {compact?(actionsTarget&&createPortal(actions,actionsTarget)):actions}
     {!editable&&!reviewable&&!payable&&record.status==='HR_APPROVED'&&<p className="text-sm text-muted-foreground">Awaiting Admin review.</p>}
     <details className="space-y-3 rounded-2xl border border-border bg-card p-5" aria-label="Payroll history"><summary className="cursor-pointer rounded font-semibold focus-visible:outline-2 focus-visible:outline-ring">Approval History</summary><ul className="space-y-3 pt-3 text-sm">{record.history?.map((entry,index)=><li key={index} className="space-y-1 border-t border-border pt-3"><p className="font-medium">{entry.action==='PAYROLL_HR_APPROVE'&&entry.metadata?.resubmitted?'HR resubmitted':historyLabels[entry.action]||'Payroll updated'} · {entry.actor}</p><p className="text-xs text-muted-foreground">{dateTime(entry.at)}</p>{entry.metadata?.reason&&<p className="break-words">{entry.metadata.reason}</p>}</li>)}</ul></details>
     {decision&&<PayrollDialog title={decision==='pay'?'Record Full Payment':returning?'Send Back for Correction':finalizing?'Confirm Final Approval':record.needsCorrection?'Resubmit Payroll':'Confirm HR Approval'} description={decision==='pay'?'Record one full external payment for this finalized payroll. This does not initiate a transfer.':returning?'Payroll will return to HR for correction. Its approval history will be retained.':finalizing?'Final approval locks the payroll financial snapshot. Review the payslip before confirming.':'Confirm that this payroll is ready for Admin review.'} confirmDiscard busy={busy} dirty={Boolean(reason)||(decision==='pay'&&Boolean(paidOn||reference||note||method!=='CASH'))} error={error} uncertain={uncertain} onReload={onReload} onClose={()=>setDecision(null)}>
