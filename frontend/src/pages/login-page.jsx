@@ -43,8 +43,8 @@ export default function LoginPage() {
       if (controller.signal.aborted) return;
       setError(
         requestError.details?.[0]?.message ||
-          requestError.message ||
-          "Unable to sign in. Please try again."
+        requestError.message ||
+        "Unable to sign in. Please try again."
       );
 
       setPassword("");
@@ -92,7 +92,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        
+
       </aside>
 
       <div className="flex min-h-svh flex-col">
