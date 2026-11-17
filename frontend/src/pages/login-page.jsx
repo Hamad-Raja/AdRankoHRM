@@ -83,7 +83,7 @@ export default function LoginPage() {
             Welcome to AdRankoHRM
           </p>
 
-          <h1 className="mt-4 text-3xl font-semibold leading-tight">
+          <h1 className="mt-4 text-2xl font-semibold leading-tight">
            Manage Your Workday with Ease.
           </h1>
 
