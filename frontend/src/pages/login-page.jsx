@@ -43,8 +43,8 @@ export default function LoginPage() {
       if (controller.signal.aborted) return;
       setError(
         requestError.details?.[0]?.message ||
-        requestError.message ||
-        "Unable to sign in. Please try again."
+          requestError.message ||
+          "Unable to sign in. Please try again."
       );
 
       setPassword("");
@@ -75,27 +75,24 @@ export default function LoginPage() {
     <div className="min-h-svh bg-background lg:grid lg:grid-cols-2">
       <aside className="hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
         <div className="text-3xl font-bold tracking-tight">
-          AdRankoHRM ·<span className="text-sidebar-ring">Your workplace portal</span>
+          AdRanko<span className="text-sidebar-ring">HRM</span>
         </div>
 
         <div className="max-w-md">
           <p className="text-sm font-semibold text-sidebar-ring">
-            A simpler way to manage your workday.
+            Your employee and HR portal
           </p>
 
-          {/* <h1 className="mt-4 text-3xl font-semibold leading-tight">
+          <h1 className="mt-4 text-3xl font-semibold leading-tight">
             One workspace for your people and their workday.
-          </h1> */}
+          </h1>
 
           <p className="mt-5 leading-7 text-sidebar-foreground/80">
-            Stay connected to your team, track attendance and access your
-            payroll information—all in one place.
+            Access your account and manage your work with AdRankoHRM.
           </p>
         </div>
 
-        {/* <p className="text-sm text-sidebar-foreground/70">
-          Emerald &amp; Charcoal
-        </p> */}
+        
       </aside>
 
       <div className="flex min-h-svh flex-col">
