@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { KeyRound, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
 import { Navigate, useLocation } from "react-router";
 
 import { useAuth } from "@/context/auth-context";
+import { Badge } from "@/components/ui/badge";
 
-const ROLE_LABELS = {
+export const ROLE_LABELS = {
   ADMIN: "Administrator",
   HR: "Human Resources",
   MANAGER: "Manager",
@@ -169,6 +170,11 @@ function PasswordChangeForm({ canCancel, onCancel }) {
   );
 }
 
+export function AccountStatusBadge({ status }) {
+  const label = status === 'ACTIVE' ? 'Active' : status === 'DISABLED' ? 'Disabled' : 'Not recorded';
+  return <Badge variant="outline" className={status === 'ACTIVE' ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}>{label}</Badge>;
+}
+
 export function AccountSecurityContent() {
   const { user, pendingAction } = useAuth();
 
@@ -181,25 +187,26 @@ export function AccountSecurityContent() {
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
         <section
           aria-labelledby="account-details-heading"
-          className="min-w-0 rounded-lg border border-border bg-card p-6 shadow-sm"
+          className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
         >
-          <h2 id="account-details-heading" className="text-lg font-semibold">
+          <h2 id="account-details-heading" className="flex items-center gap-3 text-lg font-semibold">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><UserRound aria-hidden="true" className="size-5" /></span>
             Account details
           </h2>
 
-          <dl className="mt-5 space-y-5">
+          <dl className="mt-4 divide-y divide-border">
             {[
               ["Name", user.displayName],
               ["Email", user.email],
               ["Role", ROLE_LABELS[user.role]],
-              ["Status", "Active"],
+              ["Account status", <AccountStatusBadge key="status" status={user.status} />],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="grid min-w-0 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] sm:gap-4">
                 <dt className="text-sm text-muted-foreground">
                   {label}
                 </dt>
 
-                <dd className="mt-1 text-sm font-medium [overflow-wrap:anywhere]">
+                <dd className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
                   {value}
                 </dd>
               </div>
@@ -209,13 +216,14 @@ export function AccountSecurityContent() {
 
         <section
           aria-labelledby="account-security-heading"
-          className="min-w-0 rounded-lg border border-border bg-card p-6 shadow-sm"
+          className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
         >
-          <h2 id="account-security-heading" className="text-lg font-semibold">
+          <h2 id="account-security-heading" className="flex items-center gap-3 text-lg font-semibold">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><ShieldCheck aria-hidden="true" className="size-5" /></span>
             Password and security
           </h2>
 
-          {['EMPLOYEE','MANAGER'].includes(user.role) ? <p className="mt-4 text-sm text-muted-foreground">{passwordChangeRequired ? 'An administrator must update your credentials before you can continue. ' : ''}Contact Admin or HR to reset your password.</p> : <>
+          {['EMPLOYEE','MANAGER'].includes(user.role) ? <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4"><p className="text-sm font-medium">Contact Admin or HR to reset your password.</p>{passwordChangeRequired && <p className="mt-2 text-sm text-muted-foreground">An administrator must update your credentials before you can continue.</p>}</div> : <>
           {passwordChangeRequired && (
             <p
               role="status"
@@ -241,8 +249,9 @@ export function AccountSecurityContent() {
                 type="button"
                 disabled={busy}
                 onClick={() => setShowPasswordForm(true)}
-                className={`${BUTTON_CLASSES} mt-5 border border-border bg-card hover:bg-accent`}
+                className={`${BUTTON_CLASSES} mt-5 bg-primary text-primary-foreground hover:bg-primary/90`}
               >
+                <KeyRound aria-hidden="true" className="size-4" />
                 Change my password
               </button>
             </>
