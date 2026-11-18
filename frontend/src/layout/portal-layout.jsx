@@ -76,7 +76,7 @@ export default function PortalLayout() {
   }, [menuOpen]);
 
   return (
-    <div data-admin-shell={user?.role==='ADMIN'?'true':undefined} data-admin-dashboard={user?.role==='ADMIN'&&location.pathname==='/dashboard'?'true':undefined} data-hr-dashboard={user?.role==='HR'&&location.pathname==='/dashboard'?'true':undefined} data-personal-dashboard={location.pathname==='/dashboard'&&['MANAGER','EMPLOYEE'].includes(user?.role)?user.role.toLowerCase():undefined} className="min-h-svh bg-background text-foreground [overflow-wrap:anywhere]">
+    <div data-manager-shell={user?.role==='MANAGER'?'true':undefined} data-admin-shell={user?.role==='ADMIN'?'true':undefined} data-admin-dashboard={user?.role==='ADMIN'&&location.pathname==='/dashboard'?'true':undefined} data-hr-dashboard={user?.role==='HR'&&location.pathname==='/dashboard'?'true':undefined} data-personal-dashboard={location.pathname==='/dashboard'&&['MANAGER','EMPLOYEE'].includes(user?.role)?user.role.toLowerCase():undefined} className="min-h-svh bg-background text-foreground [overflow-wrap:anywhere]">
       <a
         href="#officehr-main"
         className="fixed top-4 left-4 z-50 -translate-y-24 rounded-md bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-md focus:translate-y-0 focus-visible:outline-2 focus-visible:outline-ring"

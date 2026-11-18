@@ -188,6 +188,49 @@
   scroll-margin-top: 9rem;
 }
 
+/* Manager tables share the Attendance logs presentation, including compact widgets. */
+[data-manager-shell] #officehr-main table thead {
+  @apply border-b border-border/80 bg-muted text-muted-foreground;
+}
+[data-manager-shell] #officehr-main table thead th {
+  padding: 13px 20px;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+[data-manager-shell] #officehr-main table tbody :is(tr, th, td) {
+  @apply border-border/60;
+}
+[data-manager-shell] #officehr-main table tbody > tr:not(:last-child) {
+  @apply border-b border-border/60;
+}
+[data-manager-shell] #officehr-main .role-team-table {
+  min-width: 28rem;
+}
+/* Keep the welcome text's positioned layer below the existing refresh control. */
+[data-manager-shell] .hr-refresh {
+  z-index: 2;
+}
+/* Native selects use the same surface, border and focus treatment as shared inputs. */
+[data-manager-shell] #officehr-main select {
+  @apply max-w-full min-w-0 rounded-lg border border-input bg-background/80 px-3 py-1.5 text-sm text-foreground shadow-2xs;
+}
+[data-manager-shell] #officehr-main select:focus-visible {
+  @apply border-ring outline-none ring-2 ring-ring/30;
+}
+[data-manager-shell] #officehr-main :is(input, textarea)::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+[data-manager-shell] .role-team-note,
+[data-manager-shell] .role-leave-rule {
+  font-size: 12px;
+}
+
 /* Shared appearance for existing page tabs and section switchers. */
 .app-tabs {
   @apply flex min-w-0 max-w-full flex-wrap items-center gap-2;
