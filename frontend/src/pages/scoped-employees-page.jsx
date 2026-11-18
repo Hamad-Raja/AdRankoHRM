@@ -46,25 +46,26 @@ export default function ScopedEmployeesPage() {
             <p className="text-sm text-muted-foreground">No employees are currently assigned to your teams.</p>
           </div>
         ) : (
-          <div className="px-4 sm:px-5">
+          <div className="px-4 pb-5 sm:px-5">
             <div role="region" aria-label="Team member profiles" tabIndex={0} className="overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
-              <table className="w-full min-w-[44rem] text-left text-sm">
+              <table className="w-full min-w-[64rem] table-fixed text-left text-sm [overflow-wrap:anywhere]">
                 <caption className="sr-only">Current team members, organization assignments and employment details</caption>
+                <colgroup><col span={6} /><col className="w-32" /><col className="w-36" /></colgroup>
                 <thead className="bg-muted/60">
-                  <tr>{['Employee', 'Designation / team', 'Department / campaign', 'Joined', 'Status'].map(label => <th key={label} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{label}</th>)}</tr>
+                  <tr>{['Employee', 'Code', 'Designation', 'Team', 'Department', 'Campaign', 'Joined', 'Status'].map(label => <th key={label} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{label}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {employees.map(employee => {
                     const employment = employee.employmentEpisodes[0];
                     return <tr key={employee.id} className="hover:bg-muted/30">
-                      <th scope="row" className="px-4 py-4 font-normal">
-                        <p className="font-semibold">{employee.fullName}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{employee.employeeCode}</p>
-                      </th>
-                      <td className="px-4 py-4">{employee.assignments.length ? employee.assignments.map(assignment => <div key={assignment.id} className="space-y-1 [&+div]:mt-3"><p className="font-medium">{assignment.designation?.name || 'Not recorded'}</p><p className="text-muted-foreground">{assignment.team?.name || 'No team'}</p></div>) : <span className="text-muted-foreground">Not recorded</span>}</td>
-                      <td className="px-4 py-4">{employee.assignments.length ? employee.assignments.map(assignment => <div key={assignment.id} className="space-y-1 [&+div]:mt-3"><p className="font-medium">{assignment.department?.name || assignment.team?.department?.name || 'Not recorded'}</p><p className="text-muted-foreground">{assignment.campaign?.name || assignment.team?.campaign?.name || 'No campaign'}</p></div>) : <span className="text-muted-foreground">Not recorded</span>}</td>
-                      <td className="whitespace-nowrap px-4 py-4">{employment ? employeeDate(dateOnly(employment.startDate)) : 'Not recorded'}</td>
-                      <td className="px-4 py-4"><EmploymentBadge status={employment?.status} /></td>
+                      <th scope="row" className="px-4 py-3 font-semibold">{employee.fullName}</th>
+                      <td className="px-4 py-3">{employee.employeeCode}</td>
+                      <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.designation?.name || 'Not recorded'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
+                      <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.team?.name || 'No team'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
+                      <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.department?.name || assignment.team?.department?.name || 'Not recorded'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
+                      <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.campaign?.name || assignment.team?.campaign?.name || 'No campaign'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
+                      <td className="px-4 py-3">{employment ? employeeDate(dateOnly(employment.startDate)) : 'Not recorded'}</td>
+                      <td className="px-4 py-3"><EmploymentBadge status={employment?.status} /></td>
                     </tr>;
                   })}
                 </tbody>
@@ -73,7 +74,6 @@ export default function ScopedEmployeesPage() {
           </div>
         )}
 
-        {employees && !error && <footer className="mx-5 mt-4 border-t border-border py-4 text-sm text-muted-foreground sm:mx-6">Showing {employees.length} team {employees.length === 1 ? 'member' : 'members'}.</footer>}
       </section>
     </section>
   );
