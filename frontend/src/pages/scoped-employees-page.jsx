@@ -27,9 +27,9 @@ export default function ScopedEmployeesPage() {
       </header>
 
       <section aria-labelledby="team-members-heading" className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-xs">
-        <header className="flex flex-wrap items-center gap-3 px-5 py-5 sm:px-6">
-          <h2 id="team-members-heading" className="text-xl font-semibold tracking-tight">Team members</h2>
-          {employees && !error && <Badge variant="outline" className="h-auto border-primary/20 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{employees.length} {employees.length === 1 ? 'employee' : 'employees'}</Badge>}
+        <header className="flex items-center justify-between gap-3 px-5 py-5 sm:px-6">
+          <h2 id="team-members-heading" className="min-w-0 text-xl font-semibold tracking-tight">Team members</h2>
+          {employees && !error && <Badge variant="outline" className="ml-auto h-auto shrink-0 border-primary/20 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{employees.length} {employees.length === 1 ? 'employee' : 'employees'}</Badge>}
         </header>
 
         {error ? (
@@ -50,16 +50,15 @@ export default function ScopedEmployeesPage() {
             <div role="region" aria-label="Team member profiles" tabIndex={0} className="overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
               <table className="w-full min-w-[64rem] table-fixed text-left text-sm [overflow-wrap:anywhere]">
                 <caption className="sr-only">Current team members, organization assignments and employment details</caption>
-                <colgroup><col span={6} /><col className="w-32" /><col className="w-36" /></colgroup>
+                <colgroup><col span={5} /><col className="w-32" /><col className="w-36" /></colgroup>
                 <thead className="bg-muted/60">
-                  <tr>{['Employee', 'Code', 'Designation', 'Team', 'Department', 'Campaign', 'Joined', 'Status'].map(label => <th key={label} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{label}</th>)}</tr>
+                  <tr>{['Employee', 'Designation', 'Team', 'Department', 'Campaign', 'Joined', 'Status'].map(label => <th key={label} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{label}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {employees.map(employee => {
                     const employment = employee.employmentEpisodes[0];
                     return <tr key={employee.id} className="hover:bg-muted/30">
                       <th scope="row" className="px-4 py-3 font-semibold">{employee.fullName}</th>
-                      <td className="px-4 py-3">{employee.employeeCode}</td>
                       <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.designation?.name || 'Not recorded'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
                       <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.team?.name || 'No team'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
                       <td className="px-4 py-3">{employee.assignments.length ? employee.assignments.map(assignment => <p key={assignment.id} className="[&+p]:mt-3">{assignment.department?.name || assignment.team?.department?.name || 'Not recorded'}</p>) : <span className="text-muted-foreground">Not recorded</span>}</td>
