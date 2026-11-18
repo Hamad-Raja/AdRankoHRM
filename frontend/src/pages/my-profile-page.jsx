@@ -27,7 +27,7 @@ function ProfileIdentity({user, employee}) {
       <div className="[&>span]:size-16 [&>span]:text-xl"><InitialsAvatar name={name} /></div>
       <div className="min-w-0 flex-1 basis-64">
         <h2 className="break-words text-2xl font-semibold tracking-tight">{name}</h2>
-        {employee?.employeeCode && <p className="mt-1 break-words text-sm text-muted-foreground">Employee code: <span className="font-medium">{employee.employeeCode}</span></p>}
+        {employee?.employeeCode && <p className="mt-1 break-words text-sm text-muted-foreground">Employee code: <span className="font-semibold text-foreground">{employee.employeeCode}</span></p>}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
           <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
           <span className="inline-flex flex-wrap items-center gap-2">Account status <AccountStatusBadge status={user.status} /></span>
@@ -47,7 +47,7 @@ function ProfilePanel({title, icon: Icon, children}) {
 
 function ProfileFields({rows}) {
   return <dl className="mt-4 divide-y divide-border">{rows.map(([label, value]) => <div key={label} className="grid min-w-0 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] sm:gap-4">
-    <dt className="text-sm text-muted-foreground">{label}</dt><dd className={`min-w-0 break-words text-sm ${value ? 'font-medium' : 'text-muted-foreground'}`}>{value || 'Not recorded'}</dd>
+    <dt className="text-sm font-medium text-foreground/80">{label}</dt><dd className={`min-w-0 break-words text-sm ${value ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{value || 'Not recorded'}</dd>
   </div>)}</dl>;
 }
 
@@ -88,7 +88,7 @@ export default function MyProfilePage() {
     return <Navigate to={{pathname: location.pathname, search: `?${next}`, hash: location.hash}} state={location.state} replace />;
   }
 
-  if (accountOnly) return <section className="min-w-0 space-y-6">
+  if (accountOnly) return <section className="profile-page min-w-0 space-y-6 text-foreground">
     <header><h1 className="text-2xl font-semibold">Account &amp; Security</h1><p className="mt-2 text-sm text-muted-foreground">Your account details and password security.</p></header>
     <ProfileIdentity user={user} />
     <AccountSecurityContent />
@@ -114,7 +114,7 @@ export default function MyProfilePage() {
     tabs[next].click();
   }
 
-  return <section className="min-w-0 space-y-6">
+  return <section className="profile-page min-w-0 space-y-6 text-foreground">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-2xl font-semibold">My Profile</h1><p className="mt-2 text-sm text-muted-foreground">Your personal and account details.</p></div>
       <Badge variant="secondary" className="h-auto gap-2 px-3 py-1.5"><LockKeyhole aria-hidden="true" className="size-3.5" />Read-only profile</Badge>

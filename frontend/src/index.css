@@ -175,6 +175,19 @@
 }
 
 
+/* Profile supporting copy stays readable while field values carry more weight. */
+.profile-page .text-muted-foreground {
+  color: var(--secondary-foreground);
+}
+.profile-page .text-xs.text-muted-foreground {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.profile-page :is(h1, [role="tab"], [role="tabpanel"]) {
+  /* The mobile header can wrap onto two rows. */
+  scroll-margin-top: 9rem;
+}
+
 /* Shared appearance for existing page tabs and section switchers. */
 .app-tabs {
   @apply flex min-w-0 max-w-full flex-wrap items-center gap-2;

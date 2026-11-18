@@ -202,11 +202,11 @@ export function AccountSecurityContent() {
               ["Account status", <AccountStatusBadge key="status" status={user.status} />],
             ].map(([label, value]) => (
               <div key={label} className="grid min-w-0 gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] sm:gap-4">
-                <dt className="text-sm text-muted-foreground">
+                <dt className="text-sm font-medium text-foreground/80">
                   {label}
                 </dt>
 
-                <dd className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                <dd className="min-w-0 text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
                   {value}
                 </dd>
               </div>
