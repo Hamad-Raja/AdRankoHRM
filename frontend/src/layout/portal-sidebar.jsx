@@ -130,11 +130,6 @@ const EMPLOYEE_NAVIGATION = [
     icon: LayoutDashboard,
   },
   {
-    label: "My Organization",
-    to: "/my-employees",
-    icon: UserRound,
-  },
-  {
     label: "My Attendance",
     to: "/attendance",
     icon: CalendarCheck,

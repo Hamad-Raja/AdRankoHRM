@@ -16,6 +16,8 @@ const TABS = [
   {id: 'security', label: 'Account & Security'},
 ];
 
+const EMPLOYEE_TABS = [TABS[0], {id: 'work', label: 'Work Details'}, ...TABS.slice(1)];
+
 const formatDate = value => value ? employeeDate(value.slice(0, 10)) : 'Not recorded';
 const statusLabel = value => employmentStatuses.find(([status]) => status === value)?.[1] || 'Not recorded';
 
@@ -51,6 +53,27 @@ function ProfileFields({rows}) {
   </div>)}</dl>;
 }
 
+function ProfileWorkDetails({employeeId}) {
+  const resource = useApiResource('/organization/scope/employees');
+  const employee = resource.data?.find(item => item.id === employeeId);
+  const assignment = employee?.assignments[0];
+  const employment = employee?.employmentEpisodes[0];
+  return <ProfilePanel title="Work Details" icon={BriefcaseBusiness}>
+    <div className="mt-4 flex justify-end"><Button onClick={() => void resource.reload().catch(() => {})}>Refresh profile</Button></div>
+    {resource.loading ? <p role="status" className="mt-4 text-sm text-muted-foreground">Loading your profile...</p>
+      : resource.error ? <div role="alert" className="mt-4 text-sm"><p>{resource.error.message}</p><Button variant="outline" className="mt-3" onClick={() => void resource.reload().catch(() => {})}>Retry profile</Button></div>
+      : <ProfileFields rows={[
+        ['Designation', assignment?.designation?.name],
+        ['Department', assignment?.department?.name || assignment?.team?.department?.name],
+        ['Team', assignment?.team?.name],
+        ['Campaign', assignment?.campaign?.name || assignment?.team?.campaign?.name],
+        ['Reporting manager', assignment?.reportingManager?.displayName],
+        ['Joining date', employment?.startDate ? formatDate(employment.startDate) : null],
+        ['Employment status', employment?.status ? <EmploymentBadge status={employment.status} /> : null],
+      ]} />}
+  </ProfilePanel>;
+}
+
 function ProfileEmployment({episodes}) {
   return <ProfilePanel title="Employment History" icon={BriefcaseBusiness}>
     <p className="mt-3"><Badge variant="secondary">{episodes.length} employment {episodes.length === 1 ? 'period' : 'periods'}</Badge></p>
@@ -74,7 +97,8 @@ export default function MyProfilePage() {
   const location = useLocation();
   const [search, setSearch] = useSearchParams();
   const requestedTab = search.get('tab');
-  const tab = TABS.some(item => item.id === requestedTab) ? requestedTab : 'personal';
+  const profileTabs = user.role === 'EMPLOYEE' ? EMPLOYEE_TABS : TABS;
+  const tab = profileTabs.some(item => item.id === requestedTab) ? requestedTab : 'personal';
   const restricted = user.mustChangePassword;
   const accountOnly = user.role === 'ADMIN';
   // Security remains independent of profile loading, errors or a missing link.
@@ -121,7 +145,7 @@ export default function MyProfilePage() {
     </header>
     <ProfileIdentity user={user} employee={employee} />
     <div role="tablist" aria-label="My Profile sections" onKeyDown={moveTabFocus} className="app-tabs">
-      {TABS.map(item => <Button key={item.id} id={`profile-tab-${item.id}`} role="tab" type="button"
+      {profileTabs.map(item => <Button key={item.id} id={`profile-tab-${item.id}`} role="tab" type="button"
         aria-selected={tab === item.id} aria-controls={`profile-panel-${item.id}`}
         tabIndex={tab === item.id ? 0 : -1} disabled={restricted && item.id !== 'security'}
         variant={tab === item.id ? 'default' : 'outline'} className="h-auto min-h-10 min-w-0 whitespace-normal px-3 py-2 text-sm"
@@ -144,6 +168,7 @@ export default function MyProfilePage() {
           </div>
           <p className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground"><LockKeyhole aria-hidden="true" className="size-4 shrink-0" />Profile details are managed by Admin and HR.</p>
         </>
+        : user.role === 'EMPLOYEE' && tab === 'work' ? <ProfileWorkDetails employeeId={employee.id} />
         : tab === 'employment' ? <ProfileEmployment episodes={employee.employmentEpisodes} />
         : user.role !== 'MANAGER' ? <Documents employeeId={employee.id} management={false} organizationView />
         : <ProfilePanel title="Private documents" icon={FolderLock}><p className="mt-4 text-sm text-muted-foreground">Contact HR for your private documents. Existing Manager document restrictions apply.</p></ProfilePanel>}

@@ -4,10 +4,11 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
 } from "react-router";
 
 import PortalLayout from "@/layout/portal-layout";
-import { AuthProvider } from "@/context/auth-context";
+import { AuthProvider, useAuth } from "@/context/auth-context";
 
 import AccountPage from "@/pages/account-page";
 import DashboardPage from "@/pages/dashboard-page";
@@ -33,6 +34,15 @@ import {
   GuestRoute,
   ProtectedRoute,
 } from "@/routes/route-guards";
+
+function ScopedEmployeesRoute() {
+  const {user} = useAuth();
+  const location = useLocation();
+  if (user.role !== 'EMPLOYEE') return <ScopedEmployeesPage />;
+  const search = new URLSearchParams(location.search);
+  search.set('tab', 'work');
+  return <Navigate to={{pathname: '/my-profile', search: `?${search}`, hash: location.hash}} state={location.state} replace />;
+}
 
 export default function App() {
   useEffect(() => {
@@ -132,7 +142,7 @@ export default function App() {
                 >
                   <Route
                     path="/my-employees"
-                    element={<ScopedEmployeesPage />}
+                    element={<ScopedEmployeesRoute />}
                   />
                 </Route>
               </Route>
