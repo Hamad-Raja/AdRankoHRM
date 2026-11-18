@@ -129,29 +129,29 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           onSubmit={handleFilterSubmit}
           className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/60 bg-muted/20 p-3.5"
         >
-          <div className="space-y-1">
-            <label htmlFor={`${fieldId}-from`} className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="grid w-full gap-1.5 sm:w-40">
+            <label htmlFor={`${fieldId}-from`} className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               From Date
             </label>
             <Input
               id={`${fieldId}-from`} type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-9 w-40 text-xs"
+              className="h-9 w-full text-xs"
             />
           </div>
-          <div className="space-y-1">
-            <label htmlFor={`${fieldId}-to`} className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="grid w-full gap-1.5 sm:w-40">
+            <label htmlFor={`${fieldId}-to`} className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               To Date
             </label>
             <Input
               id={`${fieldId}-to`} type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-9 w-40 text-xs"
+              className="h-9 w-full text-xs"
             />
           </div>
-          <Button type="submit" size="sm" variant="secondary" className="h-9 gap-1.5 text-xs font-semibold px-3.5">
+          <Button type="submit" size="sm" variant="default" className="h-9 gap-1.5 text-xs font-semibold px-3.5">
             <Filter className="size-3.5" />
             <span>Apply</span>
           </Button>
