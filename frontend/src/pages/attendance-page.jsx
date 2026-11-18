@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
-import {useSearchParams} from 'react-router';
+import { useSearchParams } from 'react-router';
 import { useAuth } from "@/context/auth-context";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 
 export default function AttendancePage() {
-  const [dashboardQuery]=useSearchParams();
+  const [dashboardQuery] = useSearchParams();
   const { user, getCsrfToken, refreshSession } = useAuth();
   const isAdminOrHr = ["ADMIN", "HR"].includes(user?.role);
   const isManager = user?.role === "MANAGER";
@@ -36,7 +36,7 @@ export default function AttendancePage() {
 
   // Active view tab
   const [activeTab, setActiveTab] = useState(
-    isAdminOrHr&&dashboardQuery.get('view')==='corrections' ? 'corrections' : isAdminOrHr ? "daily" : isManager ? "team" : "own"
+    isAdminOrHr && dashboardQuery.get('view') === 'corrections' ? 'corrections' : isAdminOrHr ? "daily" : isManager ? "team" : "own"
   );
 
   // Trigger to sync widgets
@@ -52,6 +52,7 @@ export default function AttendancePage() {
 
   const [summaryDate, setSummaryDate] = useState(todayStr);
   const [dailySummary, setDailySummary] = useState(null);
+  const [dailySearch, setDailySearch] = useState("");
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState("");
   const summaryRequest = useRef(0);
@@ -143,7 +144,7 @@ export default function AttendancePage() {
   const [correctionPage, setCorrectionPage] = useState(1);
   const [correctionPages, setCorrectionPages] = useState(1);
   const [correctionStatus, setCorrectionStatus] = useState('PENDING');
-  const [reviewableOnly,setReviewableOnly] = useState(dashboardQuery.get('reviewableOnly') === 'true');
+  const [reviewableOnly, setReviewableOnly] = useState(dashboardQuery.get('reviewableOnly') === 'true');
   const [loadingCorrections, setLoadingCorrections] = useState(false);
   const [correctionsError, setCorrectionsError] = useState("");
   const correctionsRequest = useRef(0);
@@ -231,29 +232,33 @@ export default function AttendancePage() {
     }
   }
 
+  const dailyRecords = (dailySummary?.records || []).filter(record => {
+    const query = dailySearch.trim().toLowerCase();
+    return !query || [record.employee?.fullName, record.employee?.employeeCode].some(value => value?.toLowerCase().includes(query));
+  });
+
   return (
     <div className={isAdminOrHr ? "space-y-8" : "self-service-page attendance-workspace space-y-5"}>
-      {isAdminOrHr && <PaidLeaveAttendance key={user.id}/>}
       {/* Page Title & Navigation Bar */}
-      <div className={isAdminOrHr?"flex flex-wrap items-center justify-between gap-4":"self-service-page-header attendance-page-header"}>
+      <div className={isAdminOrHr ? "flex flex-wrap items-center justify-between gap-4" : "self-service-page-header attendance-page-header"}>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             {isAdminOrHr
               ? "Attendance Management"
               : isManager
-              ? "Attendance"
-              : "My Attendance"}
+                ? "Attendance"
+                : "My Attendance"}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
             {isAdminOrHr
               ? "Monitor organization duty shifts, lateness, and review correction requests."
               : isManager
-              ? "Track your team's overnight duty presence and clock your own attendance."
-              : "Clock in and out, track duty history, and submit corrections."}
+                ? "Track your team's overnight duty presence and clock your own attendance."
+                : "Clock in and out, track duty history, and submit corrections."}
           </p>
         </div>
 
-      {!isAdminOrHr && <details className="self-service-guide quiet-disclosure"><summary>Attendance guide</summary><div><p>Duty dates use the shift-start date. An overnight Friday duty belongs to Friday, including its Saturday morning hours.</p><p>Original punches and raw elapsed time are recorded facts. Approved corrections remain separate; neither is approved payable time or a payroll calculation.</p><p>Use My Clock &amp; Logs for your own punches and correction requests. Team attendance remains limited to your permitted team scope. Current restrictions and unresolved checkout warnings remain visible alongside the clock.</p></div></details>}
+        {!isAdminOrHr && <details className="self-service-guide quiet-disclosure"><summary>Attendance guide</summary><div><p>Duty dates use the shift-start date. An overnight Friday duty belongs to Friday, including its Saturday morning hours.</p><p>Original punches and raw elapsed time are recorded facts. Approved corrections remain separate; neither is approved payable time or a payroll calculation.</p><p>Use My Clock &amp; Logs for your own punches and correction requests. Team attendance remains limited to your permitted team scope. Current restrictions and unresolved checkout warnings remain visible alongside the clock.</p></div></details>}
 
         {/* Tab switcher */}
         <div className="app-tabs attendance-view-tabs">
@@ -263,11 +268,10 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "daily"}
                 onClick={() => setActiveTab("daily")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                  activeTab === "daily"
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "daily"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+                  }`}
               >
                 Daily Summary
               </button>
@@ -275,11 +279,10 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "list"}
                 onClick={() => setActiveTab("list")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                  activeTab === "list"
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "list"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+                  }`}
               >
                 All Records
               </button>
@@ -287,11 +290,10 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "corrections"}
                 onClick={() => setActiveTab("corrections")}
-                className={`relative rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                  activeTab === "corrections"
+                className={`relative rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "corrections"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+                  }`}
               >
                 Corrections
                 {corrections.length > 0 && (
@@ -299,6 +301,17 @@ export default function AttendancePage() {
                     {corrections.length}
                   </span>
                 )}
+              </button>
+              <button
+                type="button"
+                aria-pressed={activeTab === "paid-leave"}
+                onClick={() => setActiveTab("paid-leave")}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "paid-leave"
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  }`}
+              >
+                Paid Leave
               </button>
             </>
           )}
@@ -318,11 +331,10 @@ export default function AttendancePage() {
             type="button"
             aria-pressed={activeTab === "own"}
             onClick={() => setActiveTab("own")}
-            className={isManager ? buttonVariants({ variant: activeTab === "own" ? "default" : "outline" }) : `rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeTab === "own"
+            className={isManager ? buttonVariants({ variant: activeTab === "own" ? "default" : "outline" }) : `rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "own"
                 ? "bg-background text-foreground shadow-xs font-bold"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-            }`}
+              }`}
           >
             My Clock & Logs
           </button>
@@ -334,7 +346,7 @@ export default function AttendancePage() {
       {isAdminOrHr && activeTab === "daily" && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <label htmlFor="summary-date-input" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Shift Date:
               </label>
@@ -356,9 +368,7 @@ export default function AttendancePage() {
                 <span>Refresh</span>
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Anchor: 19:00 (Pakistan time) to 05:00 next day
-            </p>
+            <label className="w-full sm:ml-auto sm:w-auto"><span className="sr-only">Search daily records</span><Input type="search" aria-label="Search daily records" placeholder="Search name or employee code" maxLength={120} value={dailySearch} onChange={e => setDailySearch(e.target.value)} className="h-9 w-full text-xs sm:w-64" /></label>
           </div>
 
           {summaryError && (
@@ -449,14 +459,14 @@ export default function AttendancePage() {
                         Loading daily summary...
                       </td>
                     </tr>
-                  ) : !dailySummary?.records || dailySummary.records.length === 0 ? (
+                  ) : dailyRecords.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
-                        {summaryError ? 'Daily records unavailable. Refresh to retry.' : `No employees clocked in on ${summaryDate}.`}
+                        {summaryError ? 'Daily records unavailable. Refresh to retry.' : dailySummary?.records?.length ? 'No matching employees' : `No employees clocked in on ${summaryDate}.`}
                       </td>
                     </tr>
                   ) : (
-                    dailySummary.records.map((r) => (
+                    dailyRecords.map((r) => (
                       <tr key={r.id} className="hover:bg-muted/30 transition-colors">
                         <td className="py-3 px-4 font-semibold text-xs text-foreground">
                           <div>{r.employee?.fullName}</div>
@@ -467,21 +477,21 @@ export default function AttendancePage() {
                         <td className="py-3 px-4 font-mono text-xs">
                           {r.clockInAt
                             ? new Intl.DateTimeFormat("en-PK", {
-                                timeZone: "Asia/Karachi",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              }).format(new Date(r.clockInAt))
+                              timeZone: "Asia/Karachi",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            }).format(new Date(r.clockInAt))
                             : "—"}
                         </td>
                         <td className="py-3 px-4 font-mono text-xs">
                           {r.clockOutAt
                             ? new Intl.DateTimeFormat("en-PK", {
-                                timeZone: "Asia/Karachi",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              }).format(new Date(r.clockOutAt))
+                              timeZone: "Asia/Karachi",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            }).format(new Date(r.clockOutAt))
                             : "No actual checkout"}
                         </td>
                         <td className="py-3 px-4 text-xs font-mono font-medium">
@@ -491,13 +501,12 @@ export default function AttendancePage() {
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
-                              r.status === "COMPLETED"
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${r.status === "COMPLETED"
                                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : r.status === "OPEN"
-                                ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                : "border-border bg-muted/60 text-muted-foreground"
-                            }`}
+                                  ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "border-border bg-muted/60 text-muted-foreground"
+                              }`}
                           >
                             {r.status}
                           </span>
@@ -525,91 +534,86 @@ export default function AttendancePage() {
       )}
 
       {/* ─── TAB: All Records (Admin/HR) or Team Records (Manager) ── */}
-      {isAdminOrHr && activeTab === 'daily' && dailySummary && <section aria-label="Daily classifications" className="rounded-xl border p-4 space-y-2">
-        <h2 className="font-semibold">Daily classifications</h2>
-        <p className="text-sm">No clock-in after ended eligible duty: {dailySummary.noClockIn || 0}. Future duties, holidays, weekly offs and ineligible dates are excluded.</p>
-        <ul className="max-h-80 overflow-auto text-sm">{dailySummary.classifications?.map(c => <li key={c.employee.id}>{c.employee.fullName} ({c.employee.employeeCode}): {c.classification}</li>)}</ul>
-      </section>}
 
       {((isAdminOrHr && activeTab === "list") || (isManager && activeTab === "team")) && (
         <div className="space-y-6">
-          <RecordFilters {...(isManager?{className:"attendance-filter-panel"}:{})}>
-          <div className="flex flex-wrap gap-3">
-            <label className="text-xs">Employee search<Input aria-label="Employee search" value={search} onChange={e => { setSearch(e.target.value); setRecordsPage(1); }} /></label>
-            {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-xs">{kind}<select aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>)}
-          </div>
-          {/* Filters */}
-          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
-            <div className="space-y-1">
-              <label htmlFor="filter-from-date" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                From Shift Date
-              </label>
-              <Input
-                id="filter-from-date"
-                type="date"
-                value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
-                className="h-9 w-40 text-xs font-semibold"
-              />
+          <RecordFilters {...(isManager ? { className: "attendance-filter-panel" } : {})}>
+            <div className="flex flex-wrap gap-3">
+              <label className="text-xs">Employee search<Input aria-label="Employee search" value={search} onChange={e => { setSearch(e.target.value); setRecordsPage(1); }} /></label>
+              {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-xs">{kind}<select aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>)}
             </div>
-            <div className="space-y-1">
-              <label htmlFor="filter-to-date" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                To Shift Date
-              </label>
-              <Input
-                id="filter-to-date"
-                type="date"
-                value={filterDateTo}
-                onChange={(e) => setFilterDateTo(e.target.value)}
-                className="h-9 w-40 text-xs font-semibold"
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="filter-status-select" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Status
-              </label>
-              <select
-                id="filter-status-select"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="h-9 rounded-lg border border-input bg-background/80 px-3 text-xs font-semibold text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
-              >
-                <option value="">All Statuses</option>
-                <option value="OPEN">Open (Active)</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="MISSING_CHECKOUT">Missing Checkout</option>
-                <option value="CORRECTED">Corrected</option>
-              </select>
-            </div>
-            <Button
-              size="sm"
-              variant={isManager?"default":"secondary"}
-              onClick={() => {
-                setRecordsPage(1);
-                loadAttendanceRecords();
-              }}
-              className="h-9 gap-1.5 text-xs font-semibold px-4"
-            >
-              <Filter className="size-3.5" />
-              <span>Apply Filter</span>
-            </Button>
-            {(filterDateFrom || filterDateTo || filterStatus) && (
+            {/* Filters */}
+            <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex  items-center gap-2.5">
+                <label htmlFor="filter-from-date" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  From Shift Date
+                </label>
+                <Input
+                  id="filter-from-date"
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="h-9 w-40 text-xs font-semibold "
+                />
+              </div>
+              <div className="flex items-center gap-2.5">
+                <label htmlFor="filter-to-date" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  To Shift Date
+                </label>
+                <Input
+                  id="filter-to-date"
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="h-9 w-40 text-xs font-semibold"
+                />
+              </div>
+              <div className="flex items-center gap-2.5">
+                <label htmlFor="filter-status-select" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Status
+                </label>
+                <select
+                  id="filter-status-select"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="h-9 rounded-lg border border-input bg-background/80 px-3 text-xs font-semibold text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="OPEN">Open (Active)</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="MISSING_CHECKOUT">Missing Checkout</option>
+                  <option value="CORRECTED">Corrected</option>
+                </select>
+              </div>
               <Button
                 size="sm"
-                variant="ghost"
+                variant={isManager ? "default" : "secondary"}
                 onClick={() => {
-                  setFilterDateFrom("");
-                  setFilterDateTo("");
-                  setFilterStatus("");
                   setRecordsPage(1);
+                  loadAttendanceRecords();
                 }}
-                className="h-9 gap-1.5 text-xs font-semibold px-3 text-muted-foreground hover:text-foreground"
+                className="h-9 gap-1.5 text-xs font-semibold px-4"
               >
-                <RotateCcw className="size-3.5" />
-                <span>Clear</span>
+                <Filter className="size-3.5" />
+                <span>Apply Filter</span>
               </Button>
-            )}
-          </div>
+              {(filterDateFrom || filterDateTo || filterStatus) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setFilterDateFrom("");
+                    setFilterDateTo("");
+                    setFilterStatus("");
+                    setRecordsPage(1);
+                  }}
+                  className="h-9 gap-1.5 text-xs font-semibold px-3 text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>Clear</span>
+                </Button>
+              )}
+            </div>
 
           </RecordFilters>
 
@@ -619,10 +623,10 @@ export default function AttendancePage() {
             </p>
           )}
 
-          {!isManager&&<p className="text-xs text-muted-foreground">Original punches and raw elapsed minutes are recorded facts, not approved/payable time. Approved corrections remain separate.</p>}
+          {!isManager && <p className="text-xs text-muted-foreground">Original punches and raw elapsed minutes are recorded facts, not approved/payable time. Approved corrections remain separate.</p>}
           {/* Table */}
-          <div className={isManager?"attendance-logs-card rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden":"rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden"}>
-            {isManager&&<div className="self-service-card-heading"><h2>Attendance logs</h2></div>}
+          <div className={isManager ? "attendance-logs-card rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden" : "rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden"}>
+            {isManager && <div className="self-service-card-heading"><h2>Attendance logs</h2></div>}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -662,21 +666,21 @@ export default function AttendancePage() {
                         <td className="py-3 px-4 font-mono text-xs">
                           {r.clockInAt
                             ? new Intl.DateTimeFormat("en-PK", {
-                                timeZone: "Asia/Karachi",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              }).format(new Date(r.clockInAt))
+                              timeZone: "Asia/Karachi",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            }).format(new Date(r.clockInAt))
                             : "—"}
                         </td>
                         <td className="py-3 px-4 font-mono text-xs">
                           {r.clockOutAt
                             ? new Intl.DateTimeFormat("en-PK", {
-                                timeZone: "Asia/Karachi",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              }).format(new Date(r.clockOutAt))
+                              timeZone: "Asia/Karachi",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            }).format(new Date(r.clockOutAt))
                             : "—"}
                         </td>
                         <td className="py-3 px-4 text-xs font-mono font-medium">
@@ -686,13 +690,12 @@ export default function AttendancePage() {
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
-                              r.status === "COMPLETED"
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${r.status === "COMPLETED"
                                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : r.status === "OPEN"
-                                ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                : "border-border bg-muted/60 text-muted-foreground"
-                            }`}
+                                  ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "border-border bg-muted/60 text-muted-foreground"
+                              }`}
                           >
                             {r.status}
                           </span>
@@ -727,7 +730,7 @@ export default function AttendancePage() {
               </table>
             </div>
 
-            {isManager&&<p className="attendance-evidence-note">Recorded elapsed time - Not payable hours. Approved corrections remain separate.</p>}
+            {isManager && <p className="attendance-evidence-note">Recorded elapsed time - Not payable hours. Approved corrections remain separate.</p>}
 
             {/* Pagination */}
             {!loadingRecords && !recordsError && recordsTotalPages > 1 && (
@@ -765,7 +768,7 @@ export default function AttendancePage() {
       {isAdminOrHr && activeTab === "corrections" && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewableOnly} onChange={e=>{setReviewableOnly(e.target.checked);setCorrectionPage(1);}}/>Only pending corrections I can review</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewableOnly} onChange={e => { setReviewableOnly(e.target.checked); setCorrectionPage(1); }} />Only pending corrections I can review</label>
             <label className="text-xs">Correction status<select aria-label="Correction status" className="ml-2 rounded border bg-background p-2" value={correctionStatus} onChange={e => { setCorrectionStatus(e.target.value); setCorrectionPage(1); }}><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All decisions</option></select></label>
             <Button variant="outline" disabled={loadingCorrections || correctionPage <= 1} onClick={() => setCorrectionPage(p => p - 1)}>Previous requests</Button>
             <span className="text-xs">Page {correctionPage} of {correctionPages}</span>
@@ -889,7 +892,8 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {!isAdminOrHr && <details className="self-service-guide paid-leave-disclosure"><summary>Approved paid leave</summary><PaidLeaveAttendance key={user.id}/></details>}
+      {isAdminOrHr && <div hidden={activeTab !== "paid-leave"}><PaidLeaveAttendance key={user.id} tabular /></div>}
+      {!isAdminOrHr && <details className="self-service-guide paid-leave-disclosure"><summary>Approved paid leave</summary><PaidLeaveAttendance key={user.id} /></details>}
 
       {/* ─── Review Dialog Modal ────────────────────────────────────── */}
       <dialog
