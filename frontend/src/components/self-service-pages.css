@@ -26,6 +26,8 @@
 .self-service-page .self-service-tabs button[aria-pressed="true"] {background:var(--primary);color:var(--primary-foreground);}
 .self-service-page .self-service-tabs button:focus-visible {outline:2px solid var(--ring);outline-offset:2px;}
 .attendance-view-tabs {grid-column:1/-1;justify-self:start;margin-top:4px;}
+.manager-page-tabs {display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:100%;}
+.self-service-page .manager-page-tabs > button,.payroll-screen .manager-page-tabs > button {height:auto;min-height:36px;max-width:100%;padding:6px 14px;font-size:12px;line-height:16px;font-weight:600;white-space:normal;overflow-wrap:anywhere;}
 .self-service-page .self-service-card-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;}
 .self-service-page .self-service-card-heading > span {font-size:14px;color:var(--muted-foreground);}
 .self-service-page table {font-size:14px;}
@@ -94,9 +96,9 @@
 .self-service-page .report-toolbar {padding:0 2px;font-size:12px;}
 .self-service-page .report-data-view > .report-toolbar {order:1;}
 .self-service-page .report-toolbar p {font-size:12px;}
-.self-service-page.reports-workspace > [role="group"] {gap:0;border-bottom:1px solid var(--border);}
-.self-service-page.reports-workspace > [role="group"] button {border:0;border-radius:8px 8px 0 0;border-bottom:3px solid transparent;background:transparent;box-shadow:none;padding:12px 20px;}
-.self-service-page.reports-workspace > [role="group"] button[aria-pressed="true"] {border-bottom-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);}
+.self-service-page.reports-workspace > [role="group"]:not(.manager-page-tabs) {gap:0;border-bottom:1px solid var(--border);}
+.self-service-page.reports-workspace > [role="group"]:not(.manager-page-tabs) button {border:0;border-radius:8px 8px 0 0;border-bottom:3px solid transparent;background:transparent;box-shadow:none;padding:12px 20px;}
+.self-service-page.reports-workspace > [role="group"]:not(.manager-page-tabs) button[aria-pressed="true"] {border-bottom-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);}
 .self-service-page .report-key-metrics {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
 .self-service-page .report-key-metrics > div {display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;row-gap:2px;align-items:center;padding:18px;}
 .self-service-page .report-key-metrics p {font-size:14px;}

@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import {useSearchParams} from 'react-router';
 import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import "@/components/self-service-pages.css";
 import { organization } from "@/services/organization.service";
@@ -256,7 +256,7 @@ export default function AttendancePage() {
       {!isAdminOrHr && <details className="self-service-guide quiet-disclosure"><summary>Attendance guide</summary><div><p>Duty dates use the shift-start date. An overnight Friday duty belongs to Friday, including its Saturday morning hours.</p><p>Original punches and raw elapsed time are recorded facts. Approved corrections remain separate; neither is approved payable time or a payroll calculation.</p><p>Use My Clock &amp; Logs for your own punches and correction requests. Team attendance remains limited to your permitted team scope. Current restrictions and unresolved checkout warnings remain visible alongside the clock.</p></div></details>}
 
         {/* Tab switcher */}
-        <div className={isAdminOrHr?"flex flex-wrap items-center gap-1 rounded-xl border border-border/80 p-1 bg-muted/40 shadow-inner":"self-service-tabs attendance-view-tabs"}>
+        <div className={isAdminOrHr?"flex flex-wrap items-center gap-1 rounded-xl border border-border/80 p-1 bg-muted/40 shadow-inner":isManager?"manager-page-tabs attendance-view-tabs":"self-service-tabs attendance-view-tabs"}>
           {isAdminOrHr && (
             <>
               <button
@@ -305,11 +305,7 @@ export default function AttendancePage() {
               type="button"
               aria-pressed={activeTab === "team"}
               onClick={() => setActiveTab("team")}
-              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                activeTab === "team"
-                  ? "bg-background text-foreground shadow-xs font-bold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-              }`}
+              className={buttonVariants({ variant: activeTab === "team" ? "default" : "outline" })}
             >
               Team Attendance
             </button>
@@ -319,7 +315,7 @@ export default function AttendancePage() {
             type="button"
             aria-pressed={activeTab === "own"}
             onClick={() => setActiveTab("own")}
-            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+            className={isManager ? buttonVariants({ variant: activeTab === "own" ? "default" : "outline" }) : `rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeTab === "own"
                 ? "bg-background text-foreground shadow-xs font-bold"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/50"

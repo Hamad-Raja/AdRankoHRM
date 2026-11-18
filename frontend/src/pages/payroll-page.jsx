@@ -3,6 +3,7 @@ import {useLocation,useSearchParams} from 'react-router';
 import {UserRound, Plus, RefreshCw} from 'lucide-react';
 import {useAuth} from '@/context/auth-context';
 import {Button} from '@/components/ui/button';
+import '@/components/self-service-pages.css';
 import {ApiError} from '@/lib/api';
 import {payrollRequest, payrollQuery} from '@/services/payroll.service';
 import {usePayrollResource} from '@/components/payroll/use-payroll-resource';
@@ -131,7 +132,7 @@ function PayrollWorkspace({own}) {
       <EmployeeCombobox selected={selected} onSelect={choose} disabled={busy||uncertain}/>
     </section>}
     {!own&&(!admin||adminTab==='salary')&&<EmployeeSalaryCard key={'salary-card:'+(selected?.id||'unselected')} employee={currentEmployee} resource={salary} currentSalary={currentSalary} payrollSalary={payrollSalary} month={monthPattern.test(month)?month:''} todayMonth={todayMonth} disabled={busy||uncertain} canRevise={canRevise} onRevise={()=>openModal('salary')}/>}
-    {(!admin||adminTab==='salary')&&<nav aria-label="Payroll views" className="flex flex-wrap gap-2"><Button variant={view==='monthly'?'default':'outline'} aria-pressed={view==='monthly'} disabled={busy} onClick={()=>setView('monthly')}>{own?'Monthly Payslips':admin?'Salary & History':'Monthly Payroll'}</Button><Button variant={view==='annual'?'default':'outline'} aria-pressed={view==='annual'} disabled={busy} onClick={()=>setView('annual')}>Annual Summary</Button></nav>}
+    {(!admin||adminTab==='salary')&&<nav aria-label="Payroll views" className={own&&user.role==='MANAGER'?'manager-page-tabs':'flex flex-wrap gap-2'}><Button variant={view==='monthly'?'default':'outline'} aria-pressed={view==='monthly'} disabled={busy} onClick={()=>setView('monthly')}>{own?'Monthly Payslips':admin?'Salary & History':'Monthly Payroll'}</Button><Button variant={view==='annual'?'default':'outline'} aria-pressed={view==='annual'} disabled={busy} onClick={()=>setView('annual')}>Annual Summary</Button></nav>}
     {view==='annual'&&(!admin||adminTab==='salary')&&<AnnualSummary own={own} employee={selected} onView={openRecord} disabled={busy} revision={annualRevision}/>}
     {admin&&adminTab==='approvals'&&<AdminPayrollSummary month={month} search={search} revision={annualRevision}/>}
     <section hidden={admin?adminTab!=='approvals':view!=='monthly'} aria-label="Payroll records" className="min-w-0 space-y-5 rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-6">
