@@ -91,9 +91,10 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
         </div>
 
         {/* Tab switch */}
-        <div className="flex rounded-lg border border-border/80 p-1 bg-muted/40 shadow-inner">
+        <div className="app-tabs">
           <button
             type="button"
+            aria-pressed={tab === "records"}
             onClick={() => {
               setTab("records");
               setPage(1);
@@ -108,6 +109,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           </button>
           <button
             type="button"
+            aria-pressed={tab === "corrections"}
             onClick={() => {
               setTab("corrections");
               setPage(1);

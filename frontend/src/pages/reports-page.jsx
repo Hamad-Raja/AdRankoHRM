@@ -1207,7 +1207,7 @@ function ReportsWorkspace({ user, refreshSession }) {
       <div
         role="group"
         aria-label="Report type"
-        className={user.role === "MANAGER" ? "manager-page-tabs" : "flex flex-wrap gap-2"}
+        className="app-tabs"
       >
         {Object.entries(TAB_LABELS).map(([kind, label]) => (
           <Button

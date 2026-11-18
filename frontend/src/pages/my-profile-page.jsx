@@ -61,7 +61,7 @@ export default function MyProfilePage() {
       <h1 className="text-2xl font-semibold">My Profile</h1>
       <p className="mt-2 text-sm text-muted-foreground">Your employee details are read-only. Contact Admin or HR for changes.</p>
     </header>
-    <div role="tablist" aria-label="My Profile sections" onKeyDown={moveTabFocus} className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+    <div role="tablist" aria-label="My Profile sections" onKeyDown={moveTabFocus} className="app-tabs">
       {TABS.map(item => <Button key={item.id} id={`profile-tab-${item.id}`} role="tab" type="button"
         aria-selected={tab === item.id} aria-controls={`profile-panel-${item.id}`}
         tabIndex={tab === item.id ? 0 : -1} disabled={restricted && item.id !== 'security'}

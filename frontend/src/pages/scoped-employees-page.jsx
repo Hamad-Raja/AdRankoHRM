@@ -109,24 +109,30 @@ export default function ScopedEmployeesPage() {
         </>}
       </section>
 
-      <section aria-labelledby="organization-employment-history" className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
+      <div className="grid min-w-0 items-start gap-6 lg:grid-cols-2">
+      <section aria-labelledby="organization-employment-history" className="min-w-0 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
         <h2 id="organization-employment-history" className="text-xl font-semibold tracking-tight">Employment history</h2>
         {!employee || !history ? <p role="status" className="mt-5 text-sm text-muted-foreground">{error ? 'Employment history unavailable. Refresh profile to try again.' : !employee && employees ? 'No linked employee profile.' : 'Loading employment history...'}</p> : !history.episodes.length ? <p className="mt-5 text-sm text-muted-foreground">No employment periods recorded.</p> : (
-          <div role="region" aria-label="Employment periods and status events" tabIndex={0} className="mt-5 overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
-            <table className="w-full min-w-[38rem] text-left text-sm">
-              <caption className="sr-only">Your employment periods, statuses and status events</caption>
-              <thead className="bg-muted/60"><tr>{['Period', 'Status', 'Event'].map(label => <th key={label} scope="col" className="px-4 py-3 font-semibold">{label}</th>)}</tr></thead>
-              <tbody className="divide-y divide-border">{history.episodes.map(episode => <tr key={episode.id}>
-                <th scope="row" className="px-4 py-4 align-top font-medium">{formatDate(episode.startDate)} – {episode.endDate ? formatDate(episode.endDate) : 'Present'}</th>
-                <td className="px-4 py-4 align-top"><EmploymentBadge status={episode.status} />{episode.statusEffectiveDate && <p className="mt-2 text-xs text-muted-foreground">Effective {formatDate(episode.statusEffectiveDate)}</p>}</td>
-                <td className="px-4 py-4 align-top">{episode.statusEvents.length ? <ul className="space-y-3">{episode.statusEvents.map(event => <li key={event.id}><p className="font-medium">{event.fromStatus ? `${statusLabel(event.fromStatus)} → ${statusLabel(event.toStatus)}` : `Initial employment · ${statusLabel(event.toStatus)}`}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(event.effectiveDate)}</p></li>)}</ul> : <p className="text-muted-foreground">No status events recorded.</p>}</td>
-              </tr>)}</tbody>
-            </table>
+          <div className="mt-5 space-y-5 divide-y divide-border">
+            {history.episodes.map(episode => <article key={episode.id} aria-label="Employment period" className="min-w-0 space-y-4 [&+article]:pt-5">
+              <dl className="grid min-w-0 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div className="min-w-0"><dt className="text-sm text-muted-foreground">Period</dt><dd className="mt-1 break-words text-base font-semibold">{formatDate(episode.startDate)} – {episode.endDate ? formatDate(episode.endDate) : 'Present'}</dd></div>
+                <div className="min-w-0"><dt className="text-sm text-muted-foreground">Status</dt><dd className="mt-1"><EmploymentBadge status={episode.status} /></dd></div>
+              </dl>
+              {episode.statusEvents.length ? episode.statusEvents.map(event => <dl key={event.id} className="grid min-w-0 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div className="min-w-0"><dt className="text-sm text-muted-foreground">Event</dt><dd className="mt-1 break-words text-base font-semibold">{event.fromStatus ? `${statusLabel(event.fromStatus)} → ${statusLabel(event.toStatus)}` : `Initial employment · ${statusLabel(event.toStatus)}`}</dd></div>
+                <div className="min-w-0"><dt className="text-sm text-muted-foreground">Effective date</dt><dd className="mt-1 break-words text-base font-semibold">{formatDate(event.effectiveDate)}</dd></div>
+              </dl>) : <dl className="grid min-w-0 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div className="min-w-0"><dt className="text-sm text-muted-foreground">Event</dt><dd className="mt-1 break-words text-sm text-muted-foreground">No status events recorded.</dd></div>
+                <div className="min-w-0"><dt className="text-sm text-muted-foreground">Effective date</dt><dd className="mt-1 break-words text-base font-semibold">{formatDate(episode.statusEffectiveDate)}</dd></div>
+              </dl>}
+            </article>)}
           </div>
         )}
       </section>
 
       {employee && <Documents key={employee.id} employeeId={employee.id} management={false} refreshKey={revision} organizationView />}
+      </div>
       <p className="text-sm text-muted-foreground">Contact HR to request corrections to your information.</p>
     </section>
   );

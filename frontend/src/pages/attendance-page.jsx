@@ -256,11 +256,12 @@ export default function AttendancePage() {
       {!isAdminOrHr && <details className="self-service-guide quiet-disclosure"><summary>Attendance guide</summary><div><p>Duty dates use the shift-start date. An overnight Friday duty belongs to Friday, including its Saturday morning hours.</p><p>Original punches and raw elapsed time are recorded facts. Approved corrections remain separate; neither is approved payable time or a payroll calculation.</p><p>Use My Clock &amp; Logs for your own punches and correction requests. Team attendance remains limited to your permitted team scope. Current restrictions and unresolved checkout warnings remain visible alongside the clock.</p></div></details>}
 
         {/* Tab switcher */}
-        <div className={isAdminOrHr?"flex flex-wrap items-center gap-1 rounded-xl border border-border/80 p-1 bg-muted/40 shadow-inner":isManager?"manager-page-tabs attendance-view-tabs":"self-service-tabs attendance-view-tabs"}>
+        <div className="app-tabs attendance-view-tabs">
           {isAdminOrHr && (
             <>
               <button
                 type="button"
+                aria-pressed={activeTab === "daily"}
                 onClick={() => setActiveTab("daily")}
                 className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                   activeTab === "daily"
@@ -272,6 +273,7 @@ export default function AttendancePage() {
               </button>
               <button
                 type="button"
+                aria-pressed={activeTab === "list"}
                 onClick={() => setActiveTab("list")}
                 className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                   activeTab === "list"
@@ -283,6 +285,7 @@ export default function AttendancePage() {
               </button>
               <button
                 type="button"
+                aria-pressed={activeTab === "corrections"}
                 onClick={() => setActiveTab("corrections")}
                 className={`relative rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                   activeTab === "corrections"

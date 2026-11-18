@@ -124,7 +124,7 @@ function PayrollWorkspace({own}) {
     {notice&&<p role="status" className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring">{notice}</p>}
     {writeError&&!modal&&<p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{writeError.message}</p>}
     {uncertain&&!modal&&<p role="alert" className="text-sm text-muted-foreground">Reload saved data before another write. No automatic retry was sent.</p>}
-    {admin&&<nav aria-label="Admin payroll workspace" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+    {admin&&<nav aria-label="Admin payroll workspace" className="app-tabs">
       <Button variant={adminTab==='approvals'?'default':'outline'} aria-pressed={adminTab==='approvals'} className="h-auto min-h-10 whitespace-normal" disabled={busy} onClick={()=>selectAdminTab('approvals')}>Payroll Approvals</Button>
       <Button variant={adminTab==='salary'?'default':'outline'} aria-pressed={adminTab==='salary'} className="h-auto min-h-10 whitespace-normal" disabled={busy} onClick={()=>selectAdminTab('salary')}>Salary Management</Button>
     </nav>}
@@ -132,7 +132,7 @@ function PayrollWorkspace({own}) {
       <EmployeeCombobox selected={selected} onSelect={choose} disabled={busy||uncertain}/>
     </section>}
     {!own&&(!admin||adminTab==='salary')&&<EmployeeSalaryCard key={'salary-card:'+(selected?.id||'unselected')} employee={currentEmployee} resource={salary} currentSalary={currentSalary} payrollSalary={payrollSalary} month={monthPattern.test(month)?month:''} todayMonth={todayMonth} disabled={busy||uncertain} canRevise={canRevise} onRevise={()=>openModal('salary')}/>}
-    {(!admin||adminTab==='salary')&&<nav aria-label="Payroll views" className={own&&user.role==='MANAGER'?'manager-page-tabs':'flex flex-wrap gap-2'}><Button variant={view==='monthly'?'default':'outline'} aria-pressed={view==='monthly'} disabled={busy} onClick={()=>setView('monthly')}>{own?'Monthly Payslips':admin?'Salary & History':'Monthly Payroll'}</Button><Button variant={view==='annual'?'default':'outline'} aria-pressed={view==='annual'} disabled={busy} onClick={()=>setView('annual')}>Annual Summary</Button></nav>}
+    {(!admin||adminTab==='salary')&&<nav aria-label="Payroll views" className="app-tabs"><Button variant={view==='monthly'?'default':'outline'} aria-pressed={view==='monthly'} disabled={busy} onClick={()=>setView('monthly')}>{own?'Monthly Payslips':admin?'Salary & History':'Monthly Payroll'}</Button><Button variant={view==='annual'?'default':'outline'} aria-pressed={view==='annual'} disabled={busy} onClick={()=>setView('annual')}>Annual Summary</Button></nav>}
     {view==='annual'&&(!admin||adminTab==='salary')&&<AnnualSummary own={own} employee={selected} onView={openRecord} disabled={busy} revision={annualRevision}/>}
     {admin&&adminTab==='approvals'&&<AdminPayrollSummary month={month} search={search} revision={annualRevision}/>}
     <section hidden={admin?adminTab!=='approvals':view!=='monthly'} aria-label="Payroll records" className="min-w-0 space-y-5 rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-6">

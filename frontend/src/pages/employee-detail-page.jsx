@@ -35,7 +35,7 @@ export function Documents({ employeeId, management, refreshKey = 0, organization
     <header className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold tracking-tight">Private documents</h2><Button variant="outline" onClick={() => setRevision(v => v + 1)}><RefreshCw aria-hidden="true" />Refresh documents</Button></header>
     {error && <p role="alert" className="mt-4 break-words text-sm text-destructive">{error}</p>}
     {!docs && !error && <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading documents...</p>}
-    {docs?.length === 0 && <div className="flex flex-col items-center gap-2 px-2 py-8 text-center"><FileText aria-hidden="true" className="mb-2 size-12 text-primary" /><p className="font-semibold">No documents available</p><p className="text-sm text-muted-foreground">Documents shared by HR will appear here.</p></div>}
+    {docs?.length === 0 && <div className="flex items-center gap-4 py-5"><FileText aria-hidden="true" className="size-9 shrink-0 text-primary" /><div className="min-w-0"><p className="break-words font-semibold">No documents available</p><p className="mt-1 break-words text-sm text-muted-foreground">Documents shared by HR will appear here.</p></div></div>}
     {docs && docs.length > 0 && <ul className="mt-4 divide-y divide-border">{docs.map(document => <li key={document.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 py-4">
       <div className="min-w-0 flex-1 basis-48"><p className="break-words font-medium">{document.title}</p><p className="mt-1 break-words text-xs text-muted-foreground">{document.createdAt} · {document.byteLength} bytes · {document.ownerVisible ? 'Visible to employee' : 'Admin/HR only'}</p>{document.replacesId && <p className="mt-1 break-all text-xs text-muted-foreground">Replaces {document.replacesId}</p>}</div>
       <Button variant="outline" aria-label={`Download ${document.title}`} onClick={() => org.downloadDocument(employeeId, document).catch(e => setError(e.message))}><Download aria-hidden="true" />Download</Button>
@@ -144,7 +144,7 @@ function EmployeeDetail({ employeeId }) {
 
       {location.state?.created&&<p role="status" className="text-sm text-primary">Employee created successfully. Profile, account, organization and optional salary were saved together.</p>}
 
-      <nav aria-label="Employee profile sections" className="flex flex-wrap gap-2">{['Personal Information','Employment & Organization','Login Access','Documents','History'].map(label=><Button key={label} variant={tab===label?'default':'outline'} aria-pressed={tab===label} onClick={()=>setTab(label)}>{label}</Button>)}</nav>
+      <nav aria-label="Employee profile sections" className="app-tabs">{['Personal Information','Employment & Organization','Login Access','Documents','History'].map(label=><Button key={label} variant={tab===label?'default':'outline'} aria-pressed={tab===label} onClick={()=>setTab(label)}>{label}</Button>)}</nav>
 
       {!editing&&write.error&&<p role="alert" className="text-sm text-destructive">{write.error}</p>}{write.success&&<p role="status" className="text-sm text-primary">{write.success}</p>}
 

@@ -82,7 +82,7 @@ function Attendance({ resource, period, setPeriod, anchor, settings }) {
   const summary = resource.data ? attendancePeriod(resource.data) : null,
     unit = period === "today" ? "employees" : "duties";
   const controls = (
-    <div className="hr-periods" role="group" aria-label="Attendance period">
+    <div className="app-tabs" role="group" aria-label="Attendance period">
       {[
         ["today", "Today"],
         ["week", "This Week"],
