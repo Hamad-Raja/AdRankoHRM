@@ -58,6 +58,7 @@ export default function PortalHeader({
   const [logoutError, setLogoutError] = useState("");
 
   const pageTitle =
+    (user.role === 'EMPLOYEE' && location.pathname === '/my-employees' ? 'My Organization' : null) ||
     (user.role === 'MANAGER' && location.pathname === '/my-employees' ? 'My Team' : null) ||
     (user.role==='ADMIN' ? {'/leaves':'Leave Overview','/employment':'Employment Management','/my-profile':'Account & Security','/account':'Account & Security'}[location.pathname] : null) ||
     PAGE_TITLES[location.pathname] ||

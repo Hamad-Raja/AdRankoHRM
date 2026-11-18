@@ -3,8 +3,7 @@ import { RefreshCw, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmploymentBadge } from '@/components/employees/directory-parts';
-import { employeeDate } from '@/components/employees/employee-options';
-import { Panel, History } from '@/components/employees/management-widgets';
+import { employeeDate, employmentStatuses } from '@/components/employees/employee-options';
 import { dateOnly } from '@/components/employees/management-utils';
 import { Documents } from '@/pages/employee-detail-page';
 import { useAuth } from '@/context/auth-context';
@@ -78,12 +77,58 @@ export default function ScopedEmployeesPage() {
       </section>
     </section>
   );
-  return <section className="mx-auto max-w-4xl space-y-6"><h1 className="text-2xl font-semibold">{user.role === 'MANAGER' ? 'My team employees' : 'My employee profile'}</h1>
-    <p className="text-sm text-muted-foreground">{user.role === 'MANAGER' ? 'Current team membership grants basic identity and employment information only.' : 'Self-service is read-only. Contact HR to request corrections.'}</p>
-    {error && <p role="alert">{error}</p>}<Button variant="outline" onClick={() => setRevision(v => v + 1)}>Refresh profiles</Button>
-    {!employees && !error && <p role="status">Loading permitted profiles…</p>}{employees?.length === 0 && <p>No linked employee profile or current team employees.</p>}
-    {employees?.map(e => <Panel key={e.id} title={`${e.fullName} · ${e.employeeCode}`}><p>{e.employmentEpisodes[0]?.status || 'No employment'} · Joined {e.employmentEpisodes[0] ? dateOnly(e.employmentEpisodes[0].startDate) : 'Not recorded'}</p>{e.assignments.map(a => <p key={a.id}>{a.team?.name||'No team'} · {a.designation?.name} · {a.department?.name||a.team?.department?.name} / {a.campaign?.name||a.team?.campaign?.name||'No campaign'}</p>)}</Panel>)}
-    {history && <History data={history} />}{user.role === 'EMPLOYEE' && employees?.[0] && <Documents employeeId={employees[0].id} management={false} />}
-  </section>;
+  const employee = employees?.[0];
+  const employment = employee?.employmentEpisodes[0];
+  const assignment = employee?.assignments[0];
+  const statusLabel = status => employmentStatuses.find(([value]) => value === status)?.[1] || 'No employment';
+  const formatDate = value => value ? employeeDate(dateOnly(value)) : 'Not recorded';
+  return (
+    <section className="mx-auto min-w-0 max-w-[1440px] space-y-6" aria-label="My organization">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0"><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">My Organization</h1><p className="mt-2 text-base text-muted-foreground">Your current placement and employment history.</p></div>
+        <Button size="lg" onClick={() => setRevision(v => v + 1)}><RefreshCw aria-hidden="true" />Refresh profile</Button>
+      </header>
+      {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+
+      <section aria-label="Current details" className="min-w-0 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
+        {!employee ? <><h2 className="text-xl font-semibold tracking-tight">Current details</h2><p role="status" className="mt-4 text-sm text-muted-foreground">{error ? 'Profile unavailable. Refresh profile to try again.' : employees ? 'No linked employee profile. Contact HR for assistance.' : 'Loading your profile...'}</p></> : <>
+          <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-5">
+            <div className="min-w-0"><h2 className="break-words text-2xl font-semibold tracking-tight">{employee.fullName}</h2><p className="mt-1 break-words text-sm font-medium text-muted-foreground"><span className="sr-only">Employee code: </span>{employee.employeeCode}</p></div>
+            <EmploymentBadge status={employment?.status} />
+          </header>
+          <dl className="mt-5 grid min-w-0 grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ['Designation', assignment?.designation?.name || 'Not recorded'],
+              ['Team', assignment?.team?.name || 'No team'],
+              ['Department', assignment?.department?.name || assignment?.team?.department?.name || 'Not recorded'],
+              ['Campaign', assignment?.campaign?.name || assignment?.team?.campaign?.name || 'No campaign'],
+              ['Joined', formatDate(employment?.startDate)],
+              ['Employment status', statusLabel(employment?.status)],
+            ].map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-base font-semibold">{value}</dd></div>)}
+          </dl>
+        </>}
+      </section>
+
+      <section aria-labelledby="organization-employment-history" className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
+        <h2 id="organization-employment-history" className="text-xl font-semibold tracking-tight">Employment history</h2>
+        {!employee || !history ? <p role="status" className="mt-5 text-sm text-muted-foreground">{error ? 'Employment history unavailable. Refresh profile to try again.' : !employee && employees ? 'No linked employee profile.' : 'Loading employment history...'}</p> : !history.episodes.length ? <p className="mt-5 text-sm text-muted-foreground">No employment periods recorded.</p> : (
+          <div role="region" aria-label="Employment periods and status events" tabIndex={0} className="mt-5 overflow-x-auto rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+            <table className="w-full min-w-[38rem] text-left text-sm">
+              <caption className="sr-only">Your employment periods, statuses and status events</caption>
+              <thead className="bg-muted/60"><tr>{['Period', 'Status', 'Event'].map(label => <th key={label} scope="col" className="px-4 py-3 font-semibold">{label}</th>)}</tr></thead>
+              <tbody className="divide-y divide-border">{history.episodes.map(episode => <tr key={episode.id}>
+                <th scope="row" className="px-4 py-4 align-top font-medium">{formatDate(episode.startDate)} – {episode.endDate ? formatDate(episode.endDate) : 'Present'}</th>
+                <td className="px-4 py-4 align-top"><EmploymentBadge status={episode.status} />{episode.statusEffectiveDate && <p className="mt-2 text-xs text-muted-foreground">Effective {formatDate(episode.statusEffectiveDate)}</p>}</td>
+                <td className="px-4 py-4 align-top">{episode.statusEvents.length ? <ul className="space-y-3">{episode.statusEvents.map(event => <li key={event.id}><p className="font-medium">{event.fromStatus ? `${statusLabel(event.fromStatus)} → ${statusLabel(event.toStatus)}` : `Initial employment · ${statusLabel(event.toStatus)}`}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(event.effectiveDate)}</p></li>)}</ul> : <p className="text-muted-foreground">No status events recorded.</p>}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {employee && <Documents key={employee.id} employeeId={employee.id} management={false} refreshKey={revision} organizationView />}
+      <p className="text-sm text-muted-foreground">Contact HR to request corrections to your information.</p>
+    </section>
+  );
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Download, FileText, RefreshCw } from 'lucide-react';
 
 import { Link, useLocation, useParams } from 'react-router';
 
@@ -24,11 +25,22 @@ import * as org from '@/services/organization.service';
 
 
 
-export function Documents({ employeeId, management, refreshKey = 0 }) {
+export function Documents({ employeeId, management, refreshKey = 0, organizationView = false }) {
 
   const [docs, setDocs] = useState(null), [error, setError] = useState(''), [revision, setRevision] = useState(0);
 
   useEffect(() => { const c = new AbortController(); org.listDocuments(employeeId, { signal: c.signal }).then(result => { setDocs(result); setError(''); }).catch(e => { if (!c.signal.aborted) setError(e.message); }); return () => c.abort(); }, [employeeId, revision, refreshKey]);
+
+  if (organizationView) return <section aria-label="Private documents" className="min-w-0 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
+    <header className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold tracking-tight">Private documents</h2><Button variant="outline" onClick={() => setRevision(v => v + 1)}><RefreshCw aria-hidden="true" />Refresh documents</Button></header>
+    {error && <p role="alert" className="mt-4 break-words text-sm text-destructive">{error}</p>}
+    {!docs && !error && <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading documents...</p>}
+    {docs?.length === 0 && <div className="flex flex-col items-center gap-2 px-2 py-8 text-center"><FileText aria-hidden="true" className="mb-2 size-12 text-primary" /><p className="font-semibold">No documents available</p><p className="text-sm text-muted-foreground">Documents shared by HR will appear here.</p></div>}
+    {docs && docs.length > 0 && <ul className="mt-4 divide-y divide-border">{docs.map(document => <li key={document.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 py-4">
+      <div className="min-w-0 flex-1 basis-48"><p className="break-words font-medium">{document.title}</p><p className="mt-1 break-words text-xs text-muted-foreground">{document.createdAt} · {document.byteLength} bytes · {document.ownerVisible ? 'Visible to employee' : 'Admin/HR only'}</p>{document.replacesId && <p className="mt-1 break-all text-xs text-muted-foreground">Replaces {document.replacesId}</p>}</div>
+      <Button variant="outline" aria-label={`Download ${document.title}`} onClick={() => org.downloadDocument(employeeId, document).catch(e => setError(e.message))}><Download aria-hidden="true" />Download</Button>
+    </li>)}</ul>}
+  </section>;
 
   return <div className="space-y-4"><Panel title="Private documents">
 
