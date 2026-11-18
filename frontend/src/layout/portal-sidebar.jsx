@@ -197,7 +197,7 @@ export default function PortalSidebar({ onNavigate }) {
     ? "/my-profile?tab=security"
     : "/dashboard";
 
-  const navigation = user.role==='ADMIN' ? NAVIGATION_BY_ROLE.ADMIN : [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'My Profile',to:'/my-profile',icon:UserRound},{label:'Employment',to:'/employment',icon:UsersRound}];
+  const navigation = user.role==='ADMIN' ? NAVIGATION_BY_ROLE.ADMIN : [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'Employment',to:'/employment',icon:UsersRound},{label:'My Profile',to:'/my-profile',icon:UserRound}];
 
   // Preserve the existing first-login password-change restriction.
   const visibleItems = user.mustChangePassword
