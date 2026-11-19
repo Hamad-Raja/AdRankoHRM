@@ -187,6 +187,12 @@ model EmploymentCase {
   proposedLastDate DateTime? @db.Date
   confirmedLastDate DateTime? @db.Date
   noticeDays Int?
+  hrRemarks String? @db.VarChar(1000)
+  preparationReason String? @db.VarChar(1000)
+  terminationCategory String? @db.VarChar(32)
+  companyDecisionDate DateTime? @db.Date
+  employmentEndDate DateTime? @db.Date
+  noticeHandling String? @db.VarChar(32)
   finalShiftStart DateTime? @db.Timestamptz(3)
   accessCutoff DateTime? @db.Timestamptz(3)
   supportingDocumentId String? @db.Uuid

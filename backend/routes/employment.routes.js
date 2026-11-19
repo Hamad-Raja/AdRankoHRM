@@ -1,6 +1,6 @@
 'use strict';
 const router=require('express').Router(),{z}=require('zod'),authenticate=require('../src/middleware/authenticate'),{csrfProtection}=require('../src/middleware/csrf'),v=require('../src/validation/employment.validation'),service=require('../src/services/employment.service'),ApiError=require('../src/utils/ApiError');
-function parse(schema,value){const r=schema.safeParse(value);if(!r.success)throw new ApiError(400,r.error.issues[0]?.message||'Check the employment fields.','VALIDATION_ERROR');return r.data;}
+function parse(schema,value){const r=schema.safeParse(value);if(!r.success)throw new ApiError(400,'Check the employment fields.','VALIDATION_ERROR',r.error.issues.map(issue=>({field:issue.path.map(String).join('.')||'body',message:issue.message})));return r.data;}
 const run=work=>async(req,res,next)=>{try{res.json({success:true,data:await work(req)});}catch(error){next(error);}};
 router.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});router.use(authenticate());
 router.get('/self-profile',run(async req=>{parse(z.strictObject({}),req.query);const prisma=require('../src/config/prisma');return prisma.$transaction(async tx=>{await require('../src/services/organization.service').actor(tx,req.auth.user.id,false);const employee=await tx.employee.findUnique({where:{userId:req.auth.user.id},select:{id:true,employeeCode:true,fullName:true,personalEmail:true,phone:true,address:true,cnic:true,location:true,emergencyContactName:true,emergencyContactPhone:true,emergencyContactRelationship:true,employmentEpisodes:{orderBy:{startDate:'desc'},select:{id:true,startDate:true,endDate:true,status:true,employmentType:true}}}});return {employee};});}));
@@ -9,6 +9,6 @@ router.post('/cases',csrfProtection,run(req=>service.create(req.auth.user.id,par
 router.post('/rehire',csrfProtection,run(req=>service.prepareRehire(req.auth.user.id,parse(v.rehire,req.body))));
 router.post('/process-due',csrfProtection,run(async req=>{if(!['ADMIN','HR'].includes(req.auth.user.role))throw new ApiError(403,'Admin/HR required.','FORBIDDEN');parse(z.strictObject({confirmed:z.literal(true)}),req.body);return require('../src/services/employment-access.service').processDue();}));
 router.post('/employees/:id/disable',csrfProtection,run(req=>service.manualDisable(req.auth.user.id,parse(z.uuid(),req.params.id),parse(v.disable,req.body))));
-router.get('/cases/:id',run(req=>service.detail(req.auth.user.id,parse(z.uuid(),req.params.id))));
+router.get('/cases/:id',run(req=>{const query=parse(z.strictObject({shiftDate:z.iso.date().refine(value=>!value.startsWith('0000')).optional()}),req.query);return service.detail(req.auth.user.id,parse(z.uuid(),req.params.id),query.shiftDate);}));
 for(const [action,schema] of Object.entries({'manager-review':v.review,fallback:v.fallback,prepare:v.prepare,approve:v.decision,withdraw:v.decision,cancel:v.decision,reject:v.decision,clearance:v.clearance,'enable-access':v.decision}))router.post('/cases/:id/'+action,csrfProtection,run(req=>service.transition(req.auth.user.id,parse(z.uuid(),req.params.id),parse(schema,req.body),action)));
 module.exports=router;

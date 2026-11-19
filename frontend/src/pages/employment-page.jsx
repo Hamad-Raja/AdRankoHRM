@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "@/context/auth-context";
 import { apiRequest } from "@/lib/api";
@@ -10,6 +10,7 @@ import {
   readable as payrollReadable,
 } from "@/components/payroll/payroll-format";
 import EmployeeCombobox from "@/components/payroll/employee-combobox";
+import {downloadDocument} from '@/services/organization.service';
 import EmploymentDialog from "@/components/employees/employment-dialog";
 const readable = (value) =>
   value === "APPROVED" ? "Approved" : payrollReadable(value);
@@ -18,6 +19,7 @@ export default function EmploymentPage() {
     [params, setParams] = useSearchParams(),
     manage = ["ADMIN", "HR"].includes(user.role),
     own = useApiResource("/employment/self-profile");
+  const [prepareAfterCreate,setPrepareAfterCreate]=useState(null);
   const [selection, setSelection] = useState({ touched: false, value: null }),
     [page, setPage] = useState(1),
     [mode, setMode] = useState(null),
@@ -61,6 +63,7 @@ export default function EmploymentPage() {
       : null,
     detail = useApiResource(id ? "/employment/cases/" + id : null),
     record = detail.data;
+  useEffect(()=>{if(prepareAfterCreate&&record?.id===prepareAfterCreate){setPrepareAfterCreate(null);if(user.role==='HR'&&record.state==='HR_PREPARATION')setMode('prepare');}},[prepareAfterCreate,record,user.role]);
   function select(value) {
     setSelection({ touched: true, value });
     setPage(1);
@@ -113,6 +116,7 @@ export default function EmploymentPage() {
       ]);
       if (response.data?.id) openRecord(response.data);
       setMode(null);
+      if(path==='/employment/cases'&&body.kind==='TERMINATION'&&response.data?.id)setPrepareAfterCreate(response.data.id);
       setNotice(
         response.data?.failed
           ? `${response.data.processed} actions processed; ${response.data.failed} require review. Access cutoffs remain enforced. Reload case details before resolving conflicts.`
@@ -393,12 +397,19 @@ export default function EmploymentPage() {
                       <dl className="grid gap-4 text-sm sm:grid-cols-2">
                         {[
                           ["Original received date", record.receivedDate],
+                          ["Company decision date",manage?record.companyDecisionDate:undefined],
+                          ["Termination category",manage&&record.terminationCategory?readable(record.terminationCategory):undefined],
+                          [record.approvedAt?"Approved employment end date (calendar)":"Proposed employment end date (calendar)",record.employmentEndDate],
+                          ["Notice handling (information only)",manage&&record.noticeHandling?readable(record.noticeHandling):undefined],
+                          ["Prepared reason",manage?record.preparationReason:undefined],
+                          ["HR remarks (internal)",manage?record.hrRemarks:undefined],
+                          ["Supporting information",record.supportingInfo],
                           [
-                            "Proposed last working date",
+                            "Original proposed last working date",
                             record.proposedLastDate,
                           ],
                           [
-                            "Confirmed last working date",
+                            record.approvedAt?"Approved final working shift date":"HR-proposed final working shift date",
                             record.confirmedLastDate,
                           ],
                           [
@@ -414,7 +425,7 @@ export default function EmploymentPage() {
                               : null,
                           ],
                           [
-                            "Effective access time",
+                            record.approvedAt?"Approved access time":"Proposed access time",
                             record.accessCutoff
                               ? dateTime(record.accessCutoff)
                               : null,
@@ -428,7 +439,7 @@ export default function EmploymentPage() {
                               ? dateTime(record.completedAt)
                               : null,
                           ],
-                          ["Reason", record.reason],
+                          [record.kind==="TERMINATION"?"Original recorded reason":"Reason", record.reason],
                           ["Manager review", record.managerNote],
                           ["Fallback reason", record.fallbackReason],
                           ["Date/notice override", record.overrideReason],
@@ -470,6 +481,7 @@ export default function EmploymentPage() {
                           </p>
                         </div>
                       )}
+                      {(manage||user.role==='EMPLOYEE'&&record.employee.userId===user.id)&&record.supportingDocument&&<div className="rounded-xl border border-border p-3 text-sm"><p className="break-words font-medium">Supporting document: {record.supportingDocument.title}</p><Button variant="outline" className="mt-2" onClick={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)}>Download supporting document</Button></div>}
                       {manage && (
                         <p className="text-sm text-muted-foreground">
                           Affected teams:{" "}
@@ -494,7 +506,7 @@ export default function EmploymentPage() {
                           manage &&
                           !self &&
                           action("fallback", "Document manager fallback")}
-                        {record.state === "HR_PREPARATION" &&
+                        {["HR_PREPARATION","ADMIN_APPROVAL"].includes(record.state) && record.kind!=="REHIRE" &&
                           user.role === "HR" &&
                           !self &&
                           action("prepare", "Prepare confirmed exit")}
@@ -548,6 +560,7 @@ export default function EmploymentPage() {
                               <p className="text-xs text-muted-foreground">
                                 {dateTime(entry.at)}
                               </p>
+                              {manage&&entry.details&&<dl className="mt-2 grid min-w-0 gap-2 sm:grid-cols-2">{Object.entries(entry.details).filter(([,value])=>value!==null).map(([label,value])=><div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label.replace(/([A-Z])/g,' $1')}</dt><dd className="break-words whitespace-pre-wrap text-xs">{String(value)}</dd></div>)}</dl>}
                               {entry.reason && (
                                 <p className="mt-1 whitespace-pre-wrap break-words">
                                   {entry.reason}
@@ -572,9 +585,10 @@ export default function EmploymentPage() {
       )}
       {mode && (
         <EmploymentDialog
+          key={`${mode}:${record?.id||employee?.id||own.data?.employee?.id}`}
           mode={mode}
           employee={
-            mode === "self" ? own.data?.employee : record?.employee || employee
+            mode === "self" ? own.data?.employee : record?.employeeSummary || record?.employee || selectedProfile.data?.employee || employee
           }
           record={record}
           busy={busy}
