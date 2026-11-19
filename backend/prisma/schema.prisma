@@ -199,7 +199,7 @@ model EmploymentCase {
   supportingInfo String? @db.VarChar(1000)
   managerReviewerId String? @db.Uuid
   managerReviewedAt DateTime? @db.Timestamptz(3)
-  managerNote String? @db.VarChar(1000)
+  managerNote String? @db.VarChar(1010)
   fallbackReason String? @db.VarChar(1000)
   preparedById String? @db.Uuid
   approvedById String? @db.Uuid
@@ -229,7 +229,7 @@ model EmploymentAccessControl {
   userId String @id @db.Uuid
   manualDisabledAt DateTime? @db.Timestamptz(3)
   disabledById String? @db.Uuid
-  reason String? @db.VarChar(1000)
+  reason String? @db.VarChar(1100)
   version Int @default(1)
   updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
   user User @relation("AccessSubject",fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
@@ -371,7 +371,7 @@ model EmploymentStatusEvent {
   fromStatus          EmploymentStatus?
   toStatus            EmploymentStatus
   effectiveDate       DateTime          @db.Date
-  reason              String            @db.VarChar(1000)
+  reason              String            @db.VarChar(1100)
   actorUserId         String            @db.Uuid
   approvedByUserId    String?           @db.Uuid
   approvedAt          DateTime?         @db.Timestamptz(3)
