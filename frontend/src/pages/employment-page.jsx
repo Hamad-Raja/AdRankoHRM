@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "@/context/auth-context";
 import { apiRequest } from "@/lib/api";
@@ -19,7 +19,6 @@ export default function EmploymentPage() {
     [params, setParams] = useSearchParams(),
     manage = ["ADMIN", "HR"].includes(user.role),
     own = useApiResource("/employment/self-profile");
-  const [prepareAfterCreate,setPrepareAfterCreate]=useState(null);
   const [selection, setSelection] = useState({ touched: false, value: null }),
     [page, setPage] = useState(1),
     [mode, setMode] = useState(null),
@@ -43,7 +42,7 @@ export default function EmploymentPage() {
   const selectedRole = selectedProfile.data?.employee?.user?.role,
     disableAllowed =
       selectedRole &&
-      selectedProfile.data.employee.user.id !== user.id &&
+      selectedProfile.data.employee.userId !== user.id &&
       (user.role === "ADMIN"
         ? ["HR", "MANAGER", "EMPLOYEE"].includes(selectedRole)
         : ["MANAGER", "EMPLOYEE"].includes(selectedRole));
@@ -63,7 +62,6 @@ export default function EmploymentPage() {
       : null,
     detail = useApiResource(id ? "/employment/cases/" + id : null),
     record = detail.data;
-  useEffect(()=>{if(prepareAfterCreate&&record?.id===prepareAfterCreate){setPrepareAfterCreate(null);if(user.role==='HR'&&record.state==='HR_PREPARATION')setMode('prepare');}},[prepareAfterCreate,record,user.role]);
   function select(value) {
     setSelection({ touched: true, value });
     setPage(1);
@@ -116,7 +114,6 @@ export default function EmploymentPage() {
       ]);
       if (response.data?.id) openRecord(response.data);
       setMode(null);
-      if(path==='/employment/cases'&&body.kind==='TERMINATION'&&response.data?.id)setPrepareAfterCreate(response.data.id);
       setNotice(
         response.data?.failed
           ? `${response.data.processed} actions processed; ${response.data.failed} require review. Access cutoffs remain enforced. Reload case details before resolving conflicts.`
@@ -397,7 +394,7 @@ export default function EmploymentPage() {
                       <dl className="grid gap-4 text-sm sm:grid-cols-2">
                         {[
                           ["Original received date", record.receivedDate],
-                          ["Company decision date",manage?record.companyDecisionDate:undefined],
+                          ["Proposed decision date",manage?record.companyDecisionDate:undefined],
                           ["Termination category",manage&&record.terminationCategory?readable(record.terminationCategory):undefined],
                           [record.approvedAt?"Approved employment end date (calendar)":"Proposed employment end date (calendar)",record.employmentEndDate],
                           ["Notice handling (information only)",manage&&record.noticeHandling?readable(record.noticeHandling):undefined],
