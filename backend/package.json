@@ -17,6 +17,8 @@
     "check": "node --check app.js && node --check routes/auth.routes.js && node --check routes/employee.routes.js && node --check src/validation/employee.validation.js && node --check src/services/employee.service.js && node --check src/controllers/employee.controller.js",
     "dev": "node --import tsx --watch app.js",
     "start": "node --import tsx app.js",
+    "build": "prisma generate --config prisma7.config.ts",
+    "db:deploy": "prisma migrate deploy --config prisma7.config.ts",
     "test:schedule-browser": "node --import tsx tests/schedule-browser-check.cjs",
     "test:leave-browser": "node --import tsx tests/leave-browser-check.cjs",
     "test:dashboard-browser": "node --import tsx tests/dashboard-browser-check.cjs",
