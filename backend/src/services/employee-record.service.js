@@ -1,5 +1,6 @@
 'use strict';
 const prisma=require('../config/prisma');
+const {Prisma}=require('../generated/prisma/client.ts');
 const {actor,fail}=require('./organization.service');
 const {localParts}=require('../utils/office-schedule');
 const {statusOn}=require('../utils/employment-status');
@@ -28,36 +29,49 @@ function placementView(row){return row?{id:row.id,from:day(row.effectiveFrom),to
 const exitSelect={id:true,kind:true,source:true,reason:true,preparationReason:true,noticeDays:true,receivedDate:true,proposedLastDate:true,confirmedLastDate:true,employmentEndDate:true,finalShiftStart:true,accessCutoff:true,completedAt:true,approvedAt:true,terminationCategory:true,noticeHandling:true,approver:{select:{displayName:true}}};
 function exitView(row){return row?{id:row.id,kind:row.kind,source:row.source,reason:row.preparationReason||row.reason,originalReason:row.reason,noticeDays:row.noticeDays,receivedDate:day(row.receivedDate),proposedLastDate:day(row.proposedLastDate),lastWorkingShiftDate:day(row.confirmedLastDate),employmentEndDate:day(row.employmentEndDate),finalShiftStart:instant(row.finalShiftStart),accessCutoff:instant(row.accessCutoff),completedAt:instant(row.completedAt),approvedAt:instant(row.approvedAt),approvedBy:row.approver?.displayName||null,terminationCategory:row.terminationCategory,noticeHandling:row.noticeHandling}:null;}
 async function completedExit(tx,employeeId,episodeId){return episodeId?tx.employmentCase.findFirst({where:{employeeId,episodeId,kind:{in:['RESIGNATION','TERMINATION']},state:'COMPLETED'},select:exitSelect,orderBy:[{completedAt:'desc'},{id:'desc'}]}):null;}
+// One dated interpretation is shared by directory rows, totals and CSV export.
+function directoryCte(asOf){return Prisma.sql`WITH classified AS (
+ SELECT e.id,e."fullName",e."employeeCode",e.cnic,ep.id AS "episodeId",ep."startDate" AS joined,ep."endDate" AS "periodEnd",
+ CASE WHEN ep.id IS NULL THEN 'NO_EMPLOYMENT' WHEN ep."startDate">${asOf}::date THEN 'FUTURE_START'
+ WHEN ep."endDate"<${asOf}::date THEN 'EXITED'
+ ELSE coalesce((SELECT ev."toStatus"::text FROM employment_status_events ev WHERE ev."employmentEpisodeId"=ep.id AND ev."effectiveDate"<=${asOf}::date ORDER BY ev."effectiveDate" DESC,ev."createdAt" DESC,ev.id DESC LIMIT 1),
+ (SELECT ev."fromStatus"::text FROM employment_status_events ev WHERE ev."employmentEpisodeId"=ep.id AND ev."effectiveDate">${asOf}::date ORDER BY ev."effectiveDate",ev."createdAt",ev.id LIMIT 1),CASE WHEN ep."statusEffectiveDate"<=${asOf}::date THEN ep.status::text END,'UNKNOWN') END AS status
+ FROM employees e LEFT JOIN LATERAL (SELECT ep.id,ep."startDate",ep."endDate",ep.status,ep."statusEffectiveDate" FROM employment_episodes ep WHERE ep."employeeId"=e.id ORDER BY (ep."startDate"<=${asOf}::date) DESC,CASE WHEN ep."startDate"<=${asOf}::date THEN ep."startDate" END DESC,ep."startDate",ep.id DESC LIMIT 1) ep ON true
+), placed AS (
+ SELECT c.*,a."departmentId",a."teamId",a.department,a.team,a.designation,x."employmentEndDate" AS "exitDate",
+ CASE WHEN c.status='EXITED' THEN coalesce(x."confirmedLastDate",c."periodEnd") END AS "lastWorkingDay"
+ FROM classified c LEFT JOIN LATERAL (
+ SELECT a."departmentId",a."teamId",d.name AS department,t.name AS team,g.name AS designation FROM organization_assignments a
+ LEFT JOIN organization_units d ON d.id=a."departmentId" LEFT JOIN organization_units t ON t.id=a."teamId" LEFT JOIN organization_units g ON g.id=a."designationId"
+ WHERE a."employeeId"=c.id AND a."effectiveFrom"<=least(coalesce(c."periodEnd",${asOf}::date),${asOf}::date)
+ AND (c."episodeId" IS NULL OR a."effectiveTo" IS NULL OR a."effectiveTo">=c.joined)
+ ORDER BY a."effectiveFrom" DESC,a.id DESC LIMIT 1
+ ) a ON true LEFT JOIN LATERAL (
+ SELECT x."employmentEndDate",x."confirmedLastDate" FROM employment_cases x WHERE x."employeeId"=c.id AND x."episodeId"=c."episodeId" AND x.state='COMPLETED' AND x.kind IN ('RESIGNATION','TERMINATION') ORDER BY x."completedAt" DESC,x.id DESC LIMIT 1
+ ) x ON true
+)`;}
+function directoryWhere(input){const cnic=normalizedCnic(input.query);return Prisma.sql`
+ (${input.query}='' OR position(lower(${input.query}) in lower(p."fullName"))>0 OR position(lower(${input.query}) in lower(p."employeeCode"))>0 OR (${cnic}::text IS NOT NULL AND p.cnic=${cnic}))
+ AND (${input.status}='' OR p.status=${input.status}) AND (${input.departmentId}='' OR p."departmentId"=nullif(${input.departmentId},'')::uuid) AND (${input.teamId}='' OR p."teamId"=nullif(${input.teamId},'')::uuid)`;}
+const directoryFields=Prisma.sql`id,"fullName","employeeCode",CASE WHEN cnic ~ '^[0-9]{5}-[0-9]{7}-[0-9]$' THEN left(cnic,5)||'-*******-'||right(cnic,1) END AS "maskedCnic",status,joined,department,team,designation,"lastWorkingDay","exitDate"`;
 async function search(userId,input){return read(userId,'EMPLOYEE_RECORDS_SEARCHED',null,async(tx,asOf)=>{
- const cnic=normalizedCnic(input.query);
- // Dated status lookup follows dashboard classification, with stable ordering.
- const [result]=await tx.$queryRaw`
- WITH classified AS (
-  SELECT e.id,e."fullName",e."employeeCode",ep.id AS "episodeId",ep."startDate" AS joined,ep."endDate" AS "periodEnd",
-   CASE WHEN e.cnic ~ '^[0-9]{5}-[0-9]{7}-[0-9]$' THEN left(e.cnic,5)||'-*******-'||right(e.cnic,1) END AS "maskedCnic",
-   CASE WHEN ep.id IS NULL THEN 'NO_EMPLOYMENT' WHEN ep."startDate">${asOf}::date THEN 'FUTURE_START'
-    WHEN ep."endDate"<${asOf}::date THEN 'EXITED'
-    ELSE coalesce((SELECT ev."toStatus"::text FROM employment_status_events ev WHERE ev."employmentEpisodeId"=ep.id AND ev."effectiveDate"<=${asOf}::date ORDER BY ev."effectiveDate" DESC,ev."createdAt" DESC,ev.id DESC LIMIT 1),
-     (SELECT ev."fromStatus"::text FROM employment_status_events ev WHERE ev."employmentEpisodeId"=ep.id AND ev."effectiveDate">${asOf}::date ORDER BY ev."effectiveDate",ev."createdAt",ev.id LIMIT 1),CASE WHEN ep."statusEffectiveDate"<=${asOf}::date THEN ep.status::text END,'UNKNOWN') END AS status
-  FROM employees e LEFT JOIN LATERAL (SELECT ep.id,ep."startDate",ep."endDate",ep.status,ep."statusEffectiveDate" FROM employment_episodes ep WHERE ep."employeeId"=e.id ORDER BY (ep."startDate"<=${asOf}::date) DESC,CASE WHEN ep."startDate"<=${asOf}::date THEN ep."startDate" END DESC,ep."startDate",ep.id DESC LIMIT 1) ep ON true
-  WHERE ${input.query}='' OR position(lower(${input.query}) in lower(e."fullName"))>0 OR position(lower(${input.query}) in lower(e."employeeCode"))>0 OR (${cnic}::text IS NOT NULL AND e.cnic=${cnic})
- ), matching AS (SELECT * FROM classified WHERE ${input.status}='' OR status=${input.status}),
+ const [result]=await tx.$queryRaw(Prisma.sql`${directoryCte(asOf)},matching AS (SELECT ${directoryFields} FROM placed p WHERE ${directoryWhere(input)}),
  bounds AS (SELECT count(*)::int AS total,least(${input.page},greatest(1,ceil(count(*)::numeric/${input.pageSize})::int))::int AS page FROM matching),
- paged AS (SELECT * FROM matching ORDER BY "fullName",id LIMIT ${input.pageSize} OFFSET (SELECT (page-1)*${input.pageSize} FROM bounds)),
- directory AS (
-  SELECT p.id,p."fullName",p."employeeCode",p."maskedCnic",p.status,p.joined,a.department,a.team,x."employmentEndDate" AS "exitDate"
-  FROM paged p LEFT JOIN LATERAL (
-   SELECT d.name AS department,t.name AS team FROM organization_assignments a
-   LEFT JOIN organization_units d ON d.id=a."departmentId" LEFT JOIN organization_units t ON t.id=a."teamId"
-   WHERE a."employeeId"=p.id AND a."effectiveFrom"<=least(coalesce(p."periodEnd",${asOf}::date),${asOf}::date)
-    AND (p."episodeId" IS NULL OR a."effectiveTo" IS NULL OR a."effectiveTo">=p.joined)
-   ORDER BY a."effectiveFrom" DESC,a.id DESC LIMIT 1
-  ) a ON true LEFT JOIN LATERAL (
-   SELECT c."employmentEndDate" FROM employment_cases c WHERE c."employeeId"=p.id AND c."episodeId"=p."episodeId" AND c.state='COMPLETED' AND c.kind IN ('RESIGNATION','TERMINATION') ORDER BY c."completedAt" DESC,c.id DESC LIMIT 1
-  ) x ON true
- )
- SELECT bounds.total,bounds.page,coalesce((SELECT jsonb_agg(to_jsonb(directory) ORDER BY "fullName",id) FROM directory),'[]'::jsonb) AS employees FROM bounds`;
+ paged AS (SELECT * FROM matching ORDER BY "fullName",id LIMIT ${input.pageSize} OFFSET (SELECT (page-1)*${input.pageSize} FROM bounds))
+ SELECT bounds.total,bounds.page,coalesce((SELECT jsonb_agg(to_jsonb(paged) ORDER BY "fullName",id) FROM paged),'[]'::jsonb) AS employees FROM bounds`);
  return {...pageInfo(result.page,input.pageSize,result.total),employees:result.employees};
+ });}
+async function directoryMeta(userId){return read(userId,'EMPLOYEE_RECORD_DIRECTORY_READ',null,async(tx,asOf)=>{
+ const [overall]=await tx.$queryRaw(Prisma.sql`${directoryCte(asOf)} SELECT count(*)::int AS total,count(*) FILTER(WHERE status='ACTIVE')::int AS active,count(*) FILTER(WHERE status='NOTICE_PERIOD')::int AS "onNotice",count(*) FILTER(WHERE status='EXITED')::int AS exited FROM classified`);
+ const units=await tx.organizationUnit.findMany({where:{kind:{in:['DEPARTMENT','TEAM']}},select:{id:true,kind:true,name:true,departmentId:true,archivedAt:true},orderBy:[{name:'asc'},{id:'asc'}]});
+ return {asOf:day(asOf),overall,departments:units.filter(u=>u.kind==='DEPARTMENT').map(u=>({id:u.id,name:u.name,archived:Boolean(u.archivedAt)})),teams:units.filter(u=>u.kind==='TEAM').map(u=>({id:u.id,name:u.name,departmentId:u.departmentId,archived:Boolean(u.archivedAt)}))};
+ });}
+async function exportDirectory(userId,input){return read(userId,'EMPLOYEE_RECORD_DIRECTORY_EXPORTED',null,async(tx,asOf)=>{
+ const rows=await tx.$queryRaw(Prisma.sql`${directoryCte(asOf)} SELECT p."fullName",p."employeeCode",p.department,p.team,p.designation,to_char(p.joined,'YYYY-MM-DD') AS joined,p.status,to_char(p."lastWorkingDay",'YYYY-MM-DD') AS "lastWorkingDay" FROM placed p WHERE ${directoryWhere(input)} ORDER BY p."fullName",p.id LIMIT 10001`);
+ if(rows.length>10000)fail(413,'Export is limited to 10,000 employees. Narrow the directory filters.','EXPORT_TOO_LARGE');
+ const {csvCell}=require('../utils/reports-export');const lines=[['#','Employee','Code','Department','Team','Designation','Joined','Employment Status','Last Working Day'].map(v=>csvCell(v)).join(',')];let bytes=Buffer.byteLength(lines[0],'utf8')+3;
+ for(const [index,row]of rows.entries()){const line=[csvCell(index+1),csvCell(row.fullName),csvCell(row.employeeCode,'identifier'),csvCell(row.department),csvCell(row.team),csvCell(row.designation),csvCell(row.joined),csvCell(row.status),csvCell(row.lastWorkingDay)].join(',');bytes+=Buffer.byteLength(line,'utf8')+2;if(bytes>32*1024*1024)fail(413,'Export is too large. Narrow the directory filters.','EXPORT_TOO_LARGE');lines.push(line);}
+ return '\ufeff'+lines.join('\r\n')+'\r\n';
  });}
 async function financialTotals(tx,id,month,asOf){
  const where={currency:'PKR',paidOn:{lte:asOf},payrollRecord:{employeeId:id,status:'PAID',...(month?{payrollMonth:date(month+'-01')}:{})}};
@@ -114,4 +128,4 @@ async function finances(userId,id,input){return read(userId,'EMPLOYEE_RECORD_FIN
 async function documents(userId,id,input){return read(userId,'EMPLOYEE_RECORD_DOCUMENTS_READ',id,async tx=>{
  await employee(tx,id);const where={employeeId:id};const total=await tx.employeeDocument.count({where});const rows=await tx.employeeDocument.findMany({where,select:{id:true,title:true,mediaType:true,byteLength:true,createdAt:true,ownerVisible:true,replacesId:true},orderBy:[{createdAt:'desc'},{id:'desc'}],skip:(input.page-1)*input.pageSize,take:input.pageSize});return {...pageInfo(input.page,input.pageSize,total),documents:rows.map(r=>({...r,createdAt:instant(r.createdAt)}))};
  });}
-module.exports={search,summary,history,period,finances,documents,maskCnic};
+module.exports={search,directoryMeta,exportDirectory,summary,history,period,finances,documents,maskCnic};

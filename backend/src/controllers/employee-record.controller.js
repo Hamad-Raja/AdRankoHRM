@@ -6,6 +6,8 @@ function parse(schema,input){const result=schema.safeParse(input);if(!result.suc
 const run=work=>async(req,res,next)=>{try{res.json({success:true,data:await work(req)});}catch(error){next(error);}};
 const id=req=>parse(v.id,req.params.employeeId);
 module.exports={
+ directoryMeta:run(req=>{parse(v.empty,req.query);return service.directoryMeta(req.auth.user.id);}),
+ exportDirectory:async(req,res,next)=>{try{parse(v.empty,req.query);const csv=await service.exportDirectory(req.auth.user.id,parse(v.directoryExport,req.body));res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition','attachment; filename="AdRankoHRM-employee-records.csv"');res.send(csv);}catch(error){next(error);}},
  search:run(req=>{parse(v.empty,req.query);return service.search(req.auth.user.id,parse(v.search,req.body));}),
  summary:run(req=>{parse(v.empty,req.query);return service.summary(req.auth.user.id,id(req));}),
  history:run(req=>service.history(req.auth.user.id,id(req),parse(v.pagination,req.query))),

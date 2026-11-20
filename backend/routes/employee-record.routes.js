@@ -8,6 +8,8 @@ router.use((req,res,next)=>{res.setHeader('Cache-Control','no-store');next();});
 router.use(authenticate({processEmployment:false}),authorize('ADMIN'));
 // POST keeps sensitive search text out of URLs/referrers/history/logs.
 router.post('/search',csrfProtection,controller.search);
+router.get('/directory-meta',controller.directoryMeta);
+router.post('/export',csrfProtection,controller.exportDirectory);
 router.get('/:employeeId',controller.summary);
 router.get('/:employeeId/history',controller.history);
 router.get('/:employeeId/periods/:episodeId',controller.period);
