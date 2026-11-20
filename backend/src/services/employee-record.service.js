@@ -100,7 +100,10 @@ async function effectiveStatus(tx,episode,asOf){
 }
 async function financialOverview(tx,id,episode,asOf){
  const salaryContext=!episode?'NO_EMPLOYMENT':episode.startDate>asOf?'FUTURE_START':episode.endDate&&episode.endDate<=asOf?'FORMER':'CURRENT',salaryDate=episode?.endDate&&episode.endDate<asOf?episode.endDate:asOf;
- return {asOf:day(asOf),salaryContext,period:episode?episodeView(episode):null,latestApplicableSalary:episode&&salaryContext!=='FUTURE_START'?await applicableSalary(tx,id,salaryDate):null,lifetime:await financialTotals(tx,id,undefined,asOf)};
+ // Admin-finalized payroll only, once per employee/month; salary revisions and
+ // payments are deliberately not joined into this distinct obligation total.
+ const approved=await tx.payrollRecord.aggregate({where:{employeeId:id,currency:'PKR',status:{in:['APPROVED','PAID']},payrollMonth:{lte:date(day(asOf).slice(0,7)+'-01')}},_sum:{netPay:true},_count:{_all:true}});
+ return {asOf:day(asOf),salaryContext,period:episode?episodeView(episode):null,latestApplicableSalary:episode&&salaryContext!=='FUTURE_START'?await applicableSalary(tx,id,salaryDate):null,approvedPayroll:{totalNetAmount:approved._sum.netPay?.toFixed(2)||'0.00',payrollCount:approved._count._all,currency:'PKR'},lifetime:await financialTotals(tx,id,undefined,asOf)};
 }
 async function serviceDuration(tx,id,episodeId,asOf){
  // Calendar service uses inclusive date-only periods. range_agg merges overlaps;
