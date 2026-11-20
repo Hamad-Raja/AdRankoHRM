@@ -171,6 +171,7 @@ const NAVIGATION_BY_ROLE = {
     {label:'Payroll',to:'/payroll',icon:FileText},
     {label:'Employment Management',to:'/employment',icon:UsersRound},
     {label:'Reports',to:'/reports',icon:FileText},
+    {label:'Employee Records',to:'/employee-records',icon:UsersRound},
     {label:'Announcements',to:'/announcements',icon:Megaphone},
     {label:'Attendance Settings',to:'/attendance-settings',icon:Clock},
     {label:'Global Audit Log',to:'/audit',icon:FileText},

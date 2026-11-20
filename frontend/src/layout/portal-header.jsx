@@ -16,6 +16,7 @@ const PAGE_TITLES = {
   "/employees": "Employees",
   "/my-profile": "My profile",
   "/employment": "Employment",
+  "/employee-records": "Employee Records",
   "/audit": "Global Audit Log",
   "/employees/new": "Add employee",
   "/organization": "Organization",

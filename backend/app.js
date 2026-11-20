@@ -73,6 +73,7 @@ if (localDemoConfig.enabled) {
 }
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
+app.use("/api/employee-records", require("./routes/employee-record.routes"));
 app.use("/api/shifts", require("./routes/shift.routes"));
 app.use("/api/attendance-settings", require("./routes/attendance-settings.routes"));
 app.use("/api/organization", require("./routes/organization.routes"));

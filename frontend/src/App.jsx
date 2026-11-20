@@ -25,6 +25,7 @@ const PayrollPage = lazy(() => import("@/pages/payroll-page"));
 const AnnouncementsPage = lazy(() => import("@/pages/announcements-page"));
 const NotificationsPage = lazy(() => import("@/pages/notifications-page"));
 const LeavesPage = lazy(() => import("@/pages/leaves-page"));
+const EmployeeRecordsPage = lazy(() => import("@/pages/employee-records-page"));
 import ScopedEmployeesPage from "@/pages/scoped-employees-page";
 import EmployeesPage from "@/pages/employees-page";
 import LoginPage from "@/pages/login-page";
@@ -79,6 +80,7 @@ export default function App() {
                 />
                 <Route path="/employment" element={<EmploymentPage/>}/>
                 <Route element={<ProtectedRoute allowedRoles={["ADMIN"]}/>}><Route path="/audit" element={<AuditPage/>}/></Route>
+                <Route element={<ProtectedRoute allowedRoles={["ADMIN"]}/>}><Route path="/employee-records" element={<Suspense fallback={<p role="status">Loading employee records...</p>}><EmployeeRecordsPage/></Suspense>}/></Route>
 
                 <Route
                   path="/attendance"

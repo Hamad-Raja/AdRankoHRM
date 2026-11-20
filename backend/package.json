@@ -22,6 +22,7 @@
     "build": "prisma generate --config prisma7.config.ts",
     "db:deploy": "prisma migrate deploy --config prisma7.config.ts",
     "test:employment": "node scripts/employment-case-check.cjs",
+    "test:employee-records": "node --import tsx scripts/employee-record-check.cjs",
     "test:employment-integration": "node --import tsx scripts/employment-integration-check.cjs",
     "test:schedule-browser": "node --import tsx tests/schedule-browser-check.cjs",
     "test:leave-browser": "node --import tsx tests/leave-browser-check.cjs",
