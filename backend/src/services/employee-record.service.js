@@ -29,22 +29,35 @@ const exitSelect={id:true,kind:true,source:true,reason:true,preparationReason:tr
 function exitView(row){return row?{id:row.id,kind:row.kind,source:row.source,reason:row.preparationReason||row.reason,originalReason:row.reason,noticeDays:row.noticeDays,receivedDate:day(row.receivedDate),proposedLastDate:day(row.proposedLastDate),lastWorkingShiftDate:day(row.confirmedLastDate),employmentEndDate:day(row.employmentEndDate),finalShiftStart:instant(row.finalShiftStart),accessCutoff:instant(row.accessCutoff),completedAt:instant(row.completedAt),approvedAt:instant(row.approvedAt),approvedBy:row.approver?.displayName||null,terminationCategory:row.terminationCategory,noticeHandling:row.noticeHandling}:null;}
 async function completedExit(tx,employeeId,episodeId){return episodeId?tx.employmentCase.findFirst({where:{employeeId,episodeId,kind:{in:['RESIGNATION','TERMINATION']},state:'COMPLETED'},select:exitSelect,orderBy:[{completedAt:'desc'},{id:'desc'}]}):null;}
 async function search(userId,input){return read(userId,'EMPLOYEE_RECORDS_SEARCHED',null,async(tx,asOf)=>{
- const cnic=normalizedCnic(input.query),offset=(input.page-1)*input.pageSize;
+ const cnic=normalizedCnic(input.query);
  // Dated status lookup follows dashboard classification, with stable ordering.
  const [result]=await tx.$queryRaw`
  WITH classified AS (
-  SELECT e.id,e."fullName",e."employeeCode",
+  SELECT e.id,e."fullName",e."employeeCode",ep.id AS "episodeId",ep."startDate" AS joined,ep."endDate" AS "periodEnd",
    CASE WHEN e.cnic ~ '^[0-9]{5}-[0-9]{7}-[0-9]$' THEN left(e.cnic,5)||'-*******-'||right(e.cnic,1) END AS "maskedCnic",
-   CASE WHEN ep.id IS NULL THEN CASE WHEN EXISTS(SELECT 1 FROM employment_episodes f WHERE f."employeeId"=e.id) THEN 'FUTURE_START' ELSE 'NO_EMPLOYMENT' END
+   CASE WHEN ep.id IS NULL THEN 'NO_EMPLOYMENT' WHEN ep."startDate">${asOf}::date THEN 'FUTURE_START'
     WHEN ep."endDate"<${asOf}::date THEN 'EXITED'
     ELSE coalesce((SELECT ev."toStatus"::text FROM employment_status_events ev WHERE ev."employmentEpisodeId"=ep.id AND ev."effectiveDate"<=${asOf}::date ORDER BY ev."effectiveDate" DESC,ev."createdAt" DESC,ev.id DESC LIMIT 1),
      (SELECT ev."fromStatus"::text FROM employment_status_events ev WHERE ev."employmentEpisodeId"=ep.id AND ev."effectiveDate">${asOf}::date ORDER BY ev."effectiveDate",ev."createdAt",ev.id LIMIT 1),CASE WHEN ep."statusEffectiveDate"<=${asOf}::date THEN ep.status::text END,'UNKNOWN') END AS status
-  FROM employees e LEFT JOIN LATERAL (SELECT * FROM employment_episodes ep WHERE ep."employeeId"=e.id AND ep."startDate"<=${asOf}::date ORDER BY ep."startDate" DESC,ep.id DESC LIMIT 1) ep ON true
+  FROM employees e LEFT JOIN LATERAL (SELECT ep.id,ep."startDate",ep."endDate",ep.status,ep."statusEffectiveDate" FROM employment_episodes ep WHERE ep."employeeId"=e.id ORDER BY (ep."startDate"<=${asOf}::date) DESC,CASE WHEN ep."startDate"<=${asOf}::date THEN ep."startDate" END DESC,ep."startDate",ep.id DESC LIMIT 1) ep ON true
   WHERE ${input.query}='' OR position(lower(${input.query}) in lower(e."fullName"))>0 OR position(lower(${input.query}) in lower(e."employeeCode"))>0 OR (${cnic}::text IS NOT NULL AND e.cnic=${cnic})
  ), matching AS (SELECT * FROM classified WHERE ${input.status}='' OR status=${input.status}),
- paged AS (SELECT * FROM matching ORDER BY "fullName",id LIMIT ${input.pageSize} OFFSET ${offset})
- SELECT (SELECT count(*)::int FROM matching) AS total,coalesce((SELECT jsonb_agg(to_jsonb(paged) ORDER BY "fullName",id) FROM paged),'[]'::jsonb) AS employees`;
- return {...pageInfo(input.page,input.pageSize,result.total),employees:result.employees};
+ bounds AS (SELECT count(*)::int AS total,least(${input.page},greatest(1,ceil(count(*)::numeric/${input.pageSize})::int))::int AS page FROM matching),
+ paged AS (SELECT * FROM matching ORDER BY "fullName",id LIMIT ${input.pageSize} OFFSET (SELECT (page-1)*${input.pageSize} FROM bounds)),
+ directory AS (
+  SELECT p.id,p."fullName",p."employeeCode",p."maskedCnic",p.status,p.joined,a.department,a.team,x."employmentEndDate" AS "exitDate"
+  FROM paged p LEFT JOIN LATERAL (
+   SELECT d.name AS department,t.name AS team FROM organization_assignments a
+   LEFT JOIN organization_units d ON d.id=a."departmentId" LEFT JOIN organization_units t ON t.id=a."teamId"
+   WHERE a."employeeId"=p.id AND a."effectiveFrom"<=least(coalesce(p."periodEnd",${asOf}::date),${asOf}::date)
+    AND (p."episodeId" IS NULL OR a."effectiveTo" IS NULL OR a."effectiveTo">=p.joined)
+   ORDER BY a."effectiveFrom" DESC,a.id DESC LIMIT 1
+  ) a ON true LEFT JOIN LATERAL (
+   SELECT c."employmentEndDate" FROM employment_cases c WHERE c."employeeId"=p.id AND c."episodeId"=p."episodeId" AND c.state='COMPLETED' AND c.kind IN ('RESIGNATION','TERMINATION') ORDER BY c."completedAt" DESC,c.id DESC LIMIT 1
+  ) x ON true
+ )
+ SELECT bounds.total,bounds.page,coalesce((SELECT jsonb_agg(to_jsonb(directory) ORDER BY "fullName",id) FROM directory),'[]'::jsonb) AS employees FROM bounds`;
+ return {...pageInfo(result.page,input.pageSize,result.total),employees:result.employees};
  });}
 async function financialTotals(tx,id,month){
  const where={currency:'PKR',payrollRecord:{employeeId:id,status:'PAID',...(month?{payrollMonth:date(month+'-01')}:{})}};
