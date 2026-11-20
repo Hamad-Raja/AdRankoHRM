@@ -13,12 +13,12 @@ const karachiDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Karachi',y
 const localInput=value=>value?new Date(Date.parse(value)+5*3600000).toISOString().slice(0,16):'';
 const timestamp=value=>value?(value.length===16?value+':00+05:00':value+'+05:00'):undefined;
 // Keep the popup inside the native dialog's top layer, outside its scrolling form.
-function EmploymentSelect({name,value,options,required,disabled,onChange,onInvalid,id,...accessible}){
+export function EmploymentSelect({name,value,options,required,disabled,onChange,onInvalid,id,placeholder='Select…',className='',...accessible}){
  const trigger=useRef(null),[container,setContainer]=useState(null);
- useEffect(()=>setContainer(trigger.current?.closest('dialog')),[]);
- const items=[{value:'',label:'Select…'},...options.map(([value,label])=>({value,label}))];
+ useEffect(()=>setContainer(trigger.current?.closest('dialog')||document.body),[]);
+ const items=[...(placeholder===null?[]:[{value:'',label:placeholder}]),...options.map(([value,label])=>({value,label}))];
  return <div onInvalid={onInvalid}><Select.Root id={id} name={name} value={value} items={items} required={required} disabled={disabled} modal={false} onValueChange={next=>onChange({target:{name,value:next??'',type:'select-one'}})}>
-  <Select.Trigger ref={trigger} id={id} {...accessible} className={`${inputClass} flex items-center justify-between gap-3 text-left data-popup-open:border-primary data-popup-open:outline-2 data-popup-open:outline-primary/40`}><Select.Value className="min-w-0 flex-1 truncate"/><Select.Icon><ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground"/></Select.Icon></Select.Trigger>
+  <Select.Trigger ref={trigger} id={id} {...accessible} className={`${inputClass} flex items-center justify-between gap-3 text-left data-popup-open:border-primary data-popup-open:outline-2 data-popup-open:outline-primary/40 ${className}`}><Select.Value className="min-w-0 flex-1 truncate"/><Select.Icon><ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground"/></Select.Icon></Select.Trigger>
   {container&&<Select.Portal container={container}><Select.Positioner positionMethod="fixed" align="start" sideOffset={8} collisionPadding={12} alignItemWithTrigger={false} className="z-50 w-[var(--anchor-width)] max-w-[calc(100vw-1.5rem)]"><Select.Popup className="max-h-[min(var(--available-height),18rem)] overflow-hidden rounded-xl border border-border bg-card p-2 text-foreground shadow-xl outline-none"><Select.List className="max-h-[min(calc(var(--available-height)_-_1rem),16rem)] space-y-1 overflow-y-auto overscroll-contain">{items.map(item=><Select.Item key={item.value} value={item.value} className="relative flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none data-highlighted:bg-primary/15 data-selected:bg-primary/10 data-highlighted:text-foreground data-disabled:pointer-events-none data-disabled:opacity-60"><Select.ItemText className="min-w-0 flex-1 break-words">{item.label}</Select.ItemText><Select.ItemIndicator><Check aria-hidden="true" className="size-4 shrink-0 text-primary"/></Select.ItemIndicator></Select.Item>)}</Select.List></Select.Popup></Select.Positioner></Select.Portal>}
  </Select.Root></div>;
 }
