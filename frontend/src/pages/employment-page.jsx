@@ -179,7 +179,7 @@ export default function EmploymentPage() {
       )}
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-semibold">Employment Management</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">Employment Management</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Resignation, approved exits, clearance and rehire. Access follows
             confirmed shift times in Asia/Karachi.
@@ -268,7 +268,7 @@ export default function EmploymentPage() {
               className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring"
             >
               <table className="w-full min-w-[45rem] text-left text-sm">
-                <thead className="bg-muted/30">
+                <thead className="bg-muted/30 font-semibold">
                   <tr>
                     {[
                       "Employee",
@@ -278,7 +278,7 @@ export default function EmploymentPage() {
                       "Submitted",
                       "Action",
                     ].map((label) => (
-                      <th key={label} scope="col" className="px-4 py-3">
+                      <th key={label} scope="col" className="px-4 py-3 font-semibold">
                         {label}
                       </th>
                     ))}

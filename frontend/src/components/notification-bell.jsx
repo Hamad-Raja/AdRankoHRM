@@ -33,8 +33,8 @@ export default function NotificationBell(){
  {open&&active&&<div ref={panel} tabIndex={-1} role="dialog" aria-label="Recent notifications" className="fixed inset-x-4 top-16 z-50 mt-2 max-h-[75vh] overflow-auto rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl outline-none md:absolute md:inset-x-auto md:right-0 md:top-full md:w-80 lg:w-96">
   <div className="flex items-center justify-between gap-2"><h2 className="font-semibold">Notifications</h2><button type="button" aria-label="Close notifications" onClick={()=>{setOpen(false);trigger.current?.focus();}}>Close</button></div>
   {error&&<p role="alert" className="my-2 text-sm text-destructive">{error}</p>}
-  <button type="button" disabled={busy} className="my-2 rounded border px-2 py-1 text-xs" onClick={()=>window.dispatchEvent(new Event(INBOX_CHANGED))}>Refresh notifications</button>
-  {count>0&&<button type="button" disabled={busy} className="m-2 text-xs underline" onClick={()=>action(markAllNotificationsRead)}>Mark all read</button>}
+  <button type="button" disabled={busy} className="my-2 rounded border px-2 py-1 text-sm" onClick={()=>window.dispatchEvent(new Event(INBOX_CHANGED))}>Refresh notifications</button>
+  {count>0&&<button type="button" disabled={busy} className="m-2 text-sm underline" onClick={()=>action(markAllNotificationsRead)}>Mark all read</button>}
   {!data&&!error&&<p role="status">Loading notifications...</p>}{data&&!rows.length&&<p className="py-4 text-sm">No active notifications.</p>}
   <ul className="divide-y">{rows.map(n=><li key={n.id} className="space-y-2 py-3 text-sm"><p className="flex items-center gap-2 font-semibold"><NotificationGlyph type={n.type}/>{!n.isRead&&<span aria-label="Unread" className="mr-1 text-primary">●</span>}<span>{n.title}</span></p><p>{n.message}</p><div className="flex flex-wrap gap-3 text-xs">
    {n.link&&<button type="button" disabled={busy} className="underline" onClick={()=>action(async options=>{const target=await openNotification(n.id,options);setOpen(false);navigate(target.link);})}>Open notification</button>}

@@ -31,7 +31,7 @@ function SessionStatusScreen() {
             </div>
           ) : (
             <>
-              <h1 className="mt-6 text-xl font-semibold">
+              <h1 className="mt-6 text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">
                 Unable to verify your session
               </h1>
 
@@ -42,7 +42,7 @@ function SessionStatusScreen() {
               <button
                 type="button"
                 onClick={() => void refreshSession()}
-                className="mt-6 inline-flex h-9 cursor-pointer items-center justify-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
+                className="mt-6 inline-flex h-9 cursor-pointer items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors"
               >
                 Try again
               </button>
@@ -85,7 +85,7 @@ export function ProtectedRoute({
         <section className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center">
           <p className="text-sm font-semibold text-muted-foreground">403</p>
 
-          <h1 className="mt-3 text-2xl font-semibold">
+          <h1 className="mt-3 text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">
             Access restricted
           </h1>
 

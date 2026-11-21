@@ -124,7 +124,7 @@ export default function PortalHeader({
                 {user.displayName}
               </span>
 
-              <span className="block text-[11px] leading-tight text-muted-foreground">
+              <span className="block text-xs leading-tight text-muted-foreground">
                 {ROLE_LABELS[user.role]}
               </span>
             </span>
@@ -138,7 +138,7 @@ export default function PortalHeader({
               pendingAction === "logout" ? "Signing out" : "Sign out"
             }
             title="Sign out"
-            className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border/80 bg-background/80 px-3 text-xs font-semibold text-foreground shadow-2xs hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border/80 bg-background/80 px-3 text-sm font-semibold text-foreground shadow-2xs hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-all disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pendingAction === "logout" ? (
               <LoaderCircle
@@ -159,7 +159,7 @@ export default function PortalHeader({
       {logoutError && (
         <p
           role="alert"
-          className="border-t border-destructive/20 bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive sm:px-6 lg:px-8"
+          className="border-t border-destructive/20 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive sm:px-6 lg:px-8"
         >
           {logoutError}
         </p>

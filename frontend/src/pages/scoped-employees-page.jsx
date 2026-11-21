@@ -18,7 +18,7 @@ export default function ScopedEmployeesPage() {
     <section className="mx-auto min-w-0 max-w-[1440px] space-y-6" aria-label="My team">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">My Team</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-4xl sm:text-3xl leading-tight">My Team</h1>
           <p className="mt-2 text-base text-muted-foreground">Your team's profiles, roles, and employment details.</p>
         </div>
         <Button size="lg" onClick={() => setRevision(v => v + 1)}>
@@ -51,7 +51,7 @@ export default function ScopedEmployeesPage() {
               <table className="w-full min-w-[64rem] table-fixed text-left text-sm [overflow-wrap:anywhere]">
                 <caption className="sr-only">Current team members, organization assignments and employment details</caption>
                 <colgroup><col span={5} /><col className="w-32" /><col className="w-36" /></colgroup>
-                <thead className="bg-muted/60">
+                <thead className="bg-muted/60 font-semibold">
                   <tr>{['Employee', 'Designation', 'Team', 'Department', 'Campaign', 'Joined', 'Status'].map(label => <th key={label} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{label}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -84,7 +84,7 @@ export default function ScopedEmployeesPage() {
   return (
     <section className="mx-auto min-w-0 max-w-[1440px] space-y-6" aria-label="My organization">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0"><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">My Organization</h1><p className="mt-2 text-base text-muted-foreground">Your current placement and employment history.</p></div>
+        <div className="min-w-0"><h1 className="text-2xl font-bold tracking-tight sm:text-4xl sm:text-3xl leading-tight">My Organization</h1><p className="mt-2 text-base text-muted-foreground">Your current placement and employment history.</p></div>
         <Button size="lg" onClick={() => setRevision(v => v + 1)}><RefreshCw aria-hidden="true" />Refresh profile</Button>
       </header>
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}

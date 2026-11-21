@@ -242,7 +242,7 @@ export default function AttendancePage() {
       {/* Page Title & Navigation Bar */}
       <div className={isAdminOrHr ? "flex flex-wrap items-center justify-between gap-4" : "self-service-page-header attendance-page-header"}>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl leading-tight">
             {isAdminOrHr
               ? "Attendance Management"
               : isManager
@@ -268,7 +268,7 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "daily"}
                 onClick={() => setActiveTab("daily")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "daily"
+                className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${activeTab === "daily"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   }`}
@@ -279,7 +279,7 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "list"}
                 onClick={() => setActiveTab("list")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "list"
+                className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${activeTab === "list"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   }`}
@@ -290,14 +290,14 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "corrections"}
                 onClick={() => setActiveTab("corrections")}
-                className={`relative rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "corrections"
+                className={`relative rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${activeTab === "corrections"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   }`}
               >
                 Corrections
                 {corrections.length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">
                     {corrections.length}
                   </span>
                 )}
@@ -306,7 +306,7 @@ export default function AttendancePage() {
                 type="button"
                 aria-pressed={activeTab === "paid-leave"}
                 onClick={() => setActiveTab("paid-leave")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "paid-leave"
+                className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${activeTab === "paid-leave"
                     ? "bg-background text-foreground shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   }`}
@@ -331,7 +331,7 @@ export default function AttendancePage() {
             type="button"
             aria-pressed={activeTab === "own"}
             onClick={() => setActiveTab("own")}
-            className={isManager ? buttonVariants({ variant: activeTab === "own" ? "default" : "outline" }) : `rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${activeTab === "own"
+            className={isManager ? buttonVariants({ variant: activeTab === "own" ? "default" : "outline" }) : `rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${activeTab === "own"
                 ? "bg-background text-foreground shadow-xs font-bold"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               }`}
@@ -347,7 +347,7 @@ export default function AttendancePage() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
             <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="summary-date-input" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="summary-date-input" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
                 Shift Date:
               </label>
               <Input
@@ -355,20 +355,20 @@ export default function AttendancePage() {
                 type="date"
                 value={summaryDate}
                 onChange={(e) => setSummaryDate(e.target.value)}
-                className="h-9 w-44 text-xs font-semibold"
+                className="h-9 w-44 text-sm font-normal"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => loadSummary(summaryDate)}
                 disabled={loadingSummary}
-                className="h-9 gap-1.5 text-xs font-semibold px-3.5"
+                className="h-9 gap-1.5 text-sm font-semibold px-3.5"
               >
                 <RefreshCw className={`size-3.5 ${loadingSummary ? "animate-spin" : ""}`} />
                 <span>Refresh</span>
               </Button>
             </div>
-            <label className="w-full sm:ml-auto sm:w-auto"><span className="sr-only">Search daily records</span><Input type="search" aria-label="Search daily records" placeholder="Search name or employee code" maxLength={120} value={dailySearch} onChange={e => setDailySearch(e.target.value)} className="h-9 w-full text-xs sm:w-64" /></label>
+            <label className="w-full sm:ml-auto sm:w-auto font-medium"><span className="sr-only">Search daily records</span><Input type="search" aria-label="Search daily records" placeholder="Search name or employee code" maxLength={120} value={dailySearch} onChange={e => setDailySearch(e.target.value)} className="h-9 w-full text-sm sm:w-64" /></label>
           </div>
 
           {summaryError && (
@@ -381,14 +381,14 @@ export default function AttendancePage() {
           <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total Clock-Ins</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Clock-Ins</dt>
                 <Users className="size-4 text-primary/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-foreground font-mono">{dailySummary?.totalRecords ?? 'Unavailable'}</dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">On Time</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On Time</dt>
                 <CheckCircle2 className="size-4 text-emerald-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
@@ -397,7 +397,7 @@ export default function AttendancePage() {
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Late (Past Grace)</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Late (Past Grace)</dt>
                 <Clock className="size-4 text-amber-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400 font-mono">
@@ -406,7 +406,7 @@ export default function AttendancePage() {
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Early Out</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Early Out</dt>
                 <LogOut className="size-4 text-rose-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400 font-mono">
@@ -415,7 +415,7 @@ export default function AttendancePage() {
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Missing Out</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Missing Out</dt>
                 <AlertCircle className="size-4 text-destructive/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-destructive font-mono">
@@ -424,7 +424,7 @@ export default function AttendancePage() {
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Completed</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completed</dt>
                 <Check className="size-4 text-blue-500/70" />
               </div>
               <dd className="mt-2 text-2xl font-black tracking-tight text-blue-600 dark:text-blue-400 font-mono">
@@ -436,45 +436,45 @@ export default function AttendancePage() {
           {/* Daily Records Table */}
           <div className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden">
             <div className="border-b border-border/80 p-4 sm:p-5">
-              <h2 className="text-base font-semibold tracking-tight text-foreground">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 Daily Records for {summaryDate}
               </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
                   <tr>
-                    <th className="py-2.5 px-4">Employee</th>
-                    <th className="py-2.5 px-4">Clock In</th>
-                    <th className="py-2.5 px-4">Clock Out</th>
-                    <th className="py-2.5 px-4">Raw elapsed</th>
-                    <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4">Lateness</th>
+                    <th className="py-2.5 px-4 font-semibold">Employee</th>
+                    <th className="py-2.5 px-4 font-semibold">Clock In</th>
+                    <th className="py-2.5 px-4 font-semibold">Clock Out</th>
+                    <th className="py-2.5 px-4 font-semibold">Raw elapsed</th>
+                    <th className="py-2.5 px-4 font-semibold">Status</th>
+                    <th className="py-2.5 px-4 font-semibold">Lateness</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {loadingSummary ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         Loading daily summary...
                       </td>
                     </tr>
                   ) : dailyRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         {summaryError ? 'Daily records unavailable. Refresh to retry.' : dailySummary?.records?.length ? 'No matching employees' : `No employees clocked in on ${summaryDate}.`}
                       </td>
                     </tr>
                   ) : (
                     dailyRecords.map((r) => (
                       <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-xs text-foreground">
+                        <td className="py-3 px-4 font-semibold text-sm text-foreground">
                           <div>{r.employee?.fullName}</div>
-                          <div className="text-[11px] text-muted-foreground font-mono font-normal">
+                          <div className="text-xs text-muted-foreground font-mono font-normal">
                             {r.employee?.employeeCode}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">
+                        <td className="py-3 px-4 font-mono text-sm">
                           {r.clockInAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -484,7 +484,7 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockInAt))
                             : "—"}
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">
+                        <td className="py-3 px-4 font-mono text-sm">
                           {r.clockOutAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -494,14 +494,14 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockOutAt))
                             : "No actual checkout"}
                         </td>
-                        <td className="py-3 px-4 text-xs font-mono font-medium">
+                        <td className="py-3 px-4 text-sm font-mono font-medium">
                           {r.workedMinutes != null
                             ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m`
                             : "—"}
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${r.status === "COMPLETED"
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${r.status === "COMPLETED"
                                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : r.status === "OPEN"
                                   ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
@@ -514,11 +514,11 @@ export default function AttendancePage() {
                         </td>
                         <td className="py-3 px-4">
                           {r.isLate ? (
-                            <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                            <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                               Late
                             </span>
                           ) : (
-                            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <span className="rounded-md border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                               On Time
                             </span>
                           )}
@@ -539,13 +539,13 @@ export default function AttendancePage() {
         <div className="space-y-6">
           <RecordFilters {...(isManager ? { className: "attendance-filter-panel" } : {})}>
             <div className="flex flex-wrap gap-3">
-              <label className="text-xs">Employee search<Input aria-label="Employee search" value={search} onChange={e => { setSearch(e.target.value); setRecordsPage(1); }} /></label>
-              {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-xs">{kind}<select aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>)}
+              <label className="text-sm font-medium">Employee search<Input aria-label="Employee search" value={search} onChange={e => { setSearch(e.target.value); setRecordsPage(1); }} /></label>
+              {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-sm font-medium">{kind}<select aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>)}
             </div>
             {/* Filters */}
             <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
               <div className="flex  items-center gap-2.5">
-                <label htmlFor="filter-from-date" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="filter-from-date" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
                   From Shift Date
                 </label>
                 <Input
@@ -553,11 +553,11 @@ export default function AttendancePage() {
                   type="date"
                   value={filterDateFrom}
                   onChange={(e) => setFilterDateFrom(e.target.value)}
-                  className="h-9 w-40 text-xs font-semibold "
+                  className="h-9 w-40 text-sm font-normal "
                 />
               </div>
               <div className="flex items-center gap-2.5">
-                <label htmlFor="filter-to-date" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="filter-to-date" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
                   To Shift Date
                 </label>
                 <Input
@@ -565,18 +565,18 @@ export default function AttendancePage() {
                   type="date"
                   value={filterDateTo}
                   onChange={(e) => setFilterDateTo(e.target.value)}
-                  className="h-9 w-40 text-xs font-semibold"
+                  className="h-9 w-40 text-sm font-normal"
                 />
               </div>
               <div className="flex items-center gap-2.5">
-                <label htmlFor="filter-status-select" className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="filter-status-select" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
                   Status
                 </label>
                 <select
                   id="filter-status-select"
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="h-9 rounded-lg border border-input bg-background/80 px-3 text-xs font-semibold text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
+                  className="h-9 rounded-lg border border-input bg-background/80 px-3 text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
                 >
                   <option value="">All Statuses</option>
                   <option value="OPEN">Open (Active)</option>
@@ -592,7 +592,7 @@ export default function AttendancePage() {
                   setRecordsPage(1);
                   loadAttendanceRecords();
                 }}
-                className="h-9 gap-1.5 text-xs font-semibold px-4"
+                className="h-9 gap-1.5 text-sm font-semibold px-4"
               >
                 <Filter className="size-3.5" />
                 <span>Apply Filter</span>
@@ -607,7 +607,7 @@ export default function AttendancePage() {
                     setFilterStatus("");
                     setRecordsPage(1);
                   }}
-                  className="h-9 gap-1.5 text-xs font-semibold px-3 text-muted-foreground hover:text-foreground"
+                  className="h-9 gap-1.5 text-sm font-semibold px-3 text-muted-foreground hover:text-foreground"
                 >
                   <RotateCcw className="size-3.5" />
                   <span>Clear</span>
@@ -618,7 +618,7 @@ export default function AttendancePage() {
           </RecordFilters>
 
           {recordsError && (
-            <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+            <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
               {recordsError}
             </p>
           )}
@@ -629,41 +629,41 @@ export default function AttendancePage() {
             {isManager && <div className="self-service-card-heading"><h2>Attendance logs</h2></div>}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
                   <tr>
-                    <th className="py-2.5 px-4">Employee</th>
-                    <th className="py-2.5 px-4">Shift Date</th>
-                    <th className="py-2.5 px-4">Clock In</th>
-                    <th className="py-2.5 px-4">Clock Out</th>
-                    <th className="py-2.5 px-4">Raw elapsed</th>
-                    <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4">Flags</th>
+                    <th className="py-2.5 px-4 font-semibold">Employee</th>
+                    <th className="py-2.5 px-4 font-semibold">Shift Date</th>
+                    <th className="py-2.5 px-4 font-semibold">Clock In</th>
+                    <th className="py-2.5 px-4 font-semibold">Clock Out</th>
+                    <th className="py-2.5 px-4 font-semibold">Raw elapsed</th>
+                    <th className="py-2.5 px-4 font-semibold">Status</th>
+                    <th className="py-2.5 px-4 font-semibold">Flags</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {loadingRecords ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
+                      <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Loading attendance records...
                       </td>
                     </tr>
                   ) : records.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
+                      <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         {recordsError ? 'Attendance records unavailable. Apply filters or refresh to retry.' : 'No records found matching filters.'}
                       </td>
                     </tr>
                   ) : (
                     records.map((r) => (
                       <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-xs text-foreground">
+                        <td className="py-3 px-4 font-semibold text-sm text-foreground">
                           <div>{r.employee?.fullName}</div>
-                          <div className="text-[11px] text-muted-foreground font-mono font-normal">
+                          <div className="text-xs text-muted-foreground font-mono font-normal">
                             {r.employee?.employeeCode}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-semibold text-xs font-mono">{r.shiftDate}</td>
-                        <td className="py-3 px-4 font-mono text-xs">
+                        <td className="py-3 px-4 font-semibold text-sm font-mono">{r.shiftDate}</td>
+                        <td className="py-3 px-4 font-mono text-sm">
                           {r.clockInAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -673,7 +673,7 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockInAt))
                             : "—"}
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">
+                        <td className="py-3 px-4 font-mono text-sm">
                           {r.clockOutAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -683,14 +683,14 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockOutAt))
                             : "—"}
                         </td>
-                        <td className="py-3 px-4 text-xs font-mono font-medium">
+                        <td className="py-3 px-4 text-sm font-mono font-medium">
                           {r.workedMinutes != null
                             ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m`
                             : "—"}
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${r.status === "COMPLETED"
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${r.status === "COMPLETED"
                                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : r.status === "OPEN"
                                   ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
@@ -704,17 +704,17 @@ export default function AttendancePage() {
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1.5">
                             {r.isLate && (
-                              <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                              <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                                 Late
                               </span>
                             )}
                             {r.isEarlyDeparture && (
-                              <span className="rounded-md border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                              <span className="rounded-md border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
                                 Early Out
                               </span>
                             )}
                             {r.isMissingCheckout && (
-                              <span className="rounded-md border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                              <span className="rounded-md border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
                                 Missing Out
                               </span>
                             )}
@@ -744,7 +744,7 @@ export default function AttendancePage() {
                     variant="outline"
                     disabled={recordsPage <= 1}
                     onClick={() => setRecordsPage((p) => Math.max(1, p - 1))}
-                    className="h-8 px-3 text-xs font-semibold"
+                    className="h-8 px-3 text-sm font-semibold"
                   >
                     Previous
                   </Button>
@@ -753,7 +753,7 @@ export default function AttendancePage() {
                     variant="outline"
                     disabled={recordsPage >= recordsTotalPages}
                     onClick={() => setRecordsPage((p) => Math.min(recordsTotalPages, p + 1))}
-                    className="h-8 px-3 text-xs font-semibold"
+                    className="h-8 px-3 text-sm font-semibold"
                   >
                     Next
                   </Button>
@@ -768,8 +768,8 @@ export default function AttendancePage() {
       {isAdminOrHr && activeTab === "corrections" && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewableOnly} onChange={e => { setReviewableOnly(e.target.checked); setCorrectionPage(1); }} />Only pending corrections I can review</label>
-            <label className="text-xs">Correction status<select aria-label="Correction status" className="ml-2 rounded border bg-background p-2" value={correctionStatus} onChange={e => { setCorrectionStatus(e.target.value); setCorrectionPage(1); }}><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All decisions</option></select></label>
+            <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={reviewableOnly} onChange={e => { setReviewableOnly(e.target.checked); setCorrectionPage(1); }} />Only pending corrections I can review</label>
+            <label className="text-sm font-medium">Correction status<select aria-label="Correction status" className="ml-2 rounded border bg-background p-2" value={correctionStatus} onChange={e => { setCorrectionStatus(e.target.value); setCorrectionPage(1); }}><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All decisions</option></select></label>
             <Button variant="outline" disabled={loadingCorrections || correctionPage <= 1} onClick={() => setCorrectionPage(p => p - 1)}>Previous requests</Button>
             <span className="text-xs">Page {correctionPage} of {correctionPages}</span>
             <Button variant="outline" disabled={loadingCorrections || correctionPage >= correctionPages} onClick={() => setCorrectionPage(p => p + 1)}>Next requests</Button>
@@ -777,7 +777,7 @@ export default function AttendancePage() {
           <div className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden">
             <div className="border-b border-border/80 p-4 sm:p-5 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold tracking-tight text-foreground">{correctionStatus === 'PENDING' ? 'Pending Correction Requests' : 'Correction decision history'}</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">{correctionStatus === 'PENDING' ? 'Pending Correction Requests' : 'Correction decision history'}</h2>
                 <p className="text-xs text-muted-foreground">
                   Review employee requests for missing checkouts or time adjustments.
                 </p>
@@ -787,7 +787,7 @@ export default function AttendancePage() {
                 size="sm"
                 onClick={loadCorrections}
                 disabled={loadingCorrections}
-                className="h-9 gap-1.5 text-xs font-semibold px-3.5"
+                className="h-9 gap-1.5 text-sm font-semibold px-3.5"
               >
                 <RefreshCw className={`size-3.5 ${loadingCorrections ? "animate-spin" : ""}`} />
                 <span>Refresh</span>
@@ -795,48 +795,48 @@ export default function AttendancePage() {
             </div>
 
             {correctionsError && (
-              <p role="alert" className="p-4 text-xs font-semibold text-destructive">
+              <p role="alert" className="p-4 text-sm font-semibold text-destructive">
                 {correctionsError}
               </p>
             )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
                   <tr>
-                    <th className="py-2.5 px-4">Employee</th>
-                    <th className="py-2.5 px-4">Shift Date</th>
-                    <th className="py-2.5 px-4">Correction Type</th>
-                    <th className="py-2.5 px-4">Requested Times</th>
-                    <th className="py-2.5 px-4">Employee Reason</th>
-                    <th className="py-2.5 px-4 text-right">Actions</th>
+                    <th className="py-2.5 px-4 font-semibold">Employee</th>
+                    <th className="py-2.5 px-4 font-semibold">Shift Date</th>
+                    <th className="py-2.5 px-4 font-semibold">Correction Type</th>
+                    <th className="py-2.5 px-4 font-semibold">Requested Times</th>
+                    <th className="py-2.5 px-4 font-semibold">Employee Reason</th>
+                    <th className="py-2.5 px-4 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {loadingCorrections ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         Loading pending requests...
                       </td>
                     </tr>
                   ) : corrections.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         {correctionsError ? 'Correction requests unavailable. Refresh to retry.' : correctionStatus === 'PENDING' ? 'No pending correction requests.' : 'No correction requests match this status.'}
                       </td>
                     </tr>
                   ) : (
                     corrections.map((c) => (
                       <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-xs text-foreground">
+                        <td className="py-3 px-4 font-semibold text-sm text-foreground">
                           <div>{c.employee?.fullName}</div>
-                          <div className="text-[11px] text-muted-foreground font-mono font-normal">
+                          <div className="text-xs text-muted-foreground font-mono font-normal">
                             {c.employee?.employeeCode}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-semibold text-xs font-mono">{c.shiftDate}</td>
-                        <td className="py-3 px-4 text-xs font-medium">{c.requestType}</td>
-                        <td className="py-3 px-4 text-xs font-mono">
+                        <td className="py-3 px-4 font-semibold text-sm font-mono">{c.shiftDate}</td>
+                        <td className="py-3 px-4 text-sm font-medium">{c.requestType}</td>
+                        <td className="py-3 px-4 text-sm font-mono">
                           {c.correctedClockIn && (
                             <div>In: {new Date(c.correctedClockIn).toLocaleTimeString([], { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit' })}</div>
                           )}
@@ -845,7 +845,7 @@ export default function AttendancePage() {
                           )}
                           <p className="text-muted-foreground">Original evidence: {c.originalData?.clockInAt || 'no recorded entry'} to {c.originalData?.clockOutAt || 'no recorded exit'}. Proposed times above use Asia/Karachi.</p>
                         </td>
-                        <td className="py-3 px-4 text-xs max-w-xs truncate" title={c.reason}>
+                        <td className="py-3 px-4 text-sm max-w-xs truncate" title={c.reason}>
                           {c.reason}
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -855,7 +855,7 @@ export default function AttendancePage() {
                               variant="success"
                               onClick={() => openReviewDialog(c, "APPROVED")}
                               disabled={!c.canReview}
-                              className="h-8 px-3 text-xs gap-1 font-semibold"
+                              className="h-8 px-3 text-sm gap-1 font-semibold"
                             >
                               <Check className="size-3.5" />
                               <span>Approve</span>
@@ -865,7 +865,7 @@ export default function AttendancePage() {
                               variant="destructive"
                               onClick={() => openReviewDialog(c, "REJECTED")}
                               disabled={!c.canReview}
-                              className="h-8 px-3 text-xs gap-1 font-semibold"
+                              className="h-8 px-3 text-sm gap-1 font-semibold"
                             >
                               <X className="size-3.5" />
                               <span>Reject</span>
@@ -904,7 +904,7 @@ export default function AttendancePage() {
       >
         <div className="flex items-center justify-between pb-3.5 border-b border-border/80">
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">
               {reviewDecision === "APPROVED" ? "Approve Correction" : "Reject Correction"}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -938,7 +938,7 @@ export default function AttendancePage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="review-reason-input" className="block text-xs font-semibold text-foreground">
+              <label htmlFor="review-reason-input" className="block text-sm font-medium text-foreground">
                 Review Decision Notes (Required)
               </label>
               <textarea
@@ -948,7 +948,7 @@ export default function AttendancePage() {
                 onChange={(e) => setReviewReason(e.target.value)}
                 placeholder="Enter review decision explanation..."
                 required
-                className="w-full rounded-xl border border-input bg-background/80 p-3 text-xs font-medium text-foreground placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none resize-none transition-all"
+                className="w-full rounded-xl border border-input bg-background/80 p-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none resize-none transition-all"
               />
             </div>
 
@@ -959,7 +959,7 @@ export default function AttendancePage() {
                 size="sm"
                 onClick={() => reviewDialogRef.current?.close()}
                 disabled={reviewing}
-                className="h-9 px-4 text-xs font-semibold"
+                className="h-9 px-4 text-sm font-semibold"
               >
                 Cancel
               </Button>
@@ -967,7 +967,7 @@ export default function AttendancePage() {
                 type="submit"
                 variant={reviewDecision === "APPROVED" ? "success" : "destructive"}
                 disabled={reviewing}
-                className="h-9 px-4 text-xs font-semibold"
+                className="h-9 px-4 text-sm font-semibold"
               >
                 {reviewing ? "Submitting..." : `Confirm ${reviewDecision}`}
               </Button>

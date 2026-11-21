@@ -1,4 +1,4 @@
-export const inputClass = 'h-11 w-full min-w-0 rounded-lg border border-input bg-background/70 px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60';
+export const inputClass = 'h-11 w-full min-w-0 rounded-lg border border-input bg-background/70 px-3 text-sm font-normal text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60';
 export const earningTypes = ['ALLOWANCE', 'BONUS', 'COMMISSION', 'OVERTIME', 'OTHER'];
 export const deductionTypes = ['TAX', 'ADVANCE_RECOVERY', 'LOAN_RECOVERY', 'OTHER'];
 export function salaryForMonth(history,month){const boundary=history?.rehireBoundaries?.find(item=>item.month<=month);return history?.versions.find(version=>version.effectiveMonth<=month&&(!boundary||version.effectiveMonth>=boundary.month&&!boundary.excludedVersionIds.includes(version.id)))||null;}
@@ -16,6 +16,19 @@ export function currentMonth() {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {timeZone:'Asia/Karachi',year:'numeric',month:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
   return `${parts.year}-${parts.month}`;
 }
-export function dateTime(value) {
+// Reorder date-only API strings directly, without applying a timezone offset.
+export function calendarDate(value) {
+  return typeof value === 'string' ? value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3-$2-$1') : value;
+}
+export function calendarMonth(value) {
+  return typeof value === 'string' ? value.replace(/^(\d{4})-(\d{2})$/, '$2/$1') : value;
+}
+export function dateTime(value, {numericDate = false} = {}) {
+  if (value && numericDate) {
+    const date = new Date(value);
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-PK', {timeZone:'Asia/Karachi',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(part=>[part.type,part.value]));
+    const time = new Intl.DateTimeFormat('en-PK', {timeZone:'Asia/Karachi',timeStyle:'short'}).format(date);
+    return `${parts.day}-${parts.month}-${parts.year}, ${time}`;
+  }
   return value ? new Intl.DateTimeFormat('en-PK', {timeZone:'Asia/Karachi',dateStyle:'medium',timeStyle:'short'}).format(new Date(value)) : 'Not recorded';
 }

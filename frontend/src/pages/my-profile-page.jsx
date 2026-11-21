@@ -113,7 +113,7 @@ export default function MyProfilePage() {
   }
 
   if (accountOnly) return <section className="profile-page min-w-0 space-y-6 text-foreground">
-    <header><h1 className="text-2xl font-semibold">Account &amp; Security</h1><p className="mt-2 text-sm text-muted-foreground">Your account details and password security.</p></header>
+    <header><h1 className="text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">Account &amp; Security</h1><p className="mt-2 text-sm text-muted-foreground">Your account details and password security.</p></header>
     <ProfileIdentity user={user} />
     <AccountSecurityContent />
   </section>;
@@ -140,7 +140,7 @@ export default function MyProfilePage() {
 
   return <section className="profile-page min-w-0 space-y-6 text-foreground">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div><h1 className="text-2xl font-semibold">My Profile</h1><p className="mt-2 text-sm text-muted-foreground">Your personal and account details.</p></div>
+      <div><h1 className="text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">My Profile</h1><p className="mt-2 text-sm text-muted-foreground">Your personal and account details.</p></div>
       <Badge variant="secondary" className="h-auto gap-2 px-3 py-1.5"><LockKeyhole aria-hidden="true" className="size-3.5" />Read-only profile</Badge>
     </header>
     <ProfileIdentity user={user} employee={employee} />

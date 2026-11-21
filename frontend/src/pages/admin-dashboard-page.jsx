@@ -320,7 +320,7 @@ export default function AdminDashboard() {
           title="Admin Work Queues"
           icon={ClipboardCheck}
           controls={
-            <label className="admin-month">
+            <label className="admin-month font-medium">
               Payroll month
               <input
                 aria-label="Payroll month"

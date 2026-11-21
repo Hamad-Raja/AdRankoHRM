@@ -151,7 +151,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
             <Clock className="size-5" />
           </div>
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Attendance & Duty Clock
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -168,7 +168,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
             disabled={loading || actionLoading}
             title="Refresh status"
             aria-label="Refresh attendance status"
-            className="h-9 gap-1.5 text-xs font-semibold"
+            className="h-9 gap-1.5 text-sm font-semibold"
           >
             <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
@@ -178,7 +178,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
             variant="outline"
             size="sm"
             onClick={() => setShowCorrectionModal(true)}
-            className="h-9 gap-1.5 text-xs font-semibold"
+            className="h-9 gap-1.5 text-sm font-semibold"
           >
             <FileEdit className="size-3.5" />
             <span>Request Correction</span>
@@ -269,12 +269,12 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
       {/* Attendance session details */}
       {attendance && (
         <div className="mb-6 rounded-xl border border-border/80 bg-background/80 p-4 text-xs">
-          <h3 className="font-semibold text-foreground tracking-tight text-sm">
+          <h3 className="font-semibold text-foreground tracking-tight text-base">
             Session Details — {attendance.shiftDate}
           </h3>
           <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg bg-card p-2.5 border border-border/60">
-              <dt className="text-[11px] font-medium text-muted-foreground">Clock In</dt>
+              <dt className="text-xs font-medium text-muted-foreground">Clock In</dt>
               <dd className="mt-1 font-semibold text-foreground font-mono">
                 {attendance.clockInAt
                   ? new Intl.DateTimeFormat("en-PK", {
@@ -287,7 +287,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
               </dd>
             </div>
             <div className="rounded-lg bg-card p-2.5 border border-border/60">
-              <dt className="text-[11px] font-medium text-muted-foreground">Clock Out</dt>
+              <dt className="text-xs font-medium text-muted-foreground">Clock Out</dt>
               <dd className="mt-1 font-semibold text-foreground font-mono">
                 {attendance.clockOutAt
                   ? new Intl.DateTimeFormat("en-PK", {
@@ -300,7 +300,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
               </dd>
             </div>
             <div className="rounded-lg bg-card p-2.5 border border-border/60">
-              <dt className="text-[11px] font-medium text-muted-foreground">Raw Elapsed (not payable)</dt>
+              <dt className="text-xs font-medium text-muted-foreground">Raw Elapsed (not payable)</dt>
               <dd className="mt-1 font-semibold text-foreground font-mono">
                 {attendance.workedMinutes != null
                   ? `${Math.floor(attendance.workedMinutes / 60)}h ${attendance.workedMinutes % 60}m`
@@ -308,7 +308,7 @@ function AttendanceClockSession({ onRecordUpdated, presentation = "default", sch
               </dd>
             </div>
             <div className="rounded-lg bg-card p-2.5 border border-border/60">
-              <dt className="text-[11px] font-medium text-muted-foreground">Status</dt>
+              <dt className="text-xs font-medium text-muted-foreground">Status</dt>
               <dd className="mt-1 font-semibold text-foreground">
                 {attendance.status}
               </dd>

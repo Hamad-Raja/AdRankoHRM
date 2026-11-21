@@ -1,18 +1,17 @@
 /* Opt-in presentation for Manager/Employee Attendance, My Leave and Reports. */
-.self-service-page {min-width:0;max-width:1440px;margin-inline:auto;display:flex;flex-direction:column;gap:24px;font-size:14px;line-height:1.5;}
+.self-service-page {min-width:0;max-width:1440px;margin-inline:auto;display:flex;flex-direction:column;gap:24px;font-size:var(--text-sm);line-height:1.5;}
 .self-service-page > * {min-width:0;margin-block:0;}
 .self-service-page form,.self-service-page section {min-width:0;}
-.self-service-page h1 {font-size:36px;line-height:1.2;letter-spacing:-.035em;font-weight:700;}
-.self-service-page h2 {font-size:22px;line-height:1.3;font-weight:650;letter-spacing:-.025em;}
-.self-service-page .text-xs {font-size:13px;line-height:1.5;}
-.self-service-page label {font-size:14px;line-height:1.5;}
-.self-service-page :is(input,select,textarea) {max-width:100%;min-width:0;font-size:14px;}
+.self-service-page h1 {font-size:var(--text-2xl);line-height:1.25;letter-spacing:-.025em;font-weight:600;}
+.self-service-page h2 {font-size:var(--text-lg);line-height:1.5556;font-weight:600;letter-spacing:normal;}
+.self-service-page label {font-size:var(--text-sm);line-height:1.5;}
+.self-service-page :is(input,select,textarea) {max-width:100%;min-width:0;font-size:var(--text-sm);line-height:1.5;}
 .self-service-page :is(input,select) {height:40px;}
-.self-service-page [data-slot="input"] {font-size:14px;}
-.self-service-page [data-slot="button"] {min-height:40px;height:auto;font-size:14px;line-height:1.4;padding:9px 15px;}
+.self-service-page [data-slot="input"] {font-size:var(--text-sm);line-height:1.5;}
+.self-service-page [data-slot="button"] {min-height:40px;height:auto;font-size:var(--text-sm);line-height:1.5;padding:9px 15px;}
 .self-service-page-header {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:20px;}
 .self-service-page-header > div:first-child > p {font-size:16px;margin-top:8px;}
-.self-service-page .self-service-guide {border:1px solid var(--border);border-radius:12px;background:var(--card);font-size:14px;}
+.self-service-page .self-service-guide {border:1px solid var(--border);border-radius:12px;background:var(--card);font-size:var(--text-sm);line-height:1.5;}
 .self-service-page details > summary {position:relative;cursor:pointer;font-weight:600;padding:15px 20px;overflow-wrap:anywhere;}
 .self-service-page details > summary:focus-visible {outline:2px solid var(--ring);outline-offset:-3px;border-radius:8px;}
 .self-service-page .self-service-guide > div {padding:0 20px 18px;color:var(--muted-foreground);line-height:1.7;}
@@ -23,13 +22,12 @@
 .self-service-page .quiet-disclosure[open] > div {padding:16px 20px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
 .attendance-view-tabs {grid-column:1/-1;justify-self:start;margin-top:4px;}
 .self-service-page .self-service-card-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;}
-.self-service-page .self-service-card-heading > span {font-size:14px;color:var(--muted-foreground);}
-.self-service-page table {font-size:14px;}
+.self-service-page .self-service-card-heading > span {font-size:var(--text-sm);color:var(--muted-foreground);line-height:1.5;}
+.self-service-page table {font-size:var(--text-sm);line-height:1.5;}
 .self-service-page thead {background:var(--muted);}
-.self-service-page table th {font-size:14px;line-height:1.5;font-weight:600;text-transform:none;letter-spacing:0;padding:13px 20px;}
-.self-service-page table td {padding:18px 20px;vertical-align:top;font-size:14px;line-height:1.55;}
-.self-service-page table td.text-xs {font-size:14px;}
-.self-service-page table td .font-mono {font-size:12px;}
+.self-service-page table th {font-size:var(--text-sm);line-height:1.5;font-weight:600;text-transform:none;letter-spacing:0;padding:13px 20px;}
+.self-service-page table td {padding:18px 20px;vertical-align:top;font-size:var(--text-sm);line-height:1.5;}
+.self-service-page table td.text-xs {font-size:var(--text-sm);line-height:1.5;}
 .attendance-workspace .attendance-filter-panel {display:flex;align-items:end;flex-wrap:wrap;gap:16px;padding:20px 22px;border:1px solid var(--border);border-radius:14px;background:var(--card);}
 .attendance-workspace .attendance-filter-panel > div {display:contents;}
 .attendance-workspace .attendance-filter-panel > div > label {flex:1.35;min-width:190px;}
@@ -41,11 +39,11 @@
 .attendance-workspace table td {min-width:110px;}
 .attendance-workspace table td:nth-child(2),.attendance-workspace table td:nth-child(3),.attendance-workspace table td:nth-child(4),.attendance-workspace table td:nth-child(5) {white-space:nowrap;}
 .attendance-workspace table td:first-child {min-width:160px;}
-.attendance-workspace table td span {white-space:nowrap;font-size:12px;}
-.attendance-workspace .attendance-adjustment-details {max-width:260px;font-size:13px;}
-.attendance-workspace .attendance-adjustment-details > summary {padding:6px 0;color:var(--primary);font-size:13px;}
+.attendance-workspace table td span {white-space:nowrap;}
+.attendance-workspace .attendance-adjustment-details {max-width:260px;font-size:var(--text-sm);line-height:1.5;}
+.attendance-workspace .attendance-adjustment-details > summary {padding:6px 0;color:var(--primary);font-size:var(--text-sm);line-height:1.5;}
 .attendance-workspace .attendance-adjustment-details p {white-space:normal;overflow-wrap:anywhere;line-height:1.6;}
-.attendance-workspace .attendance-evidence-note {padding:14px 22px;border-top:1px solid var(--border);font-size:13px;color:var(--muted-foreground);}
+.attendance-workspace .attendance-evidence-note {padding:14px 22px;border-top:1px solid var(--border);font-size:var(--text-xs);color:var(--muted-foreground);line-height:1.5;}
 .attendance-workspace .attendance-logs-card > .flex {padding:16px 22px;}
 .self-service-page .paid-leave-disclosure > summary {padding:18px 22px;font-size:16px;}
 .self-service-page .paid-leave-disclosure > section {border:0;border-top:1px solid var(--border);border-radius:0 0 12px 12px;padding:20px 22px;}
@@ -58,9 +56,9 @@
 .self-service-page .leave-balance-strip {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--border);border-radius:14px;background:var(--card);padding:24px 8px;}
 .self-service-page .leave-balance-strip > div {padding:0 24px;border:0;border-right:1px solid var(--border);border-radius:0;}
 .self-service-page .leave-balance-strip > div:last-child {border-right:0;}
-.self-service-page .leave-balance-strip dt {font-size:14px;}
+.self-service-page .leave-balance-strip dt {font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .leave-balance-strip dd {margin-top:10px;font-size:30px;line-height:1.25;}
-.self-service-page .leave-balance-strip dd span {font-size:14px;}
+.self-service-page .leave-balance-strip dd span {font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .leave-balance-strip > div:last-child dd {color:var(--primary);}
 .self-service-page .leave-content-grid {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;align-items:stretch;}
 .self-service-page .leave-content-grid > form,.self-service-page .leave-request-history {padding:24px;border:1px solid var(--border);border-radius:14px;background:var(--card);}
@@ -77,7 +75,7 @@
 .self-service-page .leave-empty {min-height:240px;flex:1;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;color:var(--muted-foreground);}
 .self-service-page .leave-empty > svg {width:48px;height:48px;opacity:.65;stroke-width:1.5;}
 .self-service-page .leave-empty > strong {font-size:16px;}
-.self-service-page .leave-empty > span {font-size:14px;}
+.self-service-page .leave-empty > span {font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .report-filters {display:flex;flex-wrap:wrap;align-items:end;gap:14px;padding:18px;border-radius:14px;}
 .self-service-page .report-filters > * {margin-block:0;}
 .self-service-page .report-filters > .grid {flex:1 1 360px;min-width:0;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:14px;}
@@ -87,12 +85,12 @@
 .self-service-page .report-filters > :is([role="alert"],.bg-muted) {flex-basis:100%;}
 .self-service-page .report-data-view {display:flex;flex-direction:column;gap:20px;}
 .self-service-page .report-data-view > * {margin-block:0;}
-.self-service-page .report-toolbar {padding:0 2px;font-size:12px;}
+.self-service-page .report-toolbar {padding:0 2px;font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .report-data-view > .report-toolbar {order:1;}
-.self-service-page .report-toolbar p {font-size:12px;}
+.self-service-page .report-toolbar p {font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .report-key-metrics {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
 .self-service-page .report-key-metrics > div {display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;row-gap:2px;align-items:center;padding:18px;}
-.self-service-page .report-key-metrics p {font-size:14px;}
+.self-service-page .report-key-metrics p {font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .report-key-metrics p + p {margin:0;font-size:26px;font-weight:650;}
 .self-service-page .report-metric-icon {grid-row:1/3;display:grid;place-items:center;width:44px;height:48px;border-radius:12px;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);}
 .self-service-page .report-metric-icon svg {width:24px;height:24px;stroke-width:1.8;}
@@ -101,24 +99,24 @@
 .self-service-page .report-results-card {border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden;}
 .self-service-page .report-results-card > [role="region"] {border:0;border-radius:0;}
 .self-service-page .report-results-card > .flex {margin:0;border-top:1px solid var(--border);padding:16px 22px;}
-.self-service-page .report-row-details {font-size:13px;min-width:150px;max-width:280px;}
-.self-service-page .report-row-details > summary {padding:5px 0;color:var(--primary);font-size:13px;}
+.self-service-page .report-row-details {font-size:var(--text-sm);min-width:150px;max-width:280px;line-height:1.5;}
+.self-service-page .report-row-details > summary {padding:5px 0;color:var(--primary);font-size:var(--text-sm);line-height:1.5;}
 .self-service-page .report-row-details > div,.self-service-page .report-row-details > dl {margin-top:10px;}
-.self-service-page .report-row-details p {font-size:13px;line-height:1.6;margin-top:6px;}
+.self-service-page .report-row-details p {font-size:var(--text-sm);line-height:1.5;margin-top:6px;}
 .self-service-page .report-row-details dl > div {display:flex;justify-content:space-between;gap:16px;padding-block:5px;}
 .self-service-page .report-row-details dd {font-weight:600;white-space:nowrap;}
 .self-service-page .report-extra-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px;}
 .self-service-page .report-extra-metrics > div {padding:12px;border:1px solid var(--border);border-radius:8px;}
 .self-service-page .report-extra-metrics dd {font-weight:600;color:var(--foreground);}
 @media(max-width:1000px){
- .self-service-page h1 {font-size:30px;}
+ .self-service-page h1 {font-size:var(--text-2xl);line-height:1.25;}
  .self-service-page .leave-content-grid {grid-template-columns:1fr;}
  .self-service-page .report-key-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
  .self-service-page .report-export-controls {border-left:0;padding-left:0;}
 }
 @media(max-width:600px){
  .self-service-page {gap:20px;}
- .self-service-page h1 {font-size:28px;}
+ .self-service-page h1 {font-size:var(--text-2xl);line-height:1.25;}
  .self-service-page-header {grid-template-columns:1fr;gap:12px;}
  .self-service-page .quiet-disclosure {justify-self:start;}
  .self-service-page .leave-header-controls {justify-content:start;max-width:100%;}
@@ -139,3 +137,5 @@
  .attendance-workspace .attendance-filter-panel {padding:18px;}
  .attendance-workspace form > div {max-width:100%;}
 }
+
+@media(min-width:640px){.self-service-page h1{font-size:var(--text-3xl);}}

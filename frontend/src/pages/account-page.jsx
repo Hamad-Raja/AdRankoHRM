@@ -19,7 +19,7 @@ const INPUT_CLASSES =
 
 const BUTTON_CLASSES =
   "inline-flex h-9 cursor-pointer items-center justify-center gap-2 " +
-  "rounded-lg px-4 text-xs font-semibold shadow-2xs transition-colors focus-visible:outline-2 " +
+  "rounded-lg px-4 text-sm font-semibold shadow-2xs transition-colors focus-visible:outline-2 " +
   "focus-visible:outline-offset-2 focus-visible:outline-ring " +
   "disabled:cursor-not-allowed disabled:opacity-60";
 

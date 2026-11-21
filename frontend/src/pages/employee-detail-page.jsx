@@ -140,7 +140,7 @@ function EmployeeDetail({ employeeId }) {
 
     {loadError?<Panel title="Unable to load employee"><p role="alert">{loadError}</p><Button onClick={()=>setRevision(v=>v+1)}>Retry employee</Button></Panel>:!employee?<p role="status">Loading employee...</p>:<>
 
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-5"><div><h1 className="text-2xl font-semibold">{employee.fullName}</h1><p className="mt-2 text-sm text-muted-foreground">{employee.employeeCode} · {employee.employment?.status||'No employment'} · <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{employee.salaryConfigured?'Salary configured':'Salary not configured'}</span></p></div><Link to={'/employment?employeeId='+employeeId} className="rounded-lg border border-border px-4 py-2 text-sm text-primary">Employment workflows</Link></header>
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-5"><div><h1 className="text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">{employee.fullName}</h1><p className="mt-2 text-sm text-muted-foreground">{employee.employeeCode} · {employee.employment?.status||'No employment'} · <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{employee.salaryConfigured?'Salary configured':'Salary not configured'}</span></p></div><Link to={'/employment?employeeId='+employeeId} className="rounded-lg border border-border px-4 py-2 text-sm text-primary">Employment workflows</Link></header>
 
       {location.state?.created&&<p role="status" className="text-sm text-primary">Employee created successfully. Profile, account, organization and optional salary were saved together.</p>}
 

@@ -90,7 +90,7 @@ function CorrectionDialog({
     >
       <div className="flex items-center justify-between pb-4 border-b border-border/80">
         <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             Request Attendance Correction
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -127,7 +127,7 @@ function CorrectionDialog({
           )}
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-foreground">
+            <label className="block text-sm font-medium text-foreground">
               Duty Shift Date (YYYY-MM-DD)
             </label>
             <Input
@@ -136,18 +136,18 @@ function CorrectionDialog({
               onChange={(e) => setShiftDate(e.target.value)}
               required
               disabled={!!initialRecord}
-              className="h-9 text-xs"
+              className="h-9 text-sm"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-foreground">
+            <label className="block text-sm font-medium text-foreground">
               Correction Reason Type
             </label>
             <select
               aria-label="Correction type" value={requestType}
               onChange={(e) => setRequestType(e.target.value)}
-              className="w-full h-9 rounded-lg border border-input bg-background/80 px-3 text-xs font-semibold text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
+              className="w-full h-9 rounded-lg border border-input bg-background/80 px-3 text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
             >
               <option value="MISSING_CHECKOUT">Missing Checkout / Clock Out</option>
               <option value="WRONG_TIME">Incorrect Clock In / Out Time</option>
@@ -157,32 +157,32 @@ function CorrectionDialog({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-foreground">
+              <label className="block text-sm font-medium text-foreground">
                 Corrected Clock-In
               </label>
               <Input
                 aria-label="Proposed Clock In (Asia/Karachi)" type="datetime-local"
                 value={clockIn}
                 onChange={(e) => setClockIn(e.target.value)}
-                className="h-9 text-xs"
+                className="h-9 text-sm"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-foreground">
+              <label className="block text-sm font-medium text-foreground">
                 Corrected Clock-Out
               </label>
               <Input
                 aria-label="Proposed Clock Out (Asia/Karachi)" type="datetime-local"
                 value={clockOut}
                 onChange={(e) => setClockOut(e.target.value)}
-                className="h-9 text-xs"
+                className="h-9 text-sm"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-foreground">
+            <label className="block text-sm font-medium text-foreground">
               Explanation & Reason (Required)
             </label>
             <textarea
@@ -191,7 +191,7 @@ function CorrectionDialog({
               onChange={(e) => setReason(e.target.value)}
               placeholder="Explain why this correction is needed..."
               required
-              className="w-full rounded-xl border border-input bg-background/80 p-3 text-xs font-medium text-foreground placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none resize-none transition-all"
+              className="w-full rounded-xl border border-input bg-background/80 p-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none resize-none transition-all"
             />
           </div>
 
@@ -202,7 +202,7 @@ function CorrectionDialog({
               size="sm"
               onClick={onClose}
               disabled={submitting}
-              className="h-9 px-4 text-xs font-semibold"
+              className="h-9 px-4 text-sm font-semibold"
             >
               Cancel
             </Button>
@@ -210,7 +210,7 @@ function CorrectionDialog({
               type="submit"
               size="sm"
               disabled={submitting}
-              className="h-9 px-4 text-xs font-semibold"
+              className="h-9 px-4 text-sm font-semibold"
             >
               {submitting ? "Submitting..." : "Submit Correction Request"}
             </Button>

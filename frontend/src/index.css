@@ -3,6 +3,9 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
+/* Shared scale: page titles 24/30px; sections 18px; dialogs 20px;
+   body, labels, tables and controls 14px; secondary metadata/badges 12px.
+   Keep clocks, metric values, initials and printed payslips at their own scale. */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -257,7 +260,7 @@
 }
 .app-tabs > button,
 .self-service-page .app-tabs > button {
-  @apply inline-flex h-auto min-h-9 min-w-0 max-w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border/90 bg-background px-3.5 py-1.5 text-xs leading-4 font-semibold whitespace-normal text-foreground shadow-2xs transition-all outline-none;
+  @apply inline-flex h-auto min-h-9 min-w-0 max-w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border/90 bg-background px-3.5 py-1.5 text-sm leading-5 font-semibold whitespace-normal text-foreground shadow-2xs transition-all outline-none;
   overflow-wrap: anywhere;
 }
 .app-tabs > button:is([aria-selected="true"], [aria-pressed="true"], [aria-current="step"]) {

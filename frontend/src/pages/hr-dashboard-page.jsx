@@ -554,7 +554,7 @@ export default function HrDashboard() {
           className="hr-work-queues"
           icon={ClipboardCheck}
           controls={
-            <label className="hr-month">
+            <label className="hr-month font-medium">
               <span className="sr-only">Payroll summary month</span>
               <input
                 type="month"

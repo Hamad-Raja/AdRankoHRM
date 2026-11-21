@@ -23,7 +23,7 @@ export default function NotFoundPage() {
         <section className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center shadow-sm">
           <p className="text-sm font-semibold text-primary">404</p>
 
-          <h1 className="mt-3 text-2xl font-semibold">
+          <h1 className="mt-3 text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">
             Page not found
           </h1>
 

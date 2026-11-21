@@ -3,25 +3,25 @@
 .hr-duty .duty-clock-heading {margin:0;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:nowrap;}
 .hr-duty .duty-clock-refresh {width:36px;height:36px;flex-shrink:0;}
 .hr-duty .duty-clock-refresh svg {width:16px;height:16px;}
-.hr-duty .duty-clock-status {justify-self:start;display:inline-flex;align-items:center;gap:7px;max-width:100%;border-radius:99px;padding:6px 10px;font-size:11px;font-weight:600;line-height:1.4;background:var(--muted);color:var(--foreground);overflow-wrap:anywhere;}
+.hr-duty .duty-clock-status {justify-self:start;display:inline-flex;align-items:center;gap:7px;max-width:100%;border-radius:99px;padding:6px 10px;font-size:var(--text-sm);font-weight:600;line-height:1.5;background:var(--muted);color:var(--foreground);overflow-wrap:anywhere;}
 .hr-duty .duty-clock-status[data-tone="checked-in"],.hr-duty .duty-clock-status[data-tone="completed"] {background:color-mix(in srgb,var(--primary) 13%,var(--card));color:var(--primary);}
 .hr-duty .duty-clock-status[data-tone="warning"] {background:color-mix(in srgb,var(--warning) 12%,var(--card));color:var(--foreground);}
 .hr-duty .duty-clock-dot {width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .hr-duty .duty-clock-shift {font-size:clamp(22px,2vw,30px);font-weight:750;letter-spacing:-.035em;line-height:1.25;text-wrap:balance;}
-.hr-duty .duty-clock-dates,.hr-duty .duty-clock-zone {font-size:11px;line-height:1.6;color:var(--muted-foreground);margin-top:5px;overflow-wrap:anywhere;}
+.hr-duty .duty-clock-dates,.hr-duty .duty-clock-zone {font-size:var(--text-xs);line-height:1.5;color:var(--muted-foreground);margin-top:5px;overflow-wrap:anywhere;}
 .hr-duty .duty-clock-zone {margin-top:1px;}
 .hr-duty .duty-clock-times {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-block:13px;border-block:1px solid var(--border);}
-.hr-duty .duty-clock-times dt {color:var(--muted-foreground);font-size:11px;margin-bottom:5px;}
-.hr-duty .duty-clock-times dd {font-size:13px;font-weight:600;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+.hr-duty .duty-clock-times dt {color:var(--muted-foreground);font-size:var(--text-sm);margin-bottom:5px;line-height:1.5;}
+.hr-duty .duty-clock-times dd {font-size:var(--text-sm);font-weight:600;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
 .hr-duty .duty-clock-actions {display:grid;gap:12px;min-width:0;}
 .hr-duty .duty-clock-action {width:100%;height:56px;min-height:56px;border-radius:10px;font-size:16px;gap:9px;}
 .hr-duty .duty-clock-action svg {width:21px;height:21px;}
 .hr-duty .duty-clock-out {background:#f88379;color:#351713;}
 .hr-duty .duty-clock-out:hover:not(:disabled) {background:#ed746a;color:#351713;}
-.hr-duty .duty-clock-actions a {justify-self:center;font-size:12px;font-weight:600;color:var(--primary);text-decoration:underline;text-underline-offset:3px;}
-.hr-duty .duty-clock-warning,.hr-duty .duty-clock-error {font-size:11px;line-height:1.6;overflow-wrap:anywhere;}
+.hr-duty .duty-clock-actions a {justify-self:center;font-size:var(--text-sm);font-weight:600;color:var(--primary);text-decoration:underline;text-underline-offset:3px;line-height:1.5;}
+.hr-duty .duty-clock-warning,.hr-duty .duty-clock-error {font-size:var(--text-sm);line-height:1.5;overflow-wrap:anywhere;}
 .hr-duty .duty-clock-warning {color:var(--muted-foreground);}
 .hr-duty .duty-clock-warning button {margin-top:7px;}
 .hr-duty .duty-clock-error {color:var(--destructive);}
 .hr-duty .duty-clock a:focus-visible {outline:2px solid var(--ring);outline-offset:4px;border-radius:3px;}
-@media(max-width:420px){.hr-duty .duty-clock {gap:12px;}.hr-duty .duty-clock-shift {font-size:24px;}.hr-duty .duty-clock-times {gap:8px;}.hr-duty .duty-clock-times dd {font-size:12px;}}
+@media(max-width:420px){.hr-duty .duty-clock {gap:12px;}.hr-duty .duty-clock-shift {font-size:24px;}.hr-duty .duty-clock-times {gap:8px;}.hr-duty .duty-clock-times dd {font-size:var(--text-sm);line-height:1.5;}}

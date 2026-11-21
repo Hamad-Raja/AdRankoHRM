@@ -275,7 +275,7 @@ function ReportRows({ kind, rows, onEmployee, compact = false }) {
                 </td>
 
                 <td
-                  className={`${CELL} whitespace-nowrap font-mono text-xs`}
+                  className={`${CELL} whitespace-nowrap font-mono text-sm`}
                 >
                   {row.shiftDate}
                 </td>
@@ -1191,7 +1191,7 @@ function ReportsWorkspace({ user, refreshSession }) {
   return (
     <div className={["MANAGER","EMPLOYEE"].includes(user.role)?"self-service-page reports-workspace min-w-0 space-y-5":"min-w-0 space-y-6"}>
       <header className={["MANAGER","EMPLOYEE"].includes(user.role)?"self-service-page-header reports-page-header":undefined}>
-        <div><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <div><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl leading-tight">
           Reports
         </h1>
 

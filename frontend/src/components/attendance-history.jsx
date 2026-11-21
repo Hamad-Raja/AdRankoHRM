@@ -81,7 +81,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
             <History className="size-5" />
           </div>
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
               My Attendance Records & Requests
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -99,7 +99,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               setTab("records");
               setPage(1);
             }}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all ${
+            className={`rounded-md px-3.5 py-1.5 text-sm font-semibold transition-all ${
               tab === "records"
                 ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -114,7 +114,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               setTab("corrections");
               setPage(1);
             }}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all ${
+            className={`rounded-md px-3.5 py-1.5 text-sm font-semibold transition-all ${
               tab === "corrections"
                 ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -132,28 +132,28 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-border/60 bg-muted/20 p-3.5"
         >
           <div className="grid w-full gap-1.5 sm:w-40">
-            <label htmlFor={`${fieldId}-from`} className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor={`${fieldId}-from`} className="block text-sm font-medium normal-case tracking-normal text-muted-foreground">
               From Date
             </label>
             <Input
               id={`${fieldId}-from`} type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-9 w-full text-xs"
+              className="h-9 w-full text-sm"
             />
           </div>
           <div className="grid w-full gap-1.5 sm:w-40">
-            <label htmlFor={`${fieldId}-to`} className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label htmlFor={`${fieldId}-to`} className="block text-sm font-medium normal-case tracking-normal text-muted-foreground">
               To Date
             </label>
             <Input
               id={`${fieldId}-to`} type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-9 w-full text-xs"
+              className="h-9 w-full text-sm"
             />
           </div>
-          <Button type="submit" size="sm" variant="default" className="h-9 gap-1.5 text-xs font-semibold px-3.5">
+          <Button type="submit" size="sm" variant="default" className="h-9 gap-1.5 text-sm font-semibold px-3.5">
             <Filter className="size-3.5" />
             <span>Apply</span>
           </Button>
@@ -163,7 +163,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               size="sm"
               variant="ghost"
               onClick={handleResetFilter}
-              className="h-9 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              className="h-9 gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="size-3.5" />
               <span>Reset</span>
@@ -173,7 +173,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
       )}
 
       {error && (
-        <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+        <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
           {error}
         </p>
       )}
@@ -182,35 +182,35 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
       {tab === "records" ? (
         <div className="mt-4 overflow-x-auto rounded-xl border border-border/80">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
               <tr>
-                <th className="py-2.5 px-3.5">Duty Shift Date</th>
-                <th className="py-2.5 px-3.5">Clock In</th>
-                <th className="py-2.5 px-3.5">Clock Out</th>
-                <th className="py-2.5 px-3.5">Raw elapsed (not payable)</th>
-                <th className="py-2.5 px-3.5">Status</th>
-                <th className="py-2.5 px-3.5">Flags</th>
-                <th className="py-2.5 px-3.5 text-right">Actions</th>
+                <th className="py-2.5 px-3.5 font-semibold">Duty Shift Date</th>
+                <th className="py-2.5 px-3.5 font-semibold">Clock In</th>
+                <th className="py-2.5 px-3.5 font-semibold">Clock Out</th>
+                <th className="py-2.5 px-3.5 font-semibold">Raw elapsed (not payable)</th>
+                <th className="py-2.5 px-3.5 font-semibold">Status</th>
+                <th className="py-2.5 px-3.5 font-semibold">Flags</th>
+                <th className="py-2.5 px-3.5 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
+                  <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     Loading records...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-xs text-muted-foreground">
+                  <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     {error ? 'Attendance history unavailable. Apply filters or reload to retry.' : 'No attendance records found.'}
                   </td>
                 </tr>
               ) : (
                 records.map((r) => (
                   <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-3.5 font-semibold text-foreground text-xs">{r.shiftDate}</td>
-                    <td className="py-3 px-3.5 font-mono text-xs">
+                    <td className="py-3 px-3.5 font-semibold text-foreground text-sm">{r.shiftDate}</td>
+                    <td className="py-3 px-3.5 font-mono text-sm">
                       {r.clockInAt
                         ? new Intl.DateTimeFormat("en-PK", {
                             timeZone: "Asia/Karachi",
@@ -220,7 +220,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                           }).format(new Date(r.clockInAt))
                         : "—"}
                     </td>
-                    <td className="py-3 px-3.5 font-mono text-xs">
+                    <td className="py-3 px-3.5 font-mono text-sm">
                       {r.clockOutAt
                         ? new Intl.DateTimeFormat("en-PK", {
                             timeZone: "Asia/Karachi",
@@ -230,14 +230,14 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                           }).format(new Date(r.clockOutAt))
                         : "—"}
                     </td>
-                    <td className="py-3 px-3.5 text-xs font-mono font-medium">
+                    <td className="py-3 px-3.5 text-sm font-mono font-medium">
                       {r.workedMinutes != null
                         ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m`
                         : "—"}
                     </td>
                     <td className="py-3 px-3.5">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
                           r.status === "COMPLETED"
                             ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                             : r.status === "OPEN"
@@ -252,17 +252,17 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                     <td className="py-3 px-3.5">
                       <div className="flex flex-wrap gap-1.5">
                         {r.isLate && (
-                          <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                          <span className="rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                             Late
                           </span>
                         )}
                         {r.isEarlyDeparture && (
-                          <span className="rounded-md border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                          <span className="rounded-md border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
                             Early Out
                           </span>
                         )}
                         {r.isMissingCheckout && (
-                          <span className="rounded-md border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                          <span className="rounded-md border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
                             Missing Out
                           </span>
                         )}
@@ -279,7 +279,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                           setSelectedRecord(r);
                           setShowCorrectionModal(true);
                         }}
-                        className="h-7 px-2.5 text-xs font-semibold"
+                        className="h-7 px-2.5 text-sm font-semibold"
                       >
                         Correct
                       </Button>
@@ -294,35 +294,35 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
         /* Corrections table */
         <div className="mt-4 overflow-x-auto rounded-xl border border-border/80">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
               <tr>
-                <th className="py-2.5 px-3.5">Shift Date</th>
-                <th className="py-2.5 px-3.5">Type</th>
-                <th className="py-2.5 px-3.5">Requested Correction</th>
-                <th className="py-2.5 px-3.5">Reason</th>
-                <th className="py-2.5 px-3.5">Status</th>
-                <th className="py-2.5 px-3.5">Review Notes</th>
+                <th className="py-2.5 px-3.5 font-semibold">Shift Date</th>
+                <th className="py-2.5 px-3.5 font-semibold">Type</th>
+                <th className="py-2.5 px-3.5 font-semibold">Requested Correction</th>
+                <th className="py-2.5 px-3.5 font-semibold">Reason</th>
+                <th className="py-2.5 px-3.5 font-semibold">Status</th>
+                <th className="py-2.5 px-3.5 font-semibold">Review Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                  <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                     Loading requests...
                   </td>
                 </tr>
               ) : corrections.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                  <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                     {error ? 'Correction history unavailable. Reload to retry.' : 'No correction requests submitted.'}
                   </td>
                 </tr>
               ) : (
                 corrections.map((c) => (
                   <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-3.5 font-semibold text-foreground text-xs">{c.shiftDate}</td>
-                    <td className="py-3 px-3.5 text-xs font-medium">{c.requestType}</td>
-                    <td className="py-3 px-3.5 text-xs font-mono">
+                    <td className="py-3 px-3.5 font-semibold text-foreground text-sm">{c.shiftDate}</td>
+                    <td className="py-3 px-3.5 text-sm font-medium">{c.requestType}</td>
+                    <td className="py-3 px-3.5 text-sm font-mono">
                       {c.correctedClockIn && (
                         <div>In: {new Date(c.correctedClockIn).toLocaleTimeString([], { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit' })}</div>
                       )}
@@ -331,12 +331,12 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                       )}
                       {!c.correctedClockIn && !c.correctedClockOut && "—"}
                     </td>
-                    <td className="py-3 px-3.5 text-xs max-w-xs truncate" title={c.reason}>
+                    <td className="py-3 px-3.5 text-sm max-w-xs truncate" title={c.reason}>
                       {c.reason}
                     </td>
                     <td className="py-3 px-3.5">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
                           c.status === "APPROVED"
                             ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                             : c.status === "REJECTED"
@@ -347,7 +347,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                         {c.status}
                       </span>
                     </td>
-                    <td className="py-3 px-3.5 text-xs text-muted-foreground">
+                    <td className="py-3 px-3.5 text-sm text-muted-foreground">
                       {c.reviewReason || "Pending review"}
                     </td>
                   </tr>
@@ -370,7 +370,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               variant="outline"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-8 px-3 text-xs font-semibold"
+              className="h-8 px-3 text-sm font-semibold"
             >
               Previous
             </Button>
@@ -379,7 +379,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               variant="outline"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-8 px-3 text-xs font-semibold"
+              className="h-8 px-3 text-sm font-semibold"
             >
               Next
             </Button>

@@ -83,7 +83,7 @@ export default function LoginPage() {
             Welcome to AdRankoHRM
           </p>
 
-          <h1 className="mt-4 text-2xl font-semibold leading-tight">
+          <h1 className="mt-4 text-2xl font-semibold leading-tight sm:text-3xl tracking-tight">
            Manage Your Workday with Ease.
           </h1>
 
@@ -215,7 +215,7 @@ export default function LoginPage() {
 
             {DEMO_LOGIN_ENABLED && (
               <section aria-labelledby="demo-heading" className="mt-6 border-t border-border pt-5">
-                <h3 id="demo-heading" className="text-sm font-semibold">{DEMO_LOGIN_LABEL}</h3>
+                <h3 id="demo-heading" className="text-base font-semibold">{DEMO_LOGIN_LABEL}</h3>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   {['HR', 'Manager', 'Employee'].map(label => {
                     const role = label.toUpperCase();
