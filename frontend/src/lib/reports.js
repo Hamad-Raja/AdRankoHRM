@@ -120,7 +120,7 @@ export function initialReportFilters(month = karachiMonth()) {
   };
 }
 
-export function reportQuery(filters, report, page = 1) {
+export function reportQuery(filters, report, page = 1, pageSize = 20) {
   if (!REPORT_TYPES.includes(report)) {
     throw new Error("Select a valid report.");
   }
@@ -210,7 +210,8 @@ export function reportQuery(filters, report, page = 1) {
   }
 
   query.set("page", String(page));
-  query.set("pageSize", "20");
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error("Invalid report page size.");
+  query.set("pageSize", String(pageSize));
 
   return query.toString();
 }

@@ -1,1247 +1,171 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowRight, Download, RefreshCw, X, CalendarCheck, Clock3, CalendarDays, AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { ArrowLeft, ArrowRight, BarChart3, CalendarCheck, CalendarDays, CheckCircle2, Clock3, Download, Eye, FileText, Filter, History, RefreshCw, Timer, AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge as SharedBadge } from '@/components/ui/badge';
+import Dialog from '@/components/payroll/payroll-dialog';
+import { calendarDate, readable } from '@/components/payroll/payroll-format';
+import { InitialsAvatar } from '@/components/employees/directory-parts';
+import { EmploymentSelect } from '@/components/employees/employment-dialog';
+import { organization } from '@/services/organization.service';
+import { getReport, downloadReport } from '@/services/reports.service';
+import { REPORT_ZONE, STATUS_LABELS, ATTENDANCE_STATUSES, initialReportFilters, monthDates, reportQuery, formatReportTime, formatReportMinutes } from '@/lib/reports';
 
-import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import "@/components/self-service-pages.css";
-import { organization } from "@/services/organization.service";
-import {
-  getReport,
-  downloadReport,
-} from "@/services/reports.service";
-
-import {
-  REPORT_ZONE,
-  STATUS_LABELS,
-  ATTENDANCE_STATUSES,
-  initialReportFilters,
-  monthDates,
-  reportQuery,
-  formatReportTime,
-  formatReportMinutes,
-} from "@/lib/reports";
-
-const SELECT =
-  "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring";
-
-const CELL = "px-4 py-3 align-top text-sm";
-
-const TAB_LABELS = {
-  monthly: "Monthly summary",
-  attendance: "Attendance details",
-  corrections: "Corrections & decisions",
-};
-
-function MetricDecoration({field}) {
-  const Icon=({actualRecords:CalendarCheck,late:Clock3,paidLeaveDays:CalendarDays,unresolvedMissingCheckout:AlertTriangle})[field]||CalendarCheck;
-  return <span className="report-metric-icon" data-attention={['late','unresolvedMissingCheckout'].includes(field)}><Icon aria-hidden="true"/></span>;
+const TABS = { monthly: 'Monthly Summary', attendance: 'Attendance Details', corrections: 'Corrections & Decisions' };
+const CELL = 'px-4 py-3 text-left align-top text-sm';
+const HEAD = 'border-b border-border bg-muted text-sm font-semibold text-muted-foreground';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const METRICS = [['Recorded entries', 'actualRecords', CalendarCheck], ['Late entries', 'late', Clock3], ['No clock-in', 'noClockIn', AlertTriangle], ['Paid leave days', 'paidLeaveDays', CalendarDays], ['Leave conflicts', 'leaveConflicts', AlertTriangle], ['Unresolved checkouts', 'unresolvedMissingCheckout', Clock3], ['Raw elapsed', 'rawWorkedMinutes', Timer, true], ['Approved intervals', 'approvedIntervalMinutes', CheckCircle2, true]];
+const CORRECTION_METRICS = [['Total Requests', 'requests', FileText], ['Pending', 'pending', Clock3], ['Approved', 'approved', CheckCircle2], ['Rejected', 'rejected', AlertTriangle]];
+const date = value => value ? calendarDate(value) : 'Not recorded';
+const stamp = value => value ? formatReportTime(value) : 'Not recorded';
+const label = value => STATUS_LABELS[value] || (value ? readable(value) : 'Not recorded');
+const owner = user => `${user.id}:${user.role}`;
+function queryFor(filters, kind, page = 1, size = 20) {
+  try { return { query: reportQuery(filters, kind, page, size), error: '' }; }
+  catch (error) { return { query: null, error: error.message }; }
 }
-
 function Badge({ value }) {
-  const attention = [
-    "MISSING_CHECKOUT",
-    "NO_CLOCK_IN",
-    "REJECTED",
-  ].includes(value);
-
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${
-        attention
-          ? "border-destructive/30 bg-destructive/10 text-destructive"
-          : "border-border bg-muted text-foreground"
-      }`}
-    >
-      {STATUS_LABELS[value] ||
-        value?.replaceAll("_", " ") ||
-        "—"}
-    </span>
-  );
+  const color = ['APPROVED', 'COMPLETED', 'ACTIVE', 'CORRECTED'].includes(value) ? 'border-primary/25 bg-primary/10 text-primary' : ['LATE', 'PENDING', 'EARLY_DEPARTURE'].includes(value) ? 'border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300' : ['REJECTED', 'MISSING_CHECKOUT', 'NO_CLOCK_IN'].includes(value) ? 'border-destructive/25 bg-destructive/10 text-destructive' : 'border-border bg-muted text-foreground';
+  return <SharedBadge variant="outline" className={`${color} max-w-full whitespace-normal [overflow-wrap:normal]`}>{label(value)}</SharedBadge>;
 }
-
 function Person({ employee }) {
-  return (
-    <div>
-      <p className="font-medium">{employee.fullName}</p>
-      <p className="mt-1 font-mono text-xs text-muted-foreground">
-        {employee.employeeCode}
-      </p>
-    </div>
-  );
+  return <div className="flex min-w-44 items-center gap-3"><InitialsAvatar name={employee.fullName} small /><div className="min-w-0"><p className="break-words font-semibold">{employee.fullName}</p><p className="mt-1 break-all text-xs text-muted-foreground">{employee.employeeCode}</p></div></div>;
 }
-
-function Interval({
-  value,
-  minutes,
-  empty = "No interval recorded",
-}) {
-  if (!value) {
-    return <span className="text-muted-foreground">{empty}</span>;
-  }
-
-  return (
-    <div className="min-w-48 space-y-1 text-xs">
-      <p>In: {formatReportTime(value.clockInAt)}</p>
-      <p>Out: {formatReportTime(value.clockOutAt)}</p>
-
-      {minutes !== undefined && (
-        <p className="font-medium">
-          Elapsed: {formatReportMinutes(minutes)}
-        </p>
-      )}
-    </div>
-  );
+function Interval({ value, minutes, empty = 'No approved interval' }) {
+  if (!value) return <span className="text-muted-foreground">{empty}</span>;
+  return <div className="min-w-44 space-y-1 text-sm"><p>In: {stamp(value.clockInAt)}</p><p>Out: {stamp(value.clockOutAt)}</p>{minutes !== undefined && <p className="font-medium">Duration: {formatReportMinutes(minutes)}</p>}</div>;
 }
-
-function ReportRows({ kind, rows, onEmployee, compact = false }) {
-  if (compact && kind === "attendance") {
-    return <>
-      <thead><tr>{["Employee","Duty start date","Original punches · PKT","Classification","Details"].map(title=><th key={title} scope="col" className={`${CELL} whitespace-nowrap font-semibold`}>{title}</th>)}</tr></thead>
-      <tbody className="divide-y divide-border">{rows.map(row=>{
-        const approved=row.approvedAdjustment||row.approvedException;
-        return <tr key={`${row.employee.id}:${row.shiftDate}`} className="hover:bg-muted/30">
-          <td className={CELL}><Person employee={row.employee}/></td>
-          <td className={`${CELL} whitespace-nowrap`}>{row.shiftDate}</td>
-          <td className={CELL}><Interval value={row.actual} minutes={row.actual?.workedMinutes} empty="No server punch"/></td>
-          <td className={CELL}><Badge value={row.classification}/>{row.paidLeave&&<p className="mt-2 text-xs">1 paid full-day leave; no punches created. {row.leaveConflict?'Calendar/employment conflict requires HR review.':''}</p>}</td>
-          <td className={CELL}><details className="report-row-details"><summary>Evidence<span className="sr-only"> for {row.employee.fullName} on {row.shiftDate}</span></summary><div className="space-y-2">
-            <p>Team: {row.organization?.team?.name||'—'}</p><p className="font-medium">Approved interval · PKT</p><Interval value={approved} minutes={approved?.minutes} empty="No approved interval"/>
-            {row.approvedException&&<p>Approved exception; no server punch</p>}
-            {row.actual?.rawMissingCheckout&&!row.unresolvedMissingCheckout&&<p>Original exit is missing; an approved adjustment resolves the exception.</p>}
-            <div className="flex flex-wrap gap-1">{row.actual?.isLate&&<Badge value="LATE"/>}{row.actual?.isEarlyDeparture&&<Badge value="EARLY_DEPARTURE"/>}{row.actual?.isAfterScheduleEnd&&<Badge value="AFTER_SCHEDULE_END"/>}{row.actual&&!row.actual.isLate&&<span>Entry within grace</span>}{!row.actual&&'No original flags'}</div>
-            <p>Original elapsed and approved intervals remain separate; neither is payable time.</p>
-          </div></details></td>
-        </tr>;
-      })}</tbody>
-    </>;
-  }
-  if (compact && kind === "monthly") {
-    return <>
-      <thead><tr>{["Employee", "Scheduled duties", "Clock-ins", "Late", "Paid leave days", "Details"].map(title=><th key={title} scope="col" className={`${CELL} whitespace-nowrap font-semibold`}>{title}</th>)}</tr></thead>
-      <tbody className="divide-y divide-border">{rows.map(row=><tr key={row.employee.id} className="hover:bg-muted/30">
-        <td className={CELL}><Person employee={row.employee}/></td>
-        {["eligibleDuties","actualRecords","late","paidLeaveDays"].map(field=><td key={field} className={CELL}>{row.metrics[field]}</td>)}
-        <td className={CELL}><div className="space-y-3"><Button type="button" variant="outline" size="sm" onClick={()=>onEmployee(row.employee)}>View duties<ArrowRight className="ml-1 size-3" aria-hidden="true"/></Button>
-          <details className="report-row-details"><summary>Additional Details<span className="sr-only"> for {row.employee.fullName}</span></summary><dl>
-            <div><dt>No clock-in</dt><dd>{row.metrics.noClockIn}</dd></div>
-            <div><dt>Unresolved checkout</dt><dd>{row.metrics.unresolvedMissingCheckout}</dd></div>
-            <div><dt>Raw elapsed</dt><dd>{formatReportMinutes(row.metrics.rawWorkedMinutes)}</dd></div>
-            <div><dt>Approved intervals</dt><dd>{formatReportMinutes(row.metrics.approvedIntervalMinutes)}</dd></div>
-          </dl>{row.metrics.rawDurationUnknown>0&&<p>{row.metrics.rawDurationUnknown} raw durations unavailable</p>}<p>Approved intervals are separate from raw elapsed. Neither is payable time.</p></details>
-        </div></td>
-      </tr>)}</tbody>
-    </>;
-  }
-  if (kind === "monthly") {
-    const headings = [
-      "Employee",
-      "Scheduled duties",
-      "Clock-ins",
-      "Late",
-      "No clock-in",
-      "Paid leave days",
-      "Unresolved checkout",
-      "Raw elapsed",
-      "Approved intervals",
-      "Details",
-    ];
-
-    return (
-      <>
-        <thead>
-          <tr>
-            {headings.map((title) => (
-              <th
-                key={title}
-                scope="col"
-                className={`${CELL} whitespace-nowrap font-semibold`}
-              >
-                {title}
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody className="divide-y divide-border">
-          {rows.map((row) => (
-            <tr
-              key={row.employee.id}
-              className="hover:bg-muted/30"
-            >
-              <td className={CELL}>
-                <Person employee={row.employee} />
-              </td>
-
-              {[
-                "eligibleDuties",
-                "actualRecords",
-                "late",
-                "noClockIn",
-                "paidLeaveDays",
-                "unresolvedMissingCheckout",
-              ].map((field) => (
-                <td key={field} className={CELL}>
-                  {row.metrics[field]}
-                </td>
-              ))}
-
-              <td className={CELL}>
-                <p>
-                  {formatReportMinutes(
-                    row.metrics.rawWorkedMinutes
-                  )}
-                </p>
-
-                {row.metrics.rawDurationUnknown > 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {row.metrics.rawDurationUnknown} raw durations
-                    unavailable
-                  </p>
-                )}
-              </td>
-
-              <td className={CELL}>
-                <p>
-                  {formatReportMinutes(
-                    row.metrics.approvedIntervalMinutes
-                  )}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Separate from raw elapsed
-                </p>
-              </td>
-
-              <td className={CELL}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEmployee(row.employee)}
-                >
-                  View duties
-                  <ArrowRight
-                    className="ml-1 size-3"
-                    aria-hidden="true"
-                  />
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </>
-    );
-  }
-
-  if (kind === "attendance") {
-    const headings = [
-      "Employee",
-      "Duty start date",
-      "Team",
-      "Original punches · PKT",
-      "Approved interval · PKT",
-      "Classification",
-      "Original flags",
-    ];
-
-    return (
-      <>
-        <thead>
-          <tr>
-            {headings.map((title) => (
-              <th
-                key={title}
-                scope="col"
-                className={`${CELL} whitespace-nowrap font-semibold`}
-              >
-                {title}
-              </th>
-            ))}
-          </tr>
-        </thead>
-
-        <tbody className="divide-y divide-border">
-          {rows.map((row) => {
-            const approved =
-              row.approvedAdjustment || row.approvedException;
-
-            return (
-              <tr
-                key={`${row.employee.id}:${row.shiftDate}`}
-                className="hover:bg-muted/30"
-              >
-                <td className={CELL}>
-                  <Person employee={row.employee} />
-                </td>
-
-                <td
-                  className={`${CELL} whitespace-nowrap font-mono text-sm`}
-                >
-                  {row.shiftDate}
-                </td>
-
-                <td className={CELL}>
-                  {row.organization?.team?.name || "—"}
-                </td>
-
-                <td className={CELL}>
-                  <Interval
-                    value={row.actual}
-                    minutes={row.actual?.workedMinutes}
-                    empty="No server punch"
-                  />
-                </td>
-
-                <td className={CELL}>
-                  <Interval
-                    value={approved}
-                    minutes={approved?.minutes}
-                    empty="No approved interval"
-                  />
-
-                  {row.approvedException && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Approved exception; no server punch
-                    </p>
-                  )}
-                </td>
-
-                <td className={CELL}>
-                  <Badge value={row.classification} />
-                  {row.paidLeave&&<p className="mt-2 text-xs">1 paid full-day leave; no punches created. {row.leaveConflict?'Calendar/employment conflict requires HR review.':''}</p>}
-
-                  {row.actual?.rawMissingCheckout &&
-                    !row.unresolvedMissingCheckout && (
-                      <p className="mt-2 max-w-48 text-xs text-muted-foreground">
-                        Original exit is missing; an approved
-                        adjustment resolves the exception.
-                      </p>
-                    )}
-                </td>
-
-                <td className={CELL}>
-                  <div className="flex min-w-28 flex-wrap gap-1">
-                    {row.actual?.isLate && (
-                      <Badge value="LATE" />
-                    )}
-
-                    {row.actual?.isEarlyDeparture && (
-                      <Badge value="EARLY_DEPARTURE" />
-                    )}
-
-                    {row.actual?.isAfterScheduleEnd && (
-                      <Badge value="AFTER_SCHEDULE_END" />
-                    )}
-
-                    {row.actual && !row.actual.isLate && (
-                      <span className="text-xs text-muted-foreground">
-                        Entry within grace
-                      </span>
-                    )}
-
-                    {!row.actual && "—"}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </>
-    );
-  }
-
-  const headings = [
-    "Employee",
-    "Duty / request",
-    "Original snapshot · PKT",
-    "Proposed times · PKT",
-    "Decision",
-    "Approved interval · PKT",
-    "Reason and review",
-  ];
-
-  return (
-    <>
-      <thead>
-        <tr>
-          {headings.map((title) => (
-            <th
-              key={title}
-              scope="col"
-              className={`${CELL} whitespace-nowrap font-semibold`}
-            >
-              {title}
-            </th>
-          ))}
-        </tr>
-      </thead>
-
-      <tbody className="divide-y divide-border">
-        {rows.map((row) => (
-          <tr key={row.id} className="hover:bg-muted/30">
-            <td className={CELL}>
-              <Person employee={row.employee} />
-            </td>
-
-            <td className={CELL}>
-              <p className="whitespace-nowrap font-mono text-xs">
-                {row.shiftDate}
-              </p>
-              <p className="mt-1 text-xs">
-                {row.requestType?.replaceAll("_", " ")}
-              </p>
-            </td>
-
-            <td className={CELL}>
-              <Interval
-                value={row.original}
-                empty="No original server snapshot"
-              />
-            </td>
-
-            <td className={CELL}>
-              <Interval
-                value={{
-                  clockInAt: row.proposedClockInAt,
-                  clockOutAt: row.proposedClockOutAt,
-                }}
-              />
-            </td>
-
-            <td className={CELL}>
-              <Badge value={row.status} />
-              <p className="mt-2 whitespace-nowrap text-xs text-muted-foreground">
-                {formatReportTime(row.reviewedAt)}
-              </p>
-            </td>
-
-            <td className={CELL}>
-              <Interval
-                value={row.approvedInterpretation}
-                minutes={row.approvedInterpretation?.minutes}
-                empty="No approved interpretation"
-              />
-            </td>
-
-            <td className={`${CELL} min-w-64 max-w-sm`}>
-              <p className="whitespace-pre-wrap break-words">
-                {row.reason}
-              </p>
-
-              {row.reviewReason && (
-                <p className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
-                  Review: {row.reviewReason}
-                  {row.reviewer ? ` · ${row.reviewer}` : ""}
-                </p>
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </>
-  );
+function SectionTitle({ icon: Icon, children }) { return <h2 className="flex items-center gap-3 text-lg font-semibold">{Icon && <Icon aria-hidden="true" className="size-5 shrink-0 text-primary" />}{children}</h2>; }
+function FieldValue({ title, children }) { return <div className="min-w-0 space-y-1"><dt className="text-sm text-muted-foreground">{title}</dt><dd className="break-words text-sm font-semibold">{children ?? 'Not recorded'}</dd></div>; }
+function Panel({ title, icon, children }) { return <section className="min-w-0 space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5"><SectionTitle icon={icon}>{title}</SectionTitle>{children}</section>; }
+function Metrics({ totals, fields = METRICS }) {
+  return <div className={`grid grid-cols-2 gap-3 ${fields.length > 4 ? 'lg:grid-cols-4 xl:grid-cols-8' : 'lg:grid-cols-4'}`}>{fields.map(([title, field, Icon, minutes]) => <div key={field} className="grid min-w-0 grid-rows-[auto_1fr_auto] gap-2 rounded-xl border border-border bg-card p-3"><span className="inline-flex w-fit rounded-xl bg-primary/10 p-2.5 text-primary"><Icon aria-hidden="true" className="size-5" /></span><p className="text-sm text-muted-foreground">{title}</p><p className="break-words text-2xl font-semibold tabular-nums">{totals ? minutes ? formatReportMinutes(totals[field]) : totals[field] ?? 'Unavailable' : 'Unavailable'}</p></div>)}</div>;
 }
-
-function ReportView({
-  kind,
-  seed,
-  user,
-  refreshSession,
-  onEmployee,
-}) {
-  const management = ["ADMIN", "HR"].includes(user.role);
-  const compact = ["MANAGER", "EMPLOYEE"].includes(user.role);
-  const ResultsFrame=compact?"section":Fragment;
-
-  const [applied, setApplied] = useState(
-    () => seed || initialReportFilters()
-  );
-  const [draft, setDraft] = useState(() => ({ ...applied }));
-  const [page, setPage] = useState(1);
-  const [revision, setRevision] = useState(0);
-  const [result, setResult] = useState(null);
-  const [formError, setFormError] = useState("");
-  const [unitsResult, setUnitsResult] = useState(null);
-  const [exporting, setExporting] = useState("");
-  const [downloadMessage, setDownloadMessage] = useState("");
-
-  const downloadRequest = useRef(null);
-
-  const query = reportQuery(applied, kind, page);
-  const requestKey = `${query}|${revision}`;
-  const current = result?.key === requestKey ? result : null;
-  const data = current?.data || null;
-  const loading = !current;
-  const dirty = JSON.stringify(draft) !== JSON.stringify(applied);
-  const units = unitsResult?.units || [];
-
-  const expectedAccess = management
-    ? "ORGANIZATION"
-    : user.role === "EMPLOYEE" || kind === "corrections"
-      ? "OWN"
-      : "DATED_TEAM_AND_OWN";
-
+function SelectField({ title, name, value, options, placeholder, onChange, disabled = false }) {
+  return <label className="min-w-0 space-y-1.5 text-sm font-medium">{title}<EmploymentSelect className="!h-9" aria-label={name || title} value={value} options={options} placeholder={placeholder} disabled={disabled} onChange={event => onChange(event.target.value)} /></label>;
+}
+function Pagination({ data, page, size, onPage, onSize, busy }) {
+  if (!data) return null;
+  return <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 text-sm"><p className="text-muted-foreground">Showing {data.rows.length ? (data.page - 1) * data.pageSize + 1 : 0}-{Math.min(data.page * data.pageSize, data.total)} of {data.total} records</p><div className="flex flex-wrap items-end gap-3"><SelectField title="Rows per page" value={String(size)} placeholder={null} options={[5, 10, 20, 50].map(n => [String(n), String(n)])} onChange={value => onSize(Number(value))} disabled={busy} /><Button variant="outline" disabled={busy || page <= 1} onClick={() => onPage(page - 1)}>Previous</Button><span className="py-2">Page {data.page} of {Math.max(1, data.totalPages)}</span><Button variant="outline" disabled={busy || page >= data.totalPages} onClick={() => onPage(page + 1)}>Next</Button></div></footer>;
+}
+function useReport(kind, query, onPageCorrection) {
+  const { user, refreshSession } = useAuth(), [revision, setRevision] = useState(0), [result, setResult] = useState(null);
+  const expected = ['ADMIN', 'HR'].includes(user.role) ? 'ORGANIZATION' : user.role === 'EMPLOYEE' || kind === 'corrections' ? 'OWN' : 'DATED_TEAM_AND_OWN';
+  const key = `${kind}:${query}:${revision}:${owner(user)}`;
   useEffect(() => {
+    if (query === null) return;
     const controller = new AbortController();
-
-    getReport(kind, query, {
-      signal: controller.signal,
-    })
-      .then((value) => {
-        if (controller.signal.aborted) return;
-
-        if (value.meta.access !== expectedAccess) {
-          setResult({
-            key: requestKey,
-            data: null,
-            error:
-              "Your report access changed. Refreshing your session…",
-          });
-          void refreshSession();
-          return;
-        }
-
-        if (
-          value.totalPages > 0 &&
-          value.page > value.totalPages
-        ) {
-          setPage(value.totalPages);
-          return;
-        }
-
-        setResult({
-          key: requestKey,
-          data: value,
-          error: "",
-        });
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return;
-
-        setResult({
-          key: requestKey,
-          data: null,
-          error: error.message || "Unable to load reports.",
-        });
-
-        if (
-          error.status === 401 ||
-          ["PASSWORD_CHANGE_REQUIRED", "FORBIDDEN"].includes(
-            error.code
-          )
-        ) {
-          void refreshSession();
-        }
-      });
-
-    return () => controller.abort();
-  }, [
-    kind,
-    query,
-    requestKey,
-    expectedAccess,
-    refreshSession,
-  ]);
-
-  useEffect(() => {
-    if (!management) return;
-
-    const controller = new AbortController();
-
-    organization({ signal: controller.signal })
-      .then((value) => {
-        if (!controller.signal.aborted) {
-          setUnitsResult({
-            units: Array.isArray(value.units) ? value.units : [],
-            error: "",
-          });
-        }
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return;
-
-        setUnitsResult({
-          units: [],
-          error:
-            error.message || "Organization filters are unavailable.",
-        });
-
-        if (
-          error.status === 401 ||
-          ["PASSWORD_CHANGE_REQUIRED", "FORBIDDEN"].includes(
-            error.code
-          )
-        ) {
-          void refreshSession();
-        }
-      });
-
-    return () => controller.abort();
-  }, [management, refreshSession]);
-
-  useEffect(
-    () => () => {
-      const controller = downloadRequest.current;
-      downloadRequest.current = null;
-      controller?.abort();
-    },
-    []
-  );
-
-  function change(field, value) {
-    setDraft((previous) => {
-      const next = { ...previous, [field]: value };
-
-      if (["departmentId", "campaignId"].includes(field)) {
-        next.teamId = "";
-      }
-
-      if (field === "month") {
-        try {
-          Object.assign(next, monthDates(value));
-        } catch {
-          // Validate the completed value on Apply.
-        }
-      }
-
-      return next;
-    });
-
-    setFormError("");
-  }
-
-  function apply(event) {
-    event.preventDefault();
-
-    try {
-      reportQuery(draft, kind);
-
-      const normalized = {
-        ...draft,
-        search: draft.search.trim(),
-      };
-
-      setDraft(normalized);
-      setApplied(normalized);
-      setPage(1);
-      setRevision((value) => value + 1);
-      setFormError("");
-      setDownloadMessage("");
-    } catch (error) {
-      setFormError(error.message);
-    }
-  }
-
-  function reset() {
-    const value = initialReportFilters();
-
-    setDraft(value);
-    setApplied(value);
-    setPage(1);
-    setRevision((number) => number + 1);
-    setFormError("");
-    setDownloadMessage("");
-  }
-
-  async function exportFile(format) {
-    if (!data || dirty || downloadRequest.current) return;
-
-    const controller = new AbortController();
-    downloadRequest.current = controller;
-
-    setExporting(format);
-    setDownloadMessage("");
-
-    try {
-      const file = await downloadReport(
-        kind,
-        query,
-        data.meta,
-        format,
-        { signal: controller.signal }
-      );
-
-      if (
-        controller.signal.aborted ||
-        downloadRequest.current !== controller
-      ) {
-        return;
-      }
-
-      const url = URL.createObjectURL(file.blob);
-      const anchor = document.createElement("a");
-
-      anchor.href = url;
-      anchor.download = file.filename;
-      document.body.appendChild(anchor);
-
-      try {
-        anchor.click();
-      } finally {
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-      }
-
-      setDownloadMessage(
-        `${format.toUpperCase()} download requested.`
-      );
-    } catch (error) {
+    getReport(kind, query, { signal: controller.signal }).then(data => {
       if (controller.signal.aborted) return;
-
-      setDownloadMessage(
-        error.message || "Download failed. Try again."
-      );
-
-      if (
-        error.status === 401 ||
-        ["PASSWORD_CHANGE_REQUIRED", "FORBIDDEN"].includes(
-          error.code
-        )
-      ) {
-        void refreshSession();
-      }
-    } finally {
-      if (downloadRequest.current === controller) {
-        downloadRequest.current = null;
-        setExporting("");
-      }
-    }
-  }
-
-  const statuses =
-    kind === "corrections"
-      ? ["PENDING", "APPROVED", "REJECTED"]
-      : ATTENDANCE_STATUSES;
-
-  const cards =
-    kind === "corrections"
-      ? [
-          ["Requests", "requests"],
-          ["Pending", "pending"],
-          ["Approved", "approved"],
-          ["Rejected", "rejected"],
-        ]
-      : [
-          ["Recorded entries", "actualRecords"],
-          ["Late entries", "late"],
-          ["No clock-in", "noClockIn"],
-          ["Paid leave days", "paidLeaveDays"],
-          ["Leave conflicts", "leaveConflicts"],
-          ["Unresolved checkouts", "unresolvedMissingCheckout"],
-          ["Raw elapsed", "rawWorkedMinutes", true],
-          ["Approved intervals", "approvedIntervalMinutes", true],
-        ];
-
-  const exportControls = (
-        <div className="report-export-controls flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading || dirty || Boolean(exporting)}
-            onClick={() => setRevision((value) => value + 1)}
-          >
-            <RefreshCw
-              className={`mr-2 size-4 ${
-                loading ? "animate-spin" : ""
-              }`}
-              aria-hidden="true"
-            />
-            Refresh
-          </Button>
-
-          {["csv", "xlsx"].map((format) => (
-            <Button
-              key={format}
-              type="button"
-              variant="outline"
-              disabled={
-                !data || loading || dirty || Boolean(exporting)
-              }
-              onClick={() => exportFile(format)}
-            >
-              <Download
-                className="mr-2 size-4"
-                aria-hidden="true"
-              />
-              {exporting === format
-                ? "Preparing…"
-                : format.toUpperCase()}
-            </Button>
-          ))}
-        </div>
-  );
-
-  return (
-    <div className={compact?"report-data-view":"space-y-5"}>
-      <form
-        onSubmit={apply}
-        className="report-filters space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5"
-      >
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kind !== "monthly" && (
-            <label className="space-y-1 text-sm font-medium">
-              Period
-              <select
-                aria-label="Report period type"
-                className={SELECT}
-                value={draft.periodMode}
-                onChange={(event) =>
-                  change("periodMode", event.target.value)
-                }
-              >
-                <option value="month">Month</option>
-                <option value="range">Date range</option>
-              </select>
-            </label>
-          )}
-
-          {kind === "monthly" || draft.periodMode === "month" ? (
-            <label className="space-y-1 text-sm font-medium">
-              Month
-              <Input
-                aria-label="Report month"
-                type="month"
-                min="0001-01"
-                value={draft.month}
-                required
-                onChange={(event) =>
-                  change("month", event.target.value)
-                }
-              />
-            </label>
-          ) : (
-            <>
-              <label className="space-y-1 text-sm font-medium">
-                From duty date
-                <Input
-                  type="date"
-                  aria-label="From duty date"
-                  value={draft.dateFrom}
-                  required
-                  onChange={(event) =>
-                    change("dateFrom", event.target.value)
-                  }
-                />
-              </label>
-
-              <label className="space-y-1 text-sm font-medium">
-                To duty date
-                <Input
-                  type="date"
-                  aria-label="To duty date"
-                  value={draft.dateTo}
-                  required
-                  onChange={(event) =>
-                    change("dateTo", event.target.value)
-                  }
-                />
-              </label>
-            </>
-          )}
-
-          <label className="space-y-1 text-sm font-medium">
-            Employee search
-            <Input
-              aria-label="Report employee search"
-              placeholder="Name or employee code"
-              maxLength={120}
-              value={draft.search}
-              onChange={(event) =>
-                change("search", event.target.value)
-              }
-            />
-          </label>
-
-          {kind !== "monthly" && (
-            <label className="space-y-1 text-sm font-medium">
-              Status
-              <select
-                aria-label="Report status"
-                className={SELECT}
-                value={draft.status}
-                onChange={(event) =>
-                  change("status", event.target.value)
-                }
-              >
-                <option value="">All statuses</option>
-
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          {management &&
-            [
-              ["DEPARTMENT", "departmentId", "Department"],
-              ["CAMPAIGN", "campaignId", "Campaign"],
-              ["TEAM", "teamId", "Team"],
-            ].map(([unitKind, field, label]) => (
-              <label
-                key={field}
-                className="space-y-1 text-sm font-medium"
-              >
-                {label}
-                <select
-                  aria-label={`Report ${label.toLowerCase()}`}
-                  className={SELECT}
-                  value={draft[field]}
-                  disabled={
-                    !unitsResult || Boolean(unitsResult.error)
-                  }
-                  onChange={(event) =>
-                    change(field, event.target.value)
-                  }
-                >
-                  <option value="">
-                    All {label.toLowerCase()}s
-                  </option>
-
-                  {units
-                    .filter(
-                      (unit) =>
-                        unit.kind === unitKind &&
-                        (unitKind !== "TEAM" ||
-                          ((!draft.departmentId ||
-                            unit.departmentId ===
-                              draft.departmentId) &&
-                            (!draft.campaignId ||
-                              unit.campaignId ===
-                                draft.campaignId)))
-                    )
-                    .map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.name}
-                        {unit.archivedAt ? " (archived)" : ""}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            ))}
-        </div>
-
-        {draft.employeeId && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted p-2 text-sm">
-            <span>
-              Selected employee: {draft.employeeLabel}
-            </span>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                setDraft((value) => ({
-                  ...value,
-                  employeeId: "",
-                  employeeLabel: "",
-                }))
-              }
-            >
-              <X className="mr-1 size-3" aria-hidden="true" />
-              Clear employee
-            </Button>
-          </div>
-        )}
-
-        {formError && (
-          <p role="alert" className="text-sm text-destructive">
-            {formError}
-          </p>
-        )}
-
-        {unitsResult?.error && (
-          <p role="alert" className="text-sm text-destructive">
-            Organization filters: {unitsResult.error}
-          </p>
-        )}
-
-        <div className="report-filter-actions flex flex-wrap items-center gap-2">
-          <Button
-            type="submit"
-            disabled={Boolean(exporting)}
-          >
-            Apply filters
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            disabled={Boolean(exporting)}
-            onClick={reset}
-          >
-            Reset
-          </Button>
-
-          {dirty && (
-            <span className="text-xs text-muted-foreground">
-              Apply your changes to update results and exports.
-            </span>
-          )}
-        </div>
-        {compact&&exportControls}
-      </form>
-
-      <div className="report-toolbar flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-muted-foreground">
-          {data ? (
-            <>
-              {!compact&&<span>
-                {data.total}{" "}
-                {kind === "monthly"
-                  ? "employee summaries"
-                  : "matching rows"}
-              </span>}
-              <p className="mt-1 text-xs">
-                {data.meta.period.dateFrom} →{" "}
-                {data.meta.period.dateTo} · As of{" "}
-                {formatReportTime(data.meta.generatedAt)} PKT
-              </p>
-            </>
-          ) : loading ? (
-            "Loading report…"
-          ) : (
-            "Report unavailable"
-          )}
-        </div>
-
-        {!compact&&exportControls}
-      </div>
-
-      {!compact && <p className="text-xs text-muted-foreground">
-        Exports use the applied filters and re-read the latest
-        authorized data. CSV protects codes with a leading
-        apostrophe; XLSX preserves their original text.
-      </p>}
-
-      {downloadMessage && (
-        <p
-          role="status"
-          className="rounded-lg border border-border bg-card p-3 text-sm"
-        >
-          {downloadMessage}
-        </p>
-      )}
-
-      {current?.error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
-        >
-          {current.error}
-        </div>
-      )}
-
-      {data &&
-        data.meta.currentPolicyState !==
-          "EFFECTIVE_POLICY_PRESENT" && (
-          <p className="rounded-xl border border-border bg-muted p-4 text-sm">
-            {data.meta.currentPolicyState === "FUTURE_POLICY_ONLY"
-              ? "Only a future attendance policy is activated. Earlier dates remain setup-required."
-              : "There is no activated attendance policy. Eligible dates remain setup-required until an approved start is activated."}
-          </p>
-        )}
-
-      <div className={compact?"report-key-metrics":"grid gap-3 sm:grid-cols-2 xl:grid-cols-3"}>
-        {cards.filter(([,field])=>!compact||kind==='corrections'||['actualRecords','late','paidLeaveDays','unresolvedMissingCheckout'].includes(field)).map(([label, field, minutes]) => (
-          <div
-            key={field}
-            className="rounded-xl border border-border bg-card p-4"
-          >
-            {compact&&<MetricDecoration field={field}/>}
-            <p className="text-xs text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">
-              {data
-                ? minutes
-                  ? formatReportMinutes(data.totals[field])
-                  : (data.totals[field] ?? "—")
-                : "—"}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {data?.totals.rawDurationUnknown > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {data.totals.rawDurationUnknown} original records have
-          unavailable raw durations. They are excluded from the
-          raw elapsed sum.
-        </p>
-      )}
-
-      <ResultsFrame {...(compact?{className:"report-results-card"}:{})}>
-      {compact&&<div className="self-service-card-heading"><h2>{kind==='monthly'?'Employee summary':kind==='attendance'?'Attendance details':'Corrections & decisions'}</h2>{data&&<span>{data.total} {kind==='monthly'?(data.total===1?'employee':'employees'):(data.total===1?'record':'records')}</span>}</div>}
-      <div
-        role="region"
-        aria-label="Report results"
-        tabIndex={0}
-        aria-busy={loading}
-        className="max-w-full overflow-x-auto rounded-xl border border-border bg-card focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        {loading ? (
-          <p
-            role="status"
-            className="p-8 text-center text-sm text-muted-foreground"
-          >
-            Loading report…
-          </p>
-        ) : !data ? (
-          <p className="p-8 text-center text-sm text-muted-foreground">
-            Refresh the report to try again.
-          </p>
-        ) : !data.rows.length ? (
-          <p className="p-8 text-center text-sm text-muted-foreground">
-            No results for the applied filters.
-          </p>
-        ) : (
-          <table className="w-full text-left">
-            <caption className="sr-only">
-              {TAB_LABELS[kind]} in {REPORT_ZONE}
-            </caption>
-            <ReportRows
-              kind={kind}
-              compact={compact}
-              rows={data.rows}
-              onEmployee={(employee) =>
-                onEmployee(employee, applied)
-              }
-            />
-          </table>
-        )}
-      </div>
-
-      {data && data.total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <span>
-            Page {data.page} of {data.totalPages} · 20 rows per page
-          </span>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                loading || page <= 1 || Boolean(exporting)
-              }
-              onClick={() => setPage((value) => value - 1)}
-            >
-              Previous
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                loading ||
-                page >= data.totalPages ||
-                Boolean(exporting)
-              }
-              onClick={() => setPage((value) => value + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-
-      </ResultsFrame>
-
-      {compact && <details className="self-service-guide"><summary>Additional Details</summary><div>
-        {kind!=='corrections'&&<dl className="report-extra-metrics">{cards.filter(([,field])=>!['actualRecords','late','paidLeaveDays','unresolvedMissingCheckout'].includes(field)).map(([label,field,minutes])=><div key={field}><dt>{label}</dt><dd>{data?(minutes?formatReportMinutes(data.totals[field]):(data.totals[field]??'—')):'—'}</dd></div>)}</dl>}
-        <p>Duty dates use the evening start date: Friday 19:00–Saturday 05:00 belongs to Friday. Late and departure flags can overlap.</p>
-        <p>Raw elapsed comes from original punches. Approved intervals come from approved decisions and remain separate. Neither is payable time or a salary calculation.</p>
-        <p>Exports use the applied filters and re-read the latest authorized data. CSV protects codes with a leading apostrophe; XLSX preserves their original text. Exports retain the full report evidence.</p>
-      </div></details>}
-      <p className="text-xs leading-5 text-muted-foreground">
-        {compact ? 'Recorded time and approved intervals are separate; neither is payable time or a payroll calculation.' : <>
-        Duty dates use the evening start date: Friday
-        19:00–Saturday 05:00 belongs to Friday. Late and departure
-        flags can overlap. Original punches and approved
-        intervals remain separate; neither is a payable-time or
-        salary calculation.
-        </>}
-      </p>
-    </div>
-  );
-}
-
-function ReportsWorkspace({ user, refreshSession }) {
-  const [view, setView] = useState({
-    kind: "monthly",
-    seed: null,
-  });
-
-  function employeeDetails(employee, filters) {
-    setView({
-      kind: "attendance",
-      seed: {
-        ...filters,
-        status: "",
-        employeeId: employee.id,
-        employeeLabel: `${employee.fullName} (${employee.employeeCode})`,
-      },
+      if (data.meta.access !== expected) { setResult({ key, error: 'Report access changed. Refresh your session.', data: null }); void refreshSession(); return; }
+      if (onPageCorrection && data.page > Math.max(1, data.totalPages)) { onPageCorrection(Math.max(1, data.totalPages)); return; }
+      setResult({ key, data, error: '' });
+    }).catch(error => {
+      if (controller.signal.aborted) return;
+      setResult({ key, data: null, error: error.message, forbidden: error.status === 403 });
+      if (error.status === 401 || error.code === 'PASSWORD_CHANGE_REQUIRED') void refreshSession();
     });
+    return () => controller.abort();
+  }, [kind, query, key, expected, refreshSession, onPageCorrection]);
+  const current = result?.key === key ? result : null;
+  return { data: current?.data, error: current?.error, forbidden: current?.forbidden, loading: query !== null && !current, reload: () => setRevision(n => n + 1) };
+}
+function Exports({ kind, query, data, dirty, reload, loading }) {
+  const [busy, setBusy] = useState(''), [message, setMessage] = useState(''), request = useRef(null);
+  useEffect(() => () => request.current?.abort(), [kind, query]);
+  async function save(format) {
+    if (!data || dirty || request.current) return;
+    const controller = new AbortController(); request.current = controller; setBusy(format); setMessage('');
+    try {
+      const file = await downloadReport(kind, query, data.meta, format, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      const url = URL.createObjectURL(file.blob), anchor = document.createElement('a');
+      anchor.href = url; anchor.download = file.filename; document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000); setMessage(`${format.toUpperCase()} download requested.`);
+    } catch (error) { if (!controller.signal.aborted) setMessage(error.message); }
+    finally { if (request.current === controller) { request.current = null; setBusy(''); } }
   }
-
-  return (
-    <div className={["MANAGER","EMPLOYEE"].includes(user.role)?"self-service-page reports-workspace min-w-0 space-y-5":"min-w-0 space-y-6"}>
-      <header className={["MANAGER","EMPLOYEE"].includes(user.role)?"self-service-page-header reports-page-header":undefined}>
-        <div><h1 className="text-2xl font-semibold tracking-tight sm:text-3xl leading-tight">
-          Reports
-        </h1>
-
-        <p className="mt-2 text-sm text-muted-foreground">
-          {["MANAGER","EMPLOYEE"].includes(user.role)?'Attendance summaries and records.':<>Monthly attendance, original evidence and approved
-          decisions · {REPORT_ZONE}</>}
-        </p>
-
-        </div>
-        {["MANAGER","EMPLOYEE"].includes(user.role)?<details className="self-service-guide quiet-disclosure"><summary>Report guide</summary><div><p>{user.role==='MANAGER'?'Your historical team scope and own attendance. Correction decisions are own-only.':'Your own employee reports.'}</p><p>Duty dates and report times use {REPORT_ZONE}. Original punches, approved intervals and payable time are distinct. Full evidence remains available in each record and export.</p></div></details>:<p className="mt-1 text-xs text-muted-foreground">Organization reports</p>}
-      </header>
-
-      <div
-        role="group"
-        aria-label="Report type"
-        className="app-tabs"
-      >
-        {Object.entries(TAB_LABELS).map(([kind, label]) => (
-          <Button
-            key={kind}
-            type="button"
-            variant={view.kind === kind ? "default" : "outline"}
-            aria-pressed={view.kind === kind}
-            onClick={() => setView({ kind, seed: null })}
-          >
-            {label}
-          </Button>
-        ))}
-      </div>
-
-      <ReportView
-        key={`${view.kind}:${view.seed?.employeeId || "all"}`}
-        kind={view.kind}
-        seed={view.seed}
-        user={user}
-        refreshSession={refreshSession}
-        onEmployee={employeeDetails}
-      />
-    </div>
-  );
+  return <div className="min-w-0"><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={loading || dirty || !!busy} onClick={reload}><RefreshCw aria-hidden="true" />Refresh</Button>{['csv', 'xlsx'].map(format => <Button key={format} variant="outline" disabled={!data || loading || dirty || !!busy} onClick={() => save(format)}><Download aria-hidden="true" />{busy === format ? 'Preparing...' : format.toUpperCase()}</Button>)}</div>{message && <p role="status" className="mt-2 break-words text-sm text-muted-foreground">{message}</p>}</div>;
+}
+function Feedback({ loading, error, empty, children }) {
+  if (loading) return <p role="status" className="p-8 text-center text-sm text-muted-foreground">Loading report...</p>;
+  if (error) return <p role="alert" className="break-words p-5 text-sm text-destructive">{error}</p>;
+  if (empty) return <div className="space-y-2 p-8 text-center text-sm text-muted-foreground">{children || 'No results for the applied filters.'}</div>;
+  return null;
+}
+function Flags({ row }) {
+  return <div className="flex min-w-32 flex-wrap gap-1">{row.actual?.isLate && <Badge value="LATE" />}{row.actual?.isEarlyDeparture && <Badge value="EARLY_DEPARTURE" />}{row.actual?.isAfterScheduleEnd && <Badge value="AFTER_SCHEDULE_END" />}{row.actual && !row.actual.isLate && <span>Entry within grace</span>}{!row.actual && <span className="text-muted-foreground">No original flags</span>}</div>;
+}
+function ReportTable({ kind, rows, onEmployee, onCorrection }) {
+  const headings = kind === 'monthly' ? ['Employee', 'Scheduled duties', 'Clock-ins', 'Late', 'No clock-in', 'Paid leave days', 'Unresolved checkout', 'Raw elapsed', 'Approved intervals', 'Action'] : kind === 'attendance' ? ['Employee', 'Duty start date', 'Team', 'Original punches - PKT', 'Approved interval - PKT', 'Classification', 'Original flags'] : ['Employee', 'Duty date', 'Original record', 'Requested correction', 'Reason', 'Requested by', 'Decision', 'Decided by', 'Decision date', 'Action'];
+  return <table className="w-full text-left"><caption className="sr-only">Attendance report in Asia/Karachi duty-start dates</caption><thead className={HEAD}><tr>{headings.map(title => <th key={title} scope="col" className={CELL} style={{ overflowWrap: 'normal' }}>{title}</th>)}</tr></thead><tbody className="divide-y divide-border">{rows.map(row => <tr key={kind === 'monthly' ? row.employee.id : row.id || `${row.employee.id}:${row.shiftDate}`} className="hover:bg-muted/30"><td className={CELL}><Person employee={row.employee} /></td>{kind === 'monthly' ? <>{['eligibleDuties', 'actualRecords', 'late', 'noClockIn', 'paidLeaveDays', 'unresolvedMissingCheckout'].map(field => <td key={field} className={CELL}>{row.metrics[field]}</td>)}<td className={CELL}>{formatReportMinutes(row.metrics.rawWorkedMinutes)}{row.metrics.rawDurationUnknown > 0 && <p className="text-xs text-muted-foreground">{row.metrics.rawDurationUnknown} raw durations unavailable</p>}</td><td className={CELL}>{formatReportMinutes(row.metrics.approvedIntervalMinutes)}</td><td className={CELL}><Button variant="outline" size="sm" onClick={() => onEmployee(row.employee)}>View Duties<ArrowRight aria-hidden="true" /></Button></td></> : kind === 'attendance' ? <><td className={`${CELL} whitespace-nowrap`}>{date(row.shiftDate)}</td><td className={CELL}>{row.organization?.team?.name || 'Not recorded'}</td><td className={CELL}><Interval value={row.actual} minutes={row.actual?.workedMinutes} empty="No server punch" /></td><td className={CELL}><Interval value={row.approvedAdjustment || row.approvedException} minutes={(row.approvedAdjustment || row.approvedException)?.minutes} />{row.approvedException && <p className="text-xs text-muted-foreground">Approved exception; no server punch.</p>}</td><td className={CELL}><Badge value={row.classification} />{row.paidLeave && <p className="mt-2 text-sm">1 paid full-day leave; no punches created.{row.leaveConflict && ' Calendar/employment conflict requires HR review.'}</p>}{row.actual?.rawMissingCheckout && !row.unresolvedMissingCheckout && <p className="mt-2 text-sm text-muted-foreground">Original exit is missing; an approved adjustment resolves the exception.</p>}</td><td className={CELL}><Flags row={row} /></td></> : <><td className={`${CELL} whitespace-nowrap`}>{date(row.shiftDate)}</td><td className={CELL}><Interval value={row.original} empty="No original server snapshot" /></td><td className={CELL}><p className="mb-2">{label(row.requestType)}</p><Interval value={{ clockInAt: row.proposedClockInAt, clockOutAt: row.proposedClockOutAt }} /></td><td className={`${CELL} min-w-56 max-w-sm break-words whitespace-pre-wrap`}>{row.reason}</td><td className={CELL}>{row.requester || 'Not recorded'}</td><td className={CELL}><Badge value={row.status} /></td><td className={CELL}>{row.reviewer || (row.status === 'PENDING' ? 'Not reviewed' : 'Not recorded')}</td><td className={`${CELL} min-w-40`}>{row.reviewedAt ? stamp(row.reviewedAt) : row.status === 'PENDING' ? 'Not reviewed' : 'Not recorded'}</td><td className={CELL}><Button variant="outline" size="sm" aria-label={`View correction for ${row.employee.fullName} on ${date(row.shiftDate)}`} onClick={() => onCorrection(row)}><Eye aria-hidden="true" />View</Button></td></>}</tr>)}</tbody></table>;
+}
+function CorrectionEvidence({ row }) {
+  return <div className="space-y-4"><Person employee={row.employee} /><dl className="grid gap-4 sm:grid-cols-2"><FieldValue title="Duty date">{date(row.shiftDate)}</FieldValue><FieldValue title="Decision"><Badge value={row.status} /></FieldValue><FieldValue title="Request type">{label(row.requestType)}</FieldValue><FieldValue title="Requested by">{row.requester || 'Not recorded'}</FieldValue><FieldValue title="Requested at (PKT)">{stamp(row.requestedAt)}</FieldValue><FieldValue title="Decided by">{row.reviewer || 'Not reviewed'}</FieldValue><FieldValue title="Decision at (PKT)">{row.reviewedAt ? stamp(row.reviewedAt) : 'Not reviewed'}</FieldValue><FieldValue title="Original record version">{row.original?.recordVersion ?? 'Not recorded'}</FieldValue></dl><div className="grid gap-4 sm:grid-cols-2"><Panel title="Original snapshot"><Interval value={row.original} empty="No original server snapshot" /></Panel><Panel title="Requested correction"><Interval value={{ clockInAt: row.proposedClockInAt, clockOutAt: row.proposedClockOutAt }} /></Panel></div><Panel title="Reason and decision history" icon={History}><p className="break-words whitespace-pre-wrap text-sm">{row.reason}</p><p className="break-words whitespace-pre-wrap text-sm">Decision reason: {row.reviewReason || (row.status === 'PENDING' ? 'Not reviewed' : 'Not recorded')}</p><p className="text-sm text-muted-foreground">Requested: {stamp(row.requestedAt)}{row.reviewedAt && ` - ${label(row.status)}: ${stamp(row.reviewedAt)}`}. These are the available persisted request/decision events.</p><Interval value={row.approvedInterpretation} minutes={row.approvedInterpretation?.minutes} empty="No approved interpretation" /></Panel></div>;
+}
+function CorrectionDialog({ row, onClose }) {
+  return <Dialog title="Correction Request Details" description="Read-only original evidence and the existing correction decision." wide onClose={onClose}>{close => <><div className="min-h-0 overflow-y-auto px-1 pb-5"><CorrectionEvidence row={row} /></div><footer className="flex shrink-0 justify-end border-t border-border pt-4"><Button variant="outline" onClick={close}>Close</Button></footer></>}</Dialog>;
+}
+function ReportView({ kind, seed, onRemember, onEmployee, onReady }) {
+  const { user } = useAuth(), management = ['ADMIN', 'HR'].includes(user.role);
+  const [applied, setApplied] = useState(() => seed?.applied || initialReportFilters()), [draft, setDraft] = useState(() => seed?.draft || { ...applied }), [page, setPage] = useState(seed?.page || 1), [size, setSize] = useState(seed?.size || 20), [formError, setFormError] = useState(''), [units, setUnits] = useState(null), [unitError, setUnitError] = useState(''), [selected, setSelected] = useState(null);
+  const built = queryFor(applied, kind, page, size), report = useReport(kind, built.query, setPage), data = report.data, dirty = JSON.stringify(draft) !== JSON.stringify(applied);
+  useEffect(() => { onRemember({ applied, draft, page, size }); }, [applied, draft, page, size, onRemember]);
+  useEffect(() => { if (data) onReady(); }, [data, onReady]);
+  useEffect(() => { if (!management) return; const c = new AbortController(); organization({ signal: c.signal }).then(result => { if (!c.signal.aborted) setUnits(result.units || []); }).catch(error => { if (!c.signal.aborted) setUnitError(error.message); }); return () => c.abort(); }, [management]);
+  function change(field, value) { setDraft(previous => { const next = { ...previous, [field]: value }; if (['departmentId', 'campaignId'].includes(field)) next.teamId = ''; if (field === 'month') { try { Object.assign(next, monthDates(value)); } catch { /* Validate on Apply. */ } } return next; }); setFormError(''); }
+  function apply(event) { event.preventDefault(); const value = { ...draft, search: draft.search.trim() }, check = queryFor(value, kind); if (check.error) { setFormError(check.error); return; } setDraft(value); setApplied(value); setPage(1); setFormError(''); report.reload(); }
+  function reset() { const value = initialReportFilters(); setDraft(value); setApplied(value); setPage(1); setFormError(''); report.reload(); }
+  return <div className="min-w-0 space-y-5"><form onSubmit={apply} className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5"><div className="grid min-w-0 items-end gap-4 sm:grid-cols-2 xl:grid-cols-4">{kind !== 'monthly' && <SelectField title="Period" name="Report period type" value={draft.periodMode} placeholder={null} options={[[ 'month', 'Month' ], [ 'range', 'Date range' ]]} onChange={value => change('periodMode', value)} />}{kind === 'monthly' || draft.periodMode === 'month' ? <label className="min-w-0 space-y-1.5 text-sm font-medium">Month<Input aria-label="Report month" type="month" min="0001-01" required value={draft.month} onChange={e => change('month', e.target.value)} /></label> : <>{['dateFrom', 'dateTo'].map((field, i) => <label key={field} className="min-w-0 space-y-1.5 text-sm font-medium">{i ? 'To duty date' : 'From duty date'}<Input aria-label={i ? 'To duty date' : 'From duty date'} type="date" required value={draft[field]} onChange={e => change(field, e.target.value)} /></label>)}</>}<label className="min-w-0 space-y-1.5 text-sm font-medium">Employee search<Input aria-label="Report employee search" placeholder="Name or employee code" maxLength={120} value={draft.search} onChange={e => change('search', e.target.value)} /></label>{kind !== 'monthly' && <SelectField title="Status" name="Report status" value={draft.status} placeholder="All statuses" options={(kind === 'corrections' ? ['PENDING', 'APPROVED', 'REJECTED'] : ATTENDANCE_STATUSES).map(status => [status, label(status)])} onChange={value => change('status', value)} />}{management && [['DEPARTMENT', 'departmentId', 'Department'], ['CAMPAIGN', 'campaignId', 'Campaign'], ['TEAM', 'teamId', 'Team']].map(([unitKind, field, title]) => <SelectField key={field} title={title} name={`Report ${title.toLowerCase()}`} value={draft[field]} placeholder={`All ${title.toLowerCase()}s`} disabled={!units || !!unitError} options={(units || []).filter(unit => unit.kind === unitKind && (unitKind !== 'TEAM' || (!draft.departmentId || unit.departmentId === draft.departmentId) && (!draft.campaignId || unit.campaignId === draft.campaignId))).map(unit => [unit.id, unit.name + (unit.archivedAt ? ' (archived)' : '')])} onChange={value => change(field, value)} />)}<div className="flex flex-wrap gap-2"><Button type="submit"><Filter aria-hidden="true" />Apply Filters</Button><Button type="button" variant="outline" onClick={reset}>Reset</Button></div></div>{(formError || unitError) && <p role="alert" className="text-sm text-destructive">{formError || `Organization filters: ${unitError}`}</p>}{dirty && <p className="text-sm text-muted-foreground">Apply your changes to update results and exports.</p>}</form>
+    <Metrics totals={data?.totals} fields={kind === 'corrections' ? CORRECTION_METRICS : METRICS} />
+    {data && data.meta.currentPolicyState !== 'EFFECTIVE_POLICY_PRESENT' && <p className="rounded-xl border border-border bg-muted p-4 text-sm">{data.meta.currentPolicyState === 'FUTURE_POLICY_ONLY' ? 'Only a future attendance policy is activated. Earlier dates remain setup-required.' : 'No attendance policy is activated. Eligible dates remain setup-required.'}</p>}
+    <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"><header className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-4 sm:p-5"><div><SectionTitle icon={kind === 'corrections' ? FileText : CalendarDays}>{kind === 'monthly' ? 'Employee Attendance Summary' : kind === 'attendance' ? 'Attendance Evidence' : 'Correction Requests'}</SectionTitle><p className="mt-1 text-sm text-muted-foreground">{data ? `${data.total} ${kind === 'monthly' ? 'employees' : 'matching records'}` : 'Report totals unavailable'}</p></div><Exports kind={kind} query={built.query} data={data} dirty={dirty} loading={report.loading} reload={report.reload} /></header><div role="region" aria-label="Report results" tabIndex={0} aria-busy={report.loading} className="max-w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">{report.loading || report.error || built.error || !data?.rows.length ? <Feedback loading={report.loading} error={built.error || report.error} empty={!data?.rows.length}>{kind === 'corrections' ? <><p className="font-semibold text-foreground">No correction requests found</p><p>Try another month or adjust your filters.</p></> : null}</Feedback> : <ReportTable kind={kind} rows={data.rows} onEmployee={employee => onEmployee(employee, { applied, draft, page, size })} onCorrection={setSelected} />}</div><Pagination data={data} page={page} size={size} busy={report.loading} onPage={setPage} onSize={value => { setSize(value); setPage(1); }} /></section>
+    <p className="text-sm text-muted-foreground">Original punches, raw elapsed and approved intervals remain separate; none is payable time or a payroll calculation. Duty dates use the local evening start date, including Friday duties ending Saturday.</p><p className="text-xs text-muted-foreground">{user.role === 'MANAGER' ? 'Your dated team scope and own attendance; correction decisions are own-only.' : user.role === 'EMPLOYEE' ? 'Your own employee records only.' : 'Organization-wide authorized reports.'} Exports use applied filters and re-read authorized data; CSV protects identifiers with a leading apostrophe, XLSX retains their text.</p>{data && <p className="text-xs text-muted-foreground">{date(data.meta.period.dateFrom)} - {date(data.meta.period.dateTo)}. As of {stamp(data.meta.generatedAt)} PKT. Totals cover all applied results before pagination.{data.totals.rawDurationUnknown > 0 && ` ${data.totals.rawDurationUnknown} raw durations unavailable and excluded from raw elapsed.`}</p>}{selected && <CorrectionDialog row={selected} onClose={() => setSelected(null)} />}
+  </div>;
+}
+export default function ReportsPage() {
+  const { user } = useAuth(), navigate = useNavigate(), location = useLocation(), [search] = useSearchParams();
+  const saved = location.state?.reportsCache?.owner === owner(user) ? location.state.reportsCache : null;
+  const [cache, setCache] = useState(saved?.tabs || {}), restore = useRef(saved?.scroll || 0);
+  const kind = Object.hasOwn(TABS, search.get('tab')) ? search.get('tab') : saved?.kind || 'monthly';
+  const remember = useCallback(value => { setCache(previous => ({ ...previous, [kind]: value })); }, [kind]);
+  const ready = useCallback(() => { if (restore.current) { const y = restore.current; restore.current = 0; requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))); } }, []);
+  function details(employee, view) { const snapshot = { owner: owner(user), kind, tabs: { ...cache, [kind]: view }, scroll: window.scrollY }; navigate(location.pathname + location.search, { replace: true, state: { reportsCache: snapshot } }); navigate(`/reports/attendance/${employee.id}?month=${view.applied.month}`, { state: { reportsReturn: snapshot } }); }
+  return <div className="reports-workspace min-w-0 space-y-6"><header className="flex items-start gap-4"><span className="rounded-xl bg-primary/10 p-3 text-primary"><BarChart3 aria-hidden="true" className="size-6" /></span><div><h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{kind === 'corrections' ? 'Corrections & Decisions' : 'Reports'}</h1><p className="mt-2 text-sm text-muted-foreground">{kind === 'corrections' ? 'Attendance correction requests and their recorded decisions.' : 'Attendance reporting and approved decisions for employees.'}</p></div></header><div role="group" aria-label="Report type" className="app-tabs">{Object.entries(TABS).map(([key, title]) => <Button key={key} variant={kind === key ? 'default' : 'outline'} aria-pressed={kind === key} onClick={() => navigate(`/reports?tab=${key}`, { replace: true, state: { reportsCache: { owner: owner(user), kind: key, tabs: cache } } })}>{title}</Button>)}</div><ReportView key={`${owner(user)}:${kind}`} kind={kind} seed={cache[kind]} onRemember={remember} onReady={ready} onEmployee={details} /></div>;
+}
+function MonthIdentity({ summary }) {
+  const employee = summary.employee, organizations = summary.organizations || [], names = field => [...new Set(organizations.map(org => org[field]?.name).filter(Boolean))].join(', ') || 'Not recorded';
+  return <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5"><div className="flex min-w-0 items-center gap-4"><InitialsAvatar name={employee.fullName} /><div className="min-w-0"><h2 className="break-words text-lg font-semibold">{employee.fullName}</h2><p className="mt-1 break-all text-sm text-muted-foreground">{employee.employeeCode}</p><p className="mt-1 break-words text-sm">Department: {names('department')} - Designation: {names('designation')}</p><p className="mt-1 text-xs text-muted-foreground">Assignments during the selected authorized period.</p></div></div><div><p className="mb-1 text-sm text-muted-foreground">Employment status as of {date(employee.employmentStatusDate)}</p><Badge value={employee.employmentStatus} /></div></div>;
+}
+function Schedule({ row }) {
+  if (!row.scheduledStart || !row.scheduledEnd) return <span className="text-muted-foreground">No scheduled shift available</span>;
+  const dayInZone = value => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: row.scheduleTimeZone }).format(new Date(value)); } catch { return null; } };
+  return <div className="min-w-44 text-sm"><p>{stamp(row.scheduledStart)}</p><p>{stamp(row.scheduledEnd)}{dayInZone(row.scheduledStart) && dayInZone(row.scheduledStart) !== dayInZone(row.scheduledEnd) && <span className="ml-1 font-medium text-primary">(next day)</span>}</p><p className="mt-1 text-xs text-muted-foreground">Schedule timezone: {row.scheduleTimeZone}; timestamps shown in PKT.</p></div>;
+}
+function DutyCorrections({ row }) {
+  const [page, setPage] = useState(1), filters = { ...initialReportFilters(), periodMode: 'range', dateFrom: row.shiftDate, dateTo: row.shiftDate, employeeId: row.employee.id }, built = queryFor(filters, 'corrections', page), report = useReport('corrections', built.query);
+  return <Panel title="Correction History" icon={History}><Feedback loading={report.loading} error={report.forbidden ? 'Correction history is restricted to your own records for this role.' : report.error} empty={report.data?.total === 0}>No correction requests for this duty.</Feedback>{report.data?.rows.map(request => <details key={request.id} className="rounded-lg border border-border p-3 text-sm"><summary className="cursor-pointer font-medium focus-visible:outline-2 focus-visible:outline-ring">{label(request.status)} - {label(request.requestType)} - {stamp(request.requestedAt)}</summary><div className="mt-4"><CorrectionEvidence row={request} /></div></details>)}{report.error && !report.forbidden && <Button variant="outline" onClick={report.reload}>Retry correction history</Button>}{report.data && report.data.totalPages > 1 && <div className="flex flex-wrap items-center gap-3"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(n => n - 1)}>Previous requests</Button><span className="text-sm">Page {page} of {report.data.totalPages}</span><Button variant="outline" disabled={page >= report.data.totalPages} onClick={() => setPage(n => n + 1)}>Next requests</Button></div>}</Panel>;
+}
+function DutyEvidence({ row }) {
+  const approved = row.approvedAdjustment || row.approvedException;
+  return <div className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"><div><Person employee={row.employee} /><p className="mt-2 text-sm text-muted-foreground">Department: {row.organization?.department?.name || 'Not recorded'}</p></div><div className="flex flex-wrap gap-2"><Badge value={row.classification} />{row.actual?.isLate && <Badge value="LATE" />}</div></div><dl className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-3"><FieldValue title="Duty date">{date(row.shiftDate)}</FieldValue><FieldValue title="Scheduled shift"><Schedule row={row} /></FieldValue><FieldValue title="Duty type">{label(row.scheduleState)}</FieldValue></dl><Panel title="Original Punch & Break Records" icon={Clock3}><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><FieldValue title="Original clock-in (PKT)">{stamp(row.actual?.clockInAt)}</FieldValue><FieldValue title="Original clock-out (PKT)">{stamp(row.actual?.clockOutAt)}</FieldValue><FieldValue title="Recorded breaks">Not recorded</FieldValue><FieldValue title="Raw elapsed">{formatReportMinutes(row.actual?.workedMinutes)}</FieldValue></dl><p className="text-sm text-muted-foreground">Break records are not available in this system. Original punches are never replaced by approved corrections.</p></Panel><div className="grid gap-4 sm:grid-cols-2"><Panel title="Attendance Calculation"><dl className="grid gap-4"><FieldValue title="Late arrival">{row.actual ? row.actual.isLate ? 'Flagged late' : 'Not flagged' : 'No original punch'}</FieldValue><FieldValue title="Early departure">{row.actual ? row.actual.isEarlyDeparture ? 'Flagged early' : 'Not flagged' : 'No original punch'}</FieldValue><FieldValue title="Checkout after duty">{row.actual ? row.actual.isAfterScheduleEnd ? 'Flagged' : 'Not flagged' : 'No original punch'}</FieldValue><FieldValue title="Raw elapsed duration">{formatReportMinutes(row.actual?.workedMinutes)}</FieldValue><FieldValue title="Scheduled / net duration">Not provided by the report; no frontend deduction applied</FieldValue><FieldValue title="Recorded grace">{row.graceMinutes == null ? 'Not recorded' : `${row.graceMinutes} minutes`}</FieldValue></dl></Panel><Panel title="Approved Attendance" icon={CheckCircle2}>{approved ? <><Interval value={approved} minutes={approved.minutes} /><p className="text-sm">Reviewed at: {stamp(approved.reviewedAt)}</p><p className="break-all text-xs text-muted-foreground">Correction ID: {approved.correctionId}</p></> : <p className="text-sm text-muted-foreground">No approved attendance intervals recorded.</p>}{row.paidLeave && <p className="text-sm">Approved paid leave: 1 full day.{row.leaveConflict && ' Conflict requires HR review.'}</p>}<p className="text-sm text-muted-foreground">Original elapsed and approved duration remain separate. Neither is payable time.</p></Panel></div><DutyCorrections row={row} /></div>;
+}
+function DutyDialog({ row, onClose }) {
+  const filters = { ...initialReportFilters(), periodMode: 'range', dateFrom: row.shiftDate, dateTo: row.shiftDate, employeeId: row.employee.id };
+  const report = useReport('attendance', queryFor(filters, 'attendance').query);
+  const fresh = report.data?.rows.find(item => item.shiftDate === row.shiftDate && item.employee.id === row.employee.id);
+  return <Dialog title="Daily Attendance Details" description="Complete duty and attendance information for the selected date." wide onClose={onClose}>{close => <><div className="min-h-0 overflow-y-auto px-1 pb-5"><Feedback loading={report.loading} error={report.error} empty={!fresh && !report.loading}>This duty is no longer available within your authorized report.</Feedback>{fresh && <DutyEvidence row={fresh} />}{report.error && <Button variant="outline" onClick={report.reload}>Retry duty details</Button>}{report.data && <p className="mt-4 text-xs text-muted-foreground">Duty snapshot: {stamp(report.data.meta.generatedAt)} PKT.</p>}</div><footer className="flex shrink-0 justify-end border-t border-border pt-4"><Button variant="outline" onClick={close}>Close</Button></footer></>}</Dialog>;
 }
 
-export default function ReportsPage() {
-  const { user, refreshSession } = useAuth();
-
-  return user ? (
-    <ReportsWorkspace
-      key={`${user.id}:${user.role}`}
-      user={user}
-      refreshSession={refreshSession}
-    />
-  ) : null;
+export function EmployeeAttendancePage() {
+  const { user } = useAuth(), { employeeId } = useParams(), [search, setSearch] = useSearchParams(), location = useLocation(), navigate = useNavigate();
+  const month = search.get('month') || initialReportFilters().month, [page, setPage] = useState(1), [size, setSize] = useState(20), [selected, setSelected] = useState(null);
+  const filters = { ...initialReportFilters(), month, employeeId }, built = UUID.test(employeeId || '') ? queryFor(filters, 'attendance', page, size) : { query: null, error: 'Invalid employee identifier.' }, summaryQuery = built.error ? null : queryFor(filters, 'monthly').query;
+  const summary = useReport('monthly', summaryQuery), details = useReport('attendance', built.query, setPage), person = summary.data?.rows[0];
+  const source = location.state?.reportsReturn?.owner === owner(user) ? location.state.reportsReturn : null;
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [employeeId]);
+  function changeMonth(value) { setSelected(null); setPage(1); const next = new URLSearchParams(search); next.set('month', value); setSearch(next, { replace: true, state: location.state }); }
+  return <div className="min-w-0 space-y-5"><Button variant="outline" onClick={() => navigate(`/reports?tab=${source?.kind || 'monthly'}`, { replace: true, state: source ? { reportsCache: source } : null })}><ArrowLeft aria-hidden="true" />Back to Reports</Button><header><h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">Attendance Detail</h1><p className="mt-2 text-sm text-muted-foreground">Daily attendance record for the selected employee and month.</p></header>{person ? <MonthIdentity summary={person} /> : <Feedback loading={summary.loading} error={built.error || summary.error} empty={!summary.loading && !summary.error}>No authorized employee data for this month.</Feedback>}<div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-card p-4 sm:p-5"><label className="min-w-0 space-y-1.5 text-sm font-medium">Month<Input aria-label="Employee attendance month" type="month" value={month} min="0001-01" required onChange={e => changeMonth(e.target.value)} /></label><Exports kind="attendance" query={built.query} data={details.data} loading={details.loading} reload={() => { details.reload(); summary.reload(); }} /></div><Metrics totals={summary.data?.totals} fields={[[ 'Scheduled duties', 'eligibleDuties', CalendarDays ], ...METRICS.filter(([, field]) => field !== 'leaveConflicts')]} />{summary.data?.totals.eligibleDuties === 0 && <p className="rounded-xl border border-border bg-muted p-4 text-sm">No scheduled duties in this month. Any calendar rows below retain the existing report classifications.</p>}<section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"><header className="space-y-2 border-b border-border p-4 sm:p-5"><SectionTitle icon={CalendarDays}>Daily Attendance</SectionTitle><p className="text-sm text-muted-foreground">One row per reported duty date, including missing punches and relevant weekly-off/holiday dates. Break records are not available.</p></header><div role="region" aria-label="Employee daily attendance" tabIndex={0} className="max-w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">{details.loading || details.error || built.error || !details.data?.rows.length ? <Feedback loading={details.loading} error={built.error || details.error} empty={!details.data?.rows.length}>No authorized duty records for this month.</Feedback> : <table className="w-full text-left"><thead className={HEAD}><tr>{['Duty date', 'Day', 'Scheduled shift - PKT', 'Original clock-in - PKT', 'Original clock-out - PKT', 'Break', 'Raw elapsed', 'Status', 'Action'].map(title => <th key={title} scope="col" className={CELL}>{title}</th>)}</tr></thead><tbody className="divide-y divide-border">{details.data.rows.map(row => <tr key={row.shiftDate} className="hover:bg-muted/30"><td className={`${CELL} whitespace-nowrap`}>{date(row.shiftDate)}</td><td className={CELL}>{new Intl.DateTimeFormat('en', { timeZone: 'UTC', weekday: 'short' }).format(new Date(`${row.shiftDate}T12:00:00Z`))}</td><td className={CELL}><Schedule row={row} /></td><td className={`${CELL} min-w-44`}>{row.actual ? stamp(row.actual.clockInAt) : <span className="text-muted-foreground">No clock-in recorded</span>}</td><td className={`${CELL} min-w-44`}>{stamp(row.actual?.clockOutAt)}</td><td className={CELL}>Not recorded</td><td className={CELL}>{formatReportMinutes(row.actual?.workedMinutes)}</td><td className={CELL}><div className="space-y-2"><Badge value={row.classification} /><Flags row={row} /></div></td><td className={CELL}><Button variant="outline" size="sm" aria-label={`View duty ${row.shiftDate}`} onClick={() => setSelected(row)}><Eye aria-hidden="true" />View</Button></td></tr>)}</tbody></table>}</div><Pagination data={details.data} page={page} size={size} busy={details.loading} onPage={setPage} onSize={value => { setSize(value); setPage(1); }} /></section><p className="text-sm text-muted-foreground">{REPORT_ZONE} duty-start dates are preserved across midnight. Raw elapsed, approved intervals and payroll remain distinct. Changing this month does not change the original Reports filters.</p>{selected && <DutyDialog key={`${employeeId}:${selected.shiftDate}`} row={selected} onClose={() => setSelected(null)} />}</div>;
 }

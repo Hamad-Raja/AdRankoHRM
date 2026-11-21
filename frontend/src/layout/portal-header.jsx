@@ -63,6 +63,7 @@ export default function PortalHeader({
     (user.role === 'MANAGER' && location.pathname === '/my-employees' ? 'My Team' : null) ||
     (user.role==='ADMIN' ? {'/leaves':'Leave Overview','/employment':'Employment Management','/my-profile':'Account & Security','/account':'Account & Security'}[location.pathname] : null) ||
     PAGE_TITLES[location.pathname] ||
+    (location.pathname.startsWith("/reports/attendance/") ? "Reports" : null) ||
     (location.pathname.startsWith("/employees/")
       ? "Employee details"
       : "AdRankoHRM");

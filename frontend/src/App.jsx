@@ -17,7 +17,7 @@ import EmployeeDetailPage from "@/pages/employee-detail-page";
 import OrganizationPage from "@/pages/organization-page";
 import AttendanceSettingsPage from "@/pages/attendance-settings-page";
 import AttendancePage from "@/pages/attendance-page";
-import ReportsPage from "@/pages/reports-page";
+import ReportsPage, { EmployeeAttendancePage } from "@/pages/reports-page";
 import AuditPage from "@/pages/audit-page";
 import MyProfilePage from "@/pages/my-profile-page";
 import EmploymentPage from "@/pages/employment-page";
@@ -91,6 +91,7 @@ export default function App() {
                   path="/reports"
                   element={<ReportsPage />}
                 />
+                <Route path="/reports/attendance/:employeeId" element={<EmployeeAttendancePage />} />
                 <Route path="/my-payslips" element={<Suspense fallback={<p role="status">Loading payslips…</p>}><PayrollPage key="own-payslips" own /></Suspense>} />
                 <Route path="/announcements" element={<Suspense fallback={<p role="status">Loading announcements…</p>}><AnnouncementsPage /></Suspense>} />
                 <Route path="/notifications" element={<Suspense fallback={<p role="status">Loading notifications…</p>}><NotificationsPage /></Suspense>} />

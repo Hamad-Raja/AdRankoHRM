@@ -5,7 +5,7 @@ const { parseReportQuery } = require('../validation/reports.validation');
 const { localParts } = require('../utils/office-schedule');
 const { buildReportScope, overlaps } = require('../utils/reports-scope');
 const {
-  datesBetween, classifyDuty, matchesAttendanceStatus, summarize, monthlyRows,
+  datesBetween, classifyDuty, matchesAttendanceStatus, summarize, monthlyRows, statusOn,
 } = require('../utils/reports-rules');
 
 const READ_LIMITS = Object.freeze({
@@ -228,8 +228,23 @@ function createReportsService({ prisma, actor, now = () => new Date() }) {
       rows.sort((a, b) => b.shiftDate.localeCompare(a.shiftDate)
         || a.employee.fullName.localeCompare(b.employee.fullName)
         || a.employee.id.localeCompare(b.employee.id));
-      return response(report === 'monthly' ? monthlyRows(rows) : rows,
-        summarize(rows), meta, filters, exporting);
+      let output = rows;
+      if (report === 'monthly') {
+        const people = new Map(employees.map(employee => [employee.id, employee]));
+        // Newest authorized duty, never a later status outside the caller's dated scope.
+        const visibleDates = new Map();
+        for (const row of rows) if (!visibleDates.has(row.employee.id)) visibleDates.set(row.employee.id, row.shiftDate);
+        output = monthlyRows(rows).map(group => {
+          const visibleDate = visibleDates.get(group.employee.id);
+          const episode = people.get(group.employee.id).employmentEpisodes
+            .filter(item => day(item.startDate) <= visibleDate).at(-1);
+          return { ...group, employee: { ...group.employee,
+            employmentStatus: episode ? statusOn(episode, visibleDate) : null,
+            employmentStatusDate: visibleDate,
+          } };
+        });
+      }
+      return response(output, summarize(rows), meta, filters, exporting);
     }, READ_TRANSACTION);
   }
   return {
