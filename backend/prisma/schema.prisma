@@ -220,8 +220,8 @@ model EmploymentCase {
   supportingDocument EmployeeDocument? @relation("CaseDocument",fields:[supportingDocumentId],references:[id],onDelete:Restrict,onUpdate:NoAction)
   employee Employee @relation(fields:[employeeId],references:[id],onDelete:Restrict,onUpdate:NoAction)
   recorder User @relation("CaseRecorder",fields:[recordedById],references:[id],onDelete:Restrict,onUpdate:NoAction)
-  @@index([state,accessCutoff])
-  @@index([employeeId,submittedAt])
+  @@index([state,accessCutoff], map: "employment_cases_state_accesscutoff_idx")
+  @@index([employeeId,submittedAt], map: "employment_cases_employeeid_submittedat_idx")
   @@map("employment_cases")
 }
 

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --import tsx --test --test-concurrency=1 scripts/employment-case-check.cjs scripts/release-rules.test.cjs tests/*.test.js",
+    "test": "node --import tsx --test --test-concurrency=1 scripts/employment-case-check.cjs scripts/release-rules.test.cjs scripts/release-gates.test.cjs",
     "test:integration": "node --import tsx --test --test-concurrency=1 tests/auth.integration.test.js",
     "test:employees": "node --import tsx --test --test-concurrency=1 tests/employee*.integration.test.js",
     "test:browser": "node --import tsx tests/browser-check.cjs",

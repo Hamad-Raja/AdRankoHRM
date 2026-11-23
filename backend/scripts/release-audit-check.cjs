@@ -10,7 +10,7 @@ fs.mkdirSync(out,{recursive:true});process.env.DOCUMENT_STORAGE_DIR=path.join(ou
 const {chromium}=require(path.join(root,'frontend/node_modules/playwright-core'));
 const results=[],accounts={},people={},sessions={},password='Synthetic-'+randomUUID();
 let prisma,server,browser,now=new Date('2026-11-24T14:15:00Z');
-function result(name,ok,detail){results.push({name,result:ok===null?'SKIP':ok?'PASS':'FAIL',detail});fs.writeFileSync(path.join(out,'functional-results.json'),JSON.stringify(results,null,2));console.log((ok?'PASS ':'FAIL ')+name+(detail?' — '+detail:''));}
+function result(name,ok,detail){results.push({name,result:ok===null?'SKIP':ok?'PASS':'FAIL',detail});fs.writeFileSync(path.join(out,'functional-results.json'),JSON.stringify(results,null,2));console.log((ok===null?'SKIP ':ok?'PASS ':'FAIL ')+name+(detail?' — '+detail:''));}
 async function check(name,work){try{const outcome=await work();result(name,outcome==='SKIP'?null:true);}catch(error){result(name,false,error.message);}}
 async function api(key,url,body,method,extra={}){
  const context=sessions[key],cookies=context?await context.cookies('http://localhost:3020'):[],csrf=cookies.find(c=>c.name==='officehr_csrf')?.value;
@@ -64,6 +64,18 @@ async function main(){
   await expect('employee','/organization/scope/employees/'+people.outsider.id,undefined,404);
   await expect('employee','/employee-files/'+people.outsider.id+'/documents',undefined,403);
   await expect('manager','/employee-files/'+people.employee.id+'/documents',undefined,403);
+ });
+ await check('Private filesystem uploads and authorized downloads retain visibility and validation',async()=>{
+  const base='/employee-files/'+people.employee.id+'/documents';
+  const text='Synthetic private release document';
+  const visible=await expect('hr',base+'?title=Synthetic&ownerVisible=true',text,201,'POST',{'content-type':'text/plain'});
+  const own=await api('employee',base+'/'+visible.id+'/download');assert.equal(own.status,200);assert.equal((await own.raw.body()).toString(),text);
+  await expect('manager',base+'/'+visible.id+'/download',undefined,403);
+  const hidden=await expect('admin',base+'?title=Restricted&ownerVisible=false',text,201,'POST',{'content-type':'text/plain'});
+  await expect('employee',base+'/'+hidden.id+'/download',undefined,404);
+  await expect('hr',base+'?title=Invalid&ownerVisible=true','not png',415,'POST',{'content-type':'image/png'});
+  await expect('hr',base+'?title=Invalid&ownerVisible=true','bad\u0000text',400,'POST',{'content-type':'text/plain'});
+  await expect('hr',base+'?title=Large&ownerVisible=true','x'.repeat(5*1024*1024+1),413,'POST',{'content-type':'text/plain'});
  });
  await check('Employee create permissions, validation and optimistic edit',async()=>{
   await expect('hr','/employees',{fullName:'Denied HR',employment:{startDate:'2026-01-01',status:'ACTIVE',reason:'Fixture'},portalLogin:{email:'denied-hr@release.invalid',password,role:'HR'}},403);
@@ -155,7 +167,7 @@ async function main(){
   await expect('admin','/dashboard/admin-queues');await expect('admin','/audit');await expect('hr','/dashboard/admin-queues',undefined,403);
  });
  await check('All-role real-browser routes, reload/fresh tab, themes and responsive overflow',async()=>{
-  if(process.env.RELEASE_SKIP_RESPONSIVE==='true'){result('Full responsive matrix not repeated',null,'Prior browser-matrix.json retains the completed 450-combination run.');return 'SKIP';}
+  if(process.env.RELEASE_SKIP_RESPONSIVE==='true')return 'SKIP';
   const routes={admin:['/dashboard','/employees','/organization','/attendance','/leaves','/payroll','/employment','/reports','/announcements','/notifications','/attendance-settings','/audit','/employee-records','/my-profile?tab=security'],hr:['/dashboard','/employees','/organization','/attendance','/leaves','/payroll','/employment','/reports','/announcements','/notifications','/attendance-settings','/my-profile'],manager:['/dashboard','/my-employees','/attendance','/leaves','/reports','/my-payslips','/announcements','/notifications','/employment','/my-profile'],employee:['/dashboard','/attendance','/leaves','/reports','/my-payslips','/announcements','/notifications','/employment','/my-profile']};
   const failures=[],screens=[],browserErrors=[];let viewed=0;
   for(const key of ['admin','hr','manager','employee']){

@@ -99,6 +99,12 @@ temp/
 **/tests/.cache/
 **/tests/output/
 private/
+backend/uploads/
+# Private filesystem archives and database backups must never enter Git.
+*.dump
+*.tar
+*.tar.gz
+*.tgz
 
 # Keep local Git configuration files private
 .gitignore

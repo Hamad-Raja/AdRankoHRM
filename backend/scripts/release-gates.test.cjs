@@ -26,10 +26,37 @@ test('worker readiness exposes failures/stalls and recovers without business-dat
 test('reported failed cases make worker unready even when processDue resolves',async()=>{
  const h=worker(async()=>({failed:1}));h.w.start();h.tick();await flush();assert.equal(h.w.health().healthy,false);await h.w.stop();
 });
-test('production document storage must be explicit, absolute and outside public roots',()=>{
- assert.throws(()=>getDocumentStorage({NODE_ENV:'production'}));assert.throws(()=>getDocumentStorage({NODE_ENV:'production',DOCUMENT_STORAGE_DIR:'private/docs'}));
+test('storage defaults are stable, production override is optional, Render must select its mount',()=>{
+ assert.equal(getDocumentStorage({NODE_ENV:'production'}).storageRoot,path.resolve('/var/lib/adrankohrm/uploads'));
+ assert.throws(()=>getDocumentStorage({NODE_ENV:'production',DOCUMENT_STORAGE_DIR:'private/docs'}));
+ assert.throws(()=>getDocumentStorage({NODE_ENV:'production',RENDER:'true'}),/Render requires/);
  const project=path.resolve(os.tmpdir(),'synthetic-project');assert.throws(()=>getDocumentStorage({NODE_ENV:'production',DOCUMENT_STORAGE_DIR:path.join(project,'frontend/public/docs')},project));
- assert.ok(getDocumentStorage({NODE_ENV:'test'},project).storageRoot.endsWith(path.join('backend','private','employee-documents')));
+ assert.equal(getDocumentStorage({NODE_ENV:'test'},project).storageRoot,path.join(project,'backend/uploads'));
+ assert.equal(getDocumentStorage({NODE_ENV:'development',DOCUMENT_STORAGE_DIR:'uploads/override'},project).storageRoot,path.join(project,'backend/uploads/override'));
+ const original=process.cwd();try{process.chdir(os.tmpdir());assert.equal(getDocumentStorage({NODE_ENV:'development'},project).storageRoot,path.join(project,'backend/uploads'));}finally{process.chdir(original);}
+ for(const unsafe of [project,path.parse(project).root,path.join(project,'frontend/dist'),path.join(project,'backend/src/private'),path.join(project,'.git/private')])assert.throws(()=>getDocumentStorage({DOCUMENT_STORAGE_DIR:unsafe},project));
+});
+
+test('invalid storage reports a useful initialization error without falling back',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'adranko-storage-failure-'));
+ try{const file=path.join(root,'not-a-directory');await fs.writeFile(file,'retain');await assert.rejects(verifyDocumentStorage({storageRoot:path.join(file,'uploads'),publicRoots:[]}),/initialization failed.*no fallback/);assert.equal(await fs.readFile(file,'utf8'),'retain');}finally{await fs.rm(root,{recursive:true});}
+});
+
+test('a storage symlink into a frontend public tree is rejected',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'adranko-storage-symlink-'));
+ try{const publicDir=path.join(root,'frontend/public');await fs.mkdir(publicDir,{recursive:true});const link=path.join(root,'private-link');await fs.symlink(publicDir,link,process.platform==='win32'?'junction':'dir');await assert.rejects(verifyDocumentStorage(getDocumentStorage({DOCUMENT_STORAGE_DIR:link},root)),/UNSAFE_PATH/);assert.deepEqual(await fs.readdir(publicDir),[]);}finally{await fs.rm(root,{recursive:true});}
+});
+
+test('startup reports denied writes without leaking filesystem details or choosing a fallback',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'adranko-storage-denied-'));
+ try{t.mock.method(fs,'open',async()=>{throw Object.assign(Error('private path must not be logged'),{code:'EACCES'});});await assert.rejects(verifyDocumentStorage({storageRoot:root,publicRoots:[]}),error=>/EACCES/.test(error.message)&&!/private path/.test(error.message)&&/no fallback/.test(error.message));assert.deepEqual(await fs.readdir(root),[]);}finally{t.mock.restoreAll();await fs.rm(root,{recursive:true});}
+});
+
+test('Vercel API routing precedes the SPA and deployment build forces the same-origin base',async()=>{
+ const root=path.resolve(__dirname,'../..'),config=JSON.parse(await fs.readFile(path.join(root,'frontend/vercel.json'),'utf8'));
+ assert.deepEqual(config.rewrites[0],{source:'/api/:path*',destination:'https://adrankohrm.onrender.com/api/:path*'});
+ const spa=new RegExp('^'+config.rewrites[1].source+'$');assert.equal(spa.test('/api'),false);assert.equal(spa.test('/api/auth/me'),false);assert.equal(spa.test('/assets/main.js'),false);assert.equal(spa.test('/reports/attendance/employee'),true);
+ assert.equal(config.buildCommand,'npm run build:vercel');
 });
 test('storage startup probe leaves existing private files unchanged and removes only its canary',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'adranko-storage-unit-'));

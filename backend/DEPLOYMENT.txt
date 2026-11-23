@@ -1,0 +1,247 @@
+AdRankoHRM deployment and coordinated recovery runbook
+Reviewed 23-24 November 2026. Repository instructions only; no hosting change is implied.
+
+1. Storage contract and supported document features
+
+Development default: <this backend directory>/uploads. It does not depend on cwd.
+Production VPS default: /var/lib/adrankohrm/uploads.
+DOCUMENT_STORAGE_DIR is an optional override; production overrides must be absolute.
+Relative development overrides resolve against the backend directory, not cwd.
+Render production explicitly requires an override because the VPS default is not a
+Render disk mount. The resolver creates/probes the selected directory and fails
+without fallback if it is unsafe or cannot be written. A write probe is NOT proof
+of a persistent disk, backups, or correct host configuration.
+
+Keep files private. Never add express.static, public /uploads URLs or Vercel assets
+for these files. Existing authenticated /api/employee-files routes enforce role,
+ownership and ownerVisible checks. Existing TXT/plain RGB/RGBA PNG and 5 MiB limits
+remain unchanged. Database contains metadata, not file blobs.
+
+The existing document model has no category field; storageName is an opaque flat
+UUID.txt/UUID.png key. Keep those keys, document IDs, replacements and route behavior.
+Employee IDs are real metadata foreign keys, never sample codes. Do not invent a
+CNIC/contract/certificate category from a free-text title. Resignation/termination
+cases link existing permitted EmployeeDocument rows; there are no independent
+company-document or categorized file modules to populate. The proposed future
+employees/<employee-id>/{cnic,contracts,certificates}, resignations, terminations,
+company-documents and temporary hierarchy requires a separate compatible metadata
+and backup-key design when those features exist. It is not created speculatively.
+No file migration is required for the stated absence of real uploaded documents.
+If any developer already has files under the former backend/private/employee-documents
+default, select that absolute path explicitly; this release never moves/deletes them.
+
+2. Exact environment settings
+
+Local backend (backend/.env, kept private):
+  NODE_ENV=development
+  PORT=3000
+  HOST=127.0.0.1
+  FRONTEND_ORIGIN=http://localhost:5173
+  DATABASE_URL=<your intended development PostgreSQL URL; never copy a production URL blindly>
+  OFFICEHR_LOCAL_DEMO_ENABLED=false
+  OFFICEHR_PRODUCTION_DEMO_ENABLED=false
+  DOCUMENT_STORAGE_DIR is omitted (backend/uploads), or an explicit private override.
+Local frontend (frontend/.env, kept private):
+  VITE_API_URL=http://localhost:3000/api
+Vite currently has no /api development proxy; do not use /api locally without one.
+From backend: npm ci, npm run build, npm run dev.
+From frontend: npm ci, npm run dev. No normal database seeding/reset is needed.
+
+Current Render service, repository root directory backend:
+  NODE_ENV=production
+  FRONTEND_ORIGIN=https://ad-ranko-hrm.vercel.app
+  DATABASE_URL=<confirmed Neon production connection, kept in Render secrets>
+  OFFICEHR_LOCAL_DEMO_ENABLED=false
+  OFFICEHR_PRODUCTION_DEMO_ENABLED=false
+  PORT is supplied by Render; production app binds 0.0.0.0.
+  Build command: npm ci --include=dev && npm run build
+  Start command: npm start
+  Health check path: /api/health/ready
+  One backend instance/process; no additional employment cron/background worker.
+
+Render WITH an attached disk:
+  If its verified mount is /var/data, set
+  DOCUMENT_STORAGE_DIR=/var/data/adrankohrm/uploads
+  Substitute the actual configured mount if different. Only paths under that
+  mounted disk are persistent. A disk requires a paid service; do not purchase one
+  without authorization. Verify restart/redeploy retention using a synthetic file
+  before accepting real documents, then configure coordinated off-host backups.
+
+Render Free / WITHOUT a disk, development preview only:
+  DOCUMENT_STORAGE_DIR=/tmp/adrankohrm/uploads
+  This explicit override lets an unprivileged temporary deployment initialize.
+  Uploads may disappear on restart/redeploy/replacement. Neon metadata can then
+  refer to missing files. Do NOT use this configuration for real/private document
+  retention or call it production-ready. Hardcoding /var/lib does not create a disk.
+  Free hosting sleeps, so a 60-second worker cannot promise exact scheduled timing.
+
+Future VPS (single Node service account, for example adrankohrm):
+  NODE_ENV=production
+  FRONTEND_ORIGIN=https://ad-ranko-hrm.vercel.app
+  DATABASE_URL=<confirmed production secret>
+  PORT=3000
+  OFFICEHR_LOCAL_DEMO_ENABLED=false
+  OFFICEHR_PRODUCTION_DEMO_ENABLED=false
+  Omit DOCUMENT_STORAGE_DIR to use /var/lib/adrankohrm/uploads.
+  Before service startup, an authorized VPS operator runs:
+    sudo install -d -m 0700 -o adrankohrm -g adrankohrm /var/lib/adrankohrm/uploads
+  Use your actual service user rather than creating a second identity blindly.
+  If containerized, bind-mount a durable host directory/volume to that exact path
+  and ensure its UID/GID matches the Node process. Never rely on the image layer.
+  Keep public access behind the host's approved HTTPS/reverse-proxy configuration;
+  restrict the Node port at the firewall. This runbook does not provision a VPS.
+
+Vercel project:
+  Root Directory: frontend
+  Install Command: npm ci --include=dev
+  Build Command: npm run build:vercel
+  Output Directory: dist
+  VITE_API_URL=/api (set for each applicable Production/Preview environment)
+frontend/vercel.json first rewrites /api/:path* to
+https://adrankohrm.onrender.com/api/:path*, followed by the non-API/non-assets SPA
+fallback. Keep that order. build:vercel forces /api even if a stale absolute
+VITE_API_URL remains in the hosting environment. Clear the stale setting anyway.
+If the backend moves to a VPS, update only the upstream destination to its approved
+HTTPS origin; browser traffic should remain /api. Preview origins are not implicitly
+trusted for writes: use a separately scoped backend/origin for previews as needed.
+
+Cookies/authentication:
+Keep database-backed opaque sessions. Production cookies remain Secure, HttpOnly,
+SameSite=None, Path=/, __Host-prefixed, with no Domain attribute. They are attached
+to the frontend host by the same-origin proxy. Logout clears the same host/path
+cookies. Writes require the allowed Origin and existing x-csrf-token. No wildcard
+credentialed CORS or CSRF bypass. Inactivity stays 60 minutes.
+Express currently does not enable trust proxy. Secure-cookie issuance is explicitly
+configured and does not depend on req.secure. Do not blindly trust forwarded headers
+or set trust proxy=true: Render-direct and Vercel->Render paths have different hops.
+Validate production client-IP/rate-limit behavior and any trusted-proxy policy with
+the host operator before widening trust; no new proxy trust policy is introduced here.
+
+3. Coordinated backup and restore
+
+Before production migration, obtain a maintenance window and verified backup.
+Pause ALL application/worker/admin writers and document upload/delete activity;
+stop the one backend process cleanly and wait for in-flight writes to finish.
+Do not merely hide the upload button. Keep writers paused through backup/migration.
+
+On a trusted operations machine with pg_dump compatible with the database version,
+set these secret/private environment values without putting URLs/passwords in shell
+history, tickets or logs:
+  BACKUP_DATABASE_URL=<confirmed direct PostgreSQL backup connection>
+  BACKUP_DOCUMENT_STORAGE_DIR=<actual private file root, accessible here>
+  BACKUP_DESTINATION=<new private directory on an independently backed-up/off-host destination>
+  PG_DUMP_BIN=<pg_dump executable, optional when on PATH>
+From backend:
+  node scripts/operations-backup.cjs --writes-paused
+  node scripts/operations-verify-backup.cjs <the-new-private-backup-directory>
+The operator flag acknowledges quiescence; the script cannot stop remote writers.
+The backup holds an exported repeatable-read DB snapshot, dumps with that snapshot,
+copies only referenced files, checks lengths/hashes, and marks the manifest complete
+only after success. Missing files or an incomplete manifest block verification.
+Remote connections require verified TLS; supply the approved server trust chain.
+
+Use a separate backup host/volume, or copy the complete verified bundle over an
+approved encrypted channel to off-host storage and verify it again THERE. A second
+directory on the same VPS disk is not a durable backup. Protect backup credentials,
+encryption keys and access; apply retention and periodic restore drills. Render disk
+snapshots or a Neon branch alone do not coordinate database metadata with files.
+There are no real application documents to migrate, but a current metadata inventory
+must still confirm whether referenced files exist before choosing the backup source.
+On Render Free, no Shell/disk access means the operator must arrange an accessible
+backup source/maintenance workflow; do not assert a complete backup from local tests.
+
+Restore drill only into a NEW explicitly identified database and NEW private file
+directory. Verify bundle first, create an empty isolated database, supply PostgreSQL
+credentials through protected PG* environment, and run:
+  pg_restore --exit-on-error --no-owner --no-privileges --dbname <new-isolated-database> <bundle>/database.dump
+Copy <bundle>/documents contents to the NEW private storage root, preserving opaque
+names, then compare manifest checksums/byte lengths and restored metadata references.
+Point an isolated backend only at these new targets and exercise authorized downloads.
+Never restore over normal development/production. Do not use --clean, reset, db push,
+seed scripts or a normal application connection as the restore target.
+
+4. Migration review and release sequence
+
+No new migration is introduced by this change. The existing pending migration is:
+  20261120010000_employment_prefixed_reason_capacity
+It only widens managerNote to1010 and access/status reason columns to1100, in a
+transaction; no row rewrite, deletion or invented employment evidence. The earlier
+20261119090000_employment_case_details is distinct and must already be applied.
+The user reason limit stays1000; system-owned prefixes need the extra capacity.
+Two Prisma index mappings now match the lower-case names produced by the existing
+unquoted PostgreSQL CREATE INDEX statements; no index recreation/rename is needed.
+Do not edit past migration SQL/checksums. LF/CRLF differences were observed in the
+Windows checkout; normalized migration contents matched the database ledger.
+
+Sequence (commands from backend; DATABASE_URL supplied privately for the reviewed target):
+  1. Verify actual hosting DB name/endpoint/Neon branch in the provider dashboard;
+     compare with this connection and the intended release. Never print the URL.
+  2. Quiesce writers; make and independently verify the coordinated backup above.
+  3. npm ci --include=dev
+     npx prisma migrate status --config prisma7.config.ts
+     npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script --config prisma7.config.ts
+     Review EVERY pending migration and investigate failed ledger entries/unexpected
+     drift. migrate deploy applies ALL pending migrations, not a named one.
+  4. Only after backup, target and complete pending list are approved:
+     npm run db:deploy
+     npx prisma generate --config prisma7.config.ts
+     npx prisma migrate status --config prisma7.config.ts
+     Verify ledger completion, capacities1010/1100/1100 and unchanged business counts.
+     Do not run migrate dev, db push, reset or reseed on production.
+  5. Configure backend storage/origin first; deploy the reviewed backend revision.
+     npm start regenerates Client via prestart. There is only one embedded worker.
+     Keep the Prisma CLI installed for this existing prestart flow; do not prune
+     dev dependencies before npm start. Build-time Vite also requires dev packages.
+     On Render Free, use the trusted local operations machine for migration commands;
+     it has no Render Shell. Do not hide production migrations in the build command.
+  6. Verify backend /api/health and /api/health/ready. Readiness allows a starting
+     grace period; wait for employmentWorker=healthy after the first60s tick.
+     Starting is healthy until180s; failed runs are degraded, stale/stopped is503.
+     No overlap is scheduled. Shutdown clears scheduling and waits for active work
+     before Prisma disconnect, subject to the existing10s process shutdown bound.
+     Auth/login also enforce approved cutoffs synchronously. Do not run a second
+     cron/process/PM2 cluster scheduler. Sleeping hosting cannot guarantee exact ticks.
+  7. Configure Vercel settings above; deploy frontend only after backend is healthy.
+  8. Live checks on the deployed frontend host:
+     GET /api/health and an invalid /api endpoint must return backend JSON (not SPA HTML).
+     GET a nested API with query filters and verify path/query retention, no /api/api.
+     Confirm direct SPA/nested Reports links and /assets resources still work.
+     With third-party cookies blocked, use a designated synthetic account to sign in,
+     check /api/auth/me=200, reload, open a fresh tab, then sign out and verify401.
+     Confirm missing/invalid CSRF and foreign Origin writes remain403.
+     Review all four role guards, authorized private document download and rejection
+     of an unauthorized synthetic account. Do not mutate real employment/payroll data.
+     Check worker freshness after a real tick and storage retention across redeploy.
+  9. Resume writers, retain rollback artifacts, monitor sanitized startup/worker logs.
+
+5. Dependency/security status and external gates
+
+At review, frontend audit is zero. Backend reports three high package entries for
+one chain: Prisma7.10.1 -> @prisma/config7.10.1 -> effect3.20.0, GHSA-7589-6fvf-x4pw.
+Effect3.22.1 is patched, but Prisma7.10.1 pins3.20.0 exactly. Registry latest Prisma
+is8.0.0-rc.35, a major prerelease, not a compatible supported patch. Do not use npm
+audit fix --force (it proposes Prisma6.12.0), an unsupported override or a blind RC
+upgrade. Track an upstream Prisma7 patch accepting patched Effect, or explicitly
+plan/test a supported Prisma8 migration. Re-run generation, backend startup, workflow
+checks and npm audit after an approved update. The chain is present in installed
+packages and runs during Prisma config/build/generate/migrate/prestart; it is not
+declared harmless. Preserve vendored shadcn CSS MIT license/provenance and theme.
+
+Repository tests:
+  backend: npm test, npm run check
+  frontend: npm run build:vercel, npm run lint
+The default backend test command runs the existing tracked unit/service suites.
+Database/browser integration commands remain separate and require explicit guarded
+synthetic targets. Do not point release/operations fixtures at a normal DB.
+
+Release is NOT proven by local tests. Pending gates: actual Render/Vercel settings,
+durable private storage choice, production coordinated/off-host backup, authorized
+production migration, deployed proxy/cookie/rate-limit checks, and advisory treatment.
+No hosting purchase, provisioning, deployment or production migration is performed
+by this runbook. Production DB access used during this task was read-only only.
+
+Provider references (checked 23 November 2026):
+https://render.com/docs/disks
+https://render.com/docs/free
+https://vercel.com/docs/routing/rewrites
+https://github.com/advisories/GHSA-7589-6fvf-x4pw

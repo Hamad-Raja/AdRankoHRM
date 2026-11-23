@@ -8,7 +8,7 @@ let prisma,child,browser,logs='';const wait=ms=>new Promise(r=>setTimeout(r,ms))
 async function run(){
  await fs.mkdir(process.env.DOCUMENT_STORAGE_DIR,{recursive:true});prisma=require('../src/config/prisma');assert.equal((await prisma.$queryRawUnsafe('SELECT current_database() name'))[0].name,target.pathname.slice(1));
  const password='Synthetic-'+randomUUID(),hash=await require('../src/utils/password').hashPassword(password),accounts={};
- for(const role of ['HR','MANAGER','EMPLOYEE']){const u=await prisma.user.create({data:{email:role.toLowerCase()+'-'+randomUUID()+'@proxy.invalid',displayName:'Synthetic '+role,role,passwordHash:hash,mustChangePassword:false}});const e=await prisma.employee.create({data:{userId:u.id,employeeCode:'PROXY-'+randomUUID().slice(0,8),fullName:u.displayName}});await prisma.employmentEpisode.create({data:{employeeId:e.id,startDate:new Date('2026-01-01T00:00:00Z'),status:'ACTIVE',statusEffectiveDate:new Date('2026-01-01T00:00:00Z')}});accounts[role]=u;}
+ for(const role of ['ADMIN','HR','MANAGER','EMPLOYEE']){const u=await prisma.user.create({data:{email:role.toLowerCase()+'-'+randomUUID()+'@proxy.invalid',displayName:'Synthetic '+role,role,passwordHash:hash,mustChangePassword:false}});const e=await prisma.employee.create({data:{userId:u.id,employeeCode:'PROXY-'+randomUUID().slice(0,8),fullName:u.displayName}});await prisma.employmentEpisode.create({data:{employeeId:e.id,startDate:new Date('2026-01-01T00:00:00Z'),status:'ACTIVE',statusEffectiveDate:new Date('2026-01-01T00:00:00Z')}});accounts[role]=u;}
  child=spawn(process.execPath,['--import','tsx','app.js'],{cwd:path.join(root,'backend'),env:process.env,windowsHide:true,stdio:['ignore','pipe','pipe']});child.stdout.on('data',b=>{logs+=b;});child.stderr.on('data',()=>{});
  let readiness;for(let n=0;n<50;n++){try{const r=await fetch('http://127.0.0.1:3032/api/health/ready');if(r.status===200){readiness=await r.json();break;}}catch{}await wait(200);}assert.ok(readiness,'Production fixture did not start');assert.equal(readiness.components.employmentWorker,'starting');
  const {chromium}=require(path.join(root,'frontend/node_modules/playwright-core'));browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
@@ -22,12 +22,25 @@ async function run(){
   async function me(p){return p.evaluate(async()=>{const r=await fetch('/api/auth/me',{credentials:'include'});return r.status;});}
   assert.equal(await me(page),200);const cookies=(await context.cookies(origin)).filter(c=>c.name.startsWith('__Host-officehr_'));assert.equal(cookies.length,2);assert.ok(cookies.every(c=>c.secure&&c.httpOnly&&c.path==='/'&&c.domain==='release.example.test'));
   const read=await page.evaluate(async()=>{const r=await fetch('/api/dashboard/personal',{credentials:'include'});return r.status;});assert.equal(read,200);
+  const proxy=await page.evaluate(async()=>{
+   const missing=await fetch('/api/not-an-endpoint?sample=1');
+   const report=await fetch('/api/reports/monthly?month=2026-11&pageSize=1');
+   const body=await report.json();
+   const csrf=await fetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+   return {missing:missing.status,json:missing.headers.get('content-type').includes('json'),month:body.data.meta.period.month,size:body.data.pageSize,csrf:csrf.status};
+  });assert.deepEqual(proxy,{missing:404,json:true,month:'2026-11',size:1,csrf:403});
   await page.reload();await page.waitForLoadState('networkidle');assert.equal(new URL(page.url()).pathname,'/dashboard');assert.equal(await me(page),200);
   const fresh=await context.newPage();await fresh.goto(origin+'/dashboard');await fresh.waitForLoadState('networkidle');assert.equal(new URL(fresh.url()).pathname,'/dashboard');assert.equal(await me(fresh),200);
+  if(role==='ADMIN')for(const route of ['/reports','/employee-records'])for(const width of [320,375,1440])for(const theme of ['light','dark']){
+   await fresh.setViewportSize({width,height:900});await fresh.evaluate(t=>localStorage.setItem('officehr-theme',t),theme);await fresh.goto(origin+route);await fresh.waitForLoadState('networkidle');
+   assert.equal(await fresh.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+   assert.equal(await fresh.evaluate(()=>document.documentElement.classList.contains('dark')),theme==='dark');
+   await fresh.screenshot({path:path.join(output,route.slice(1)+'-'+width+'-'+theme+'.png'),fullPage:true});
+  }
   await page.getByRole('button',{name:'Sign out',exact:true}).click();await page.waitForURL(origin+'/login');assert.equal(await me(page),401);assert.deepEqual([...apiOrigins],[origin]);
-  results.push({scenario:'Built same-origin frontend, production cookies, third-party cookies blocked',role,login:200,me:200,dashboardRead:read,reload:200,freshTab:200,logoutThenMe:401,result:'PASS'});await context.close();
+  results.push({scenario:'Built same-origin frontend, production cookies, third-party cookies blocked',role,login:200,me:200,dashboardRead:read,reload:200,freshTab:200,logoutThenMe:401,proxy,result:'PASS'});await context.close();
  }
  const deadline=Date.now()+75000;let state;do{const r=await fetch('http://127.0.0.1:3032/api/health/ready');state=await r.json();if(state.components.employmentWorker==='healthy')break;await wait(1000);}while(Date.now()<deadline);assert.equal(state.components.employmentWorker,'healthy');assert.ok(logs.includes('employment_worker_tick'));assert.ok(logs.includes('"outcome":"success"'));assert.equal((await fetch('http://127.0.0.1:3032/api/health')).status,200);
- results.push({scenario:'Real production startup and first scheduled worker tick',startingStatus:200,healthyStatus:200,intervalMs:60000,result:'PASS'});console.log('PASS: all three roles login/me/read/reload/fresh-tab/logout; real worker heartbeat');
+ results.push({scenario:'Real production startup and first scheduled worker tick',startingStatus:200,healthyStatus:200,intervalMs:60000,result:'PASS'});console.log('PASS: all four roles login/me/read/reload/fresh-tab/logout; real worker heartbeat');
 }
 run().catch(e=>{results.push({scenario:'Verification stopped',result:'FAIL',error:e.message});console.error(e.message);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();if(child&&!child.killed){child.kill();await new Promise(r=>{if(child.exitCode!==null)return r();child.once('exit',r);});}if(prisma)await prisma.$disconnect();await fs.writeFile(path.join(output,'runtime-results.json'),JSON.stringify({scope:'Isolated browser HTTPS-origin interception to loopback app; not deployed Vercel/Render verification',results},null,2));});
