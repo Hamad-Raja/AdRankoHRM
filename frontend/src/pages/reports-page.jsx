@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useNavigationType, useParams, useSearchParams } from 'react-router';
 import { ArrowLeft, ArrowRight, BarChart3, CalendarCheck, CalendarDays, CheckCircle2, Clock3, Download, Eye, FileText, Filter, History, RefreshCw, Timer, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -126,11 +126,35 @@ function ReportView({ kind, seed, onRemember, onEmployee, onReady }) {
   </div>;
 }
 export default function ReportsPage() {
+  const { user } = useAuth();
+  const location = useLocation(), navigationType = useNavigationType();
+  const [entry, setEntry] = useState({ key: location.key, workspace: location.key });
+  // Replacements get new router keys but retain this workspace. Back/Forward must
+  // initialize from the visited entry instead of writing a later cache over it.
+  if (entry.key !== location.key) {
+    setEntry({ key: location.key, workspace: navigationType === 'REPLACE' ? entry.workspace : location.key });
+  }
+  return <ReportsWorkspace key={`${owner(user)}:${entry.workspace}`} />;
+}
+function ReportsWorkspace() {
   const { user } = useAuth(), navigate = useNavigate(), location = useLocation(), [search] = useSearchParams();
   const saved = location.state?.reportsCache?.owner === owner(user) ? location.state.reportsCache : null;
   const [cache, setCache] = useState(saved?.tabs || {}), restore = useRef(saved?.scroll || 0);
   const kind = Object.hasOwn(TABS, search.get('tab')) ? search.get('tab') : saved?.kind || 'monthly';
-  const remember = useCallback(value => { setCache(previous => ({ ...previous, [kind]: value })); }, [kind]);
+  const remember = useCallback(value => {
+    setCache(previous => JSON.stringify(previous[kind]) === JSON.stringify(value)
+      ? previous : { ...previous, [kind]: value });
+  }, [kind]);
+  useEffect(() => {
+    if (!cache[kind]) return;
+    // Keep drafts separate from applied queries, in this user's existing history entry only.
+    const snapshot = { ...saved, owner: owner(user), kind, tabs: cache };
+    if (JSON.stringify(location.state?.reportsCache) === JSON.stringify(snapshot)) return;
+    navigate(location.pathname + location.search + location.hash, {
+      replace: true, preventScrollReset: true,
+      state: { ...location.state, reportsCache: snapshot },
+    });
+  }, [cache, kind, location.hash, location.pathname, location.search, location.state, navigate, saved, user]);
   const ready = useCallback(() => { if (restore.current) { const y = restore.current; restore.current = 0; requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'instant' }))); } }, []);
   function details(employee, view) { const snapshot = { owner: owner(user), kind, tabs: { ...cache, [kind]: view }, scroll: window.scrollY }; navigate(location.pathname + location.search, { replace: true, state: { reportsCache: snapshot } }); navigate(`/reports/attendance/${employee.id}?month=${view.applied.month}`, { state: { reportsReturn: snapshot } }); }
   return <div className="reports-workspace min-w-0 space-y-6"><header className="flex items-start gap-4"><span className="rounded-xl bg-primary/10 p-3 text-primary"><BarChart3 aria-hidden="true" className="size-6" /></span><div><h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{kind === 'corrections' ? 'Corrections & Decisions' : 'Reports'}</h1><p className="mt-2 text-sm text-muted-foreground">{kind === 'corrections' ? 'Attendance correction requests and their recorded decisions.' : 'Attendance reporting and approved decisions for employees.'}</p></div></header><div role="group" aria-label="Report type" className="app-tabs">{Object.entries(TABS).map(([key, title]) => <Button key={key} variant={kind === key ? 'default' : 'outline'} aria-pressed={kind === key} onClick={() => navigate(`/reports?tab=${key}`, { replace: true, state: { reportsCache: { owner: owner(user), kind: key, tabs: cache } } })}>{title}</Button>)}</div><ReportView key={`${owner(user)}:${kind}`} kind={kind} seed={cache[kind]} onRemember={remember} onReady={ready} onEmployee={details} /></div>;
