@@ -66,3 +66,16 @@
 @media(max-width:1100px){.employee-primary-row,.employee-secondary-row{grid-template-columns:1fr;}}
 @media(max-width:767px){[data-personal-dashboard] #officehr-main{padding:14px;}.role-dashboard{gap:15px;}.employee-primary-row,.employee-secondary-row,.manager-primary-row,.manager-secondary-row{grid-template-columns:1fr;gap:15px;}.role-snapshot-grid{gap:10px;}.role-snapshot{padding:12px;gap:8px;}.role-snapshot>span{width:34px;height:34px;}.role-snapshot h2{font-size:var(--text-sm);line-height:1.5;}.role-snapshot strong{font-size:19px;}.role-team-table{font-size:var(--text-sm);line-height:1.5;}.role-person{display:block;}.role-avatar{margin:0 5px 5px 0;}.role-team-picker{max-width:155px;}.role-duty .hr-duty-time{font-size:28px;}}
 @media(max-width:374px){.role-snapshot-grid{grid-template-columns:1fr;}.role-snapshot>span{width:40px;height:40px;}.role-snapshot{padding:13px;}.role-team-table th:first-child{width:36%;}.role-team-table th:nth-child(2){width:26%;}.role-team-table th:last-child{width:38%;}}
+
+/* Manager team preview: reuse the dashboard typography and theme. */
+.manager-dashboard .role-team-subtitle{font-size:14px;color:var(--muted-foreground);margin:0 0 16px}
+.manager-dashboard .role-team-table th:first-child{width:50%}
+.manager-dashboard .role-team-table th:nth-child(2){width:22%}
+.manager-dashboard .role-team-table th:last-child{width:28%}
+.manager-dashboard .role-team .role-person{display:flex;align-items:center}
+.manager-dashboard .role-team-identity{min-width:0;overflow-wrap:anywhere}
+.manager-dashboard .role-team-meta{display:block;font-size:12px;font-weight:400;color:var(--muted-foreground);margin:4px 0 0;overflow-wrap:anywhere}
+.manager-dashboard .role-team-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:16px}
+.manager-dashboard .role-team-footer .role-team-note{margin:0}
+
+.manager-dashboard .role-team-footer .role-team-note{font-size:var(--text-sm);line-height:1.5}

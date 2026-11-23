@@ -138,4 +138,30 @@ async function adminQueues(userId,month){return read(userId,async(tx,user,now)=>
  const employment={reviewable:await tx.employmentCase.count({where:require('../utils/employment-approval').approvalWhere(user.id)}),overall:await tx.employmentCase.count({where:{state:'ADMIN_APPROVAL'}})};
  return {payrollMonth,payroll,payments,paymentsOverall,blockedPaymentsRevisionLimit:paymentsOverall-payments,corrections,employment};
  });}
-module.exports={employees,attendance,queues,personal,payslip,announcements,periods,adminQueues};
+// Presentation priority only; the shared report classifier still owns every status.
+function teamPriority(row){
+ if(row.classification==='NO_CLOCK_IN'||row.actual?.isLate)return 0;
+ return {NOT_YET_ENDED:1,OPEN:2,COMPLETED:2,CORRECTED:2,MISSING_CHECKOUT:2,PAID_LEAVE:3,APPROVED_EXCEPTION:4,WEEKLY_OFF:5,HOLIDAY:6,NOT_ELIGIBLE:7,SETUP_REQUIRED:8,LEGACY_ASSIGNMENT_REVIEW:9}[row.classification]??10;
+}
+async function teamAttendance(userId,query){return read(userId,async(tx,user,now)=>{
+ if(user.role!=='MANAGER')fail(403,'Manager team attendance is restricted.','FORBIDDEN');
+ const own=await tx.employee.findUnique({where:{userId:user.id},select:{id:true}});
+ const {page=1,pageSize=5,...filters}=query;
+ const from=filters.dateFrom||filters.dateTo||periods(now).dutyDate,to=filters.dateTo||filters.dateFrom||from;
+ const reports=createReportsService({prisma:{$transaction:work=>work(tx)},actor,now:()=>now});
+ // Bounded complete read inside one read-only snapshot; no files/export are generated.
+ const report=await reports.getExportData(user.id,'attendance',{...filters,dateFrom:from,dateTo:to,format:'csv'});
+ const rows=report.rows.filter(row=>row.employee.id!==own?.id);
+ if(rows.some(row=>!row.organization?.team?.id))fail(409,'Dated team assignment could not be verified.','TEAM_SCOPE_CHANGED');
+ const present=new Set(['OPEN','COMPLETED','CORRECTED','MISSING_CHECKOUT']);
+ const setup=report.meta.currentPolicyState!=='EFFECTIVE_POLICY_PRESENT'||rows.some(row=>['SETUP_REQUIRED','LEGACY_ASSIGNMENT_REVIEW'].includes(row.scheduleState)||['SETUP_REQUIRED','LEGACY_ASSIGNMENT_REVIEW'].includes(row.classification));
+ const review=rows.some(row=>row.leaveConflict);
+ rows.sort((a,b)=>teamPriority(a)-teamPriority(b)||a.employee.fullName.localeCompare(b.employee.fullName,'en')||a.employee.id.localeCompare(b.employee.id));
+ return {scope:'DATED_TEAM',ownExcluded:true,date:from,policyMeta:report.meta,
+  rows:rows.slice((page-1)*pageSize,page*pageSize),total:rows.length,page,pageSize,totalPages:Math.ceil(rows.length/pageSize),
+  state:setup?'SETUP_REQUIRED':review?'REVIEW_REQUIRED':rows.length?'READY':'EMPTY',
+  present:rows.filter(row=>present.has(row.classification)).length,absent:rows.filter(row=>row.classification==='NO_CLOCK_IN').length,
+  leave:rows.filter(row=>row.classification==='PAID_LEAVE').length,pending:rows.filter(row=>row.classification==='NOT_YET_ENDED').length,
+  exceptions:rows.filter(row=>row.classification==='APPROVED_EXCEPTION').length,eligible:rows.filter(row=>row.eligibleDuty).length,excluded:rows.filter(row=>!row.eligibleDuty).length};
+ });}
+module.exports={employees,attendance,queues,personal,payslip,announcements,periods,adminQueues,teamAttendance};

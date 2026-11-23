@@ -1,3 +1,6 @@
+import {apiRequest} from '@/lib/api';
+import {validDate,ATTENDANCE_STATUSES,STATUS_LABELS} from '@/lib/reports';
+import {teamStatus} from '@/components/dashboard/personal-dashboard-data';
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from 'react-router';
 import { useAuth } from "@/context/auth-context";
@@ -32,6 +35,8 @@ export default function AttendancePage() {
   const { user, getCsrfToken, refreshSession } = useAuth();
   const isAdminOrHr = ["ADMIN", "HR"].includes(user?.role);
   const isManager = user?.role === "MANAGER";
+  const selectedTeamDate = isManager && dashboardQuery.get('view') === 'team' && validDate(dashboardQuery.get('dutyDate')) ? dashboardQuery.get('dutyDate') : '';
+  const teamCalendar = !!selectedTeamDate;
   const RecordFilters = isManager ? "div" : Fragment;
 
   // Active view tab
@@ -90,8 +95,8 @@ export default function AttendancePage() {
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [recordsError, setRecordsError] = useState("");
   const recordsRequest = useRef(0);
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState(selectedTeamDate);
+  const [filterDateTo, setFilterDateTo] = useState(selectedTeamDate);
   const [filterStatus, setFilterStatus] = useState("");
   const [search, setSearch] = useState('');
   const [departmentId, setDepartmentId] = useState('');
@@ -112,14 +117,21 @@ export default function AttendancePage() {
     setRecords([]);
     setRecordsError("");
     try {
-      const data = await getAttendanceList({
+      const filters = {
         page: recordsPage,
         pageSize: 20,
         dateFrom: filterDateFrom || undefined,
         dateTo: filterDateTo || undefined,
         status: filterStatus || undefined,
         search: search || undefined, departmentId: departmentId || undefined, campaignId: campaignId || undefined, teamId: teamId || undefined,
-      });
+      };
+      let data;
+      if (teamCalendar) {
+        const query = new URLSearchParams();
+        for (const key of ["page","pageSize","dateFrom","dateTo","status","search"]) if (filters[key] != null) query.set(key, filters[key]);
+        const response = await apiRequest("/dashboard/team-attendance?" + query);
+        data = {...response.data, records:response.data.rows.map(row => ({...row.actual, id:row.actual?.attendanceRecordId || row.employee.id+":"+row.shiftDate, employee:row.employee, shiftDate:row.shiftDate, status:row.classification, _teamRow:row, approvedAdjustment:row.approvedAdjustment || row.approvedException}))};
+      } else data = await getAttendanceList(filters);
       if (request !== recordsRequest.current) return;
       setRecords(data.records || []);
       setRecordsTotal(data.total || 0);
@@ -131,7 +143,7 @@ export default function AttendancePage() {
     } finally {
       if (request === recordsRequest.current) setLoadingRecords(false);
     }
-  }, [isAdminOrHr, isManager, recordsPage, filterDateFrom, filterDateTo, filterStatus, search, departmentId, campaignId, teamId, refreshSession]);
+  }, [isAdminOrHr, isManager, teamCalendar, recordsPage, filterDateFrom, filterDateTo, filterStatus, search, departmentId, campaignId, teamId, refreshSession]);
 
   useEffect(() => {
     if ((isAdminOrHr && activeTab === "list") || (isManager && activeTab === "team")) {
@@ -552,7 +564,7 @@ export default function AttendancePage() {
                   id="filter-from-date"
                   type="date"
                   value={filterDateFrom}
-                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  onChange={(e) => {setFilterDateFrom(e.target.value);if(teamCalendar)setRecordsPage(1);}}
                   className="h-9 w-40 text-sm font-normal "
                 />
               </div>
@@ -564,7 +576,7 @@ export default function AttendancePage() {
                   id="filter-to-date"
                   type="date"
                   value={filterDateTo}
-                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  onChange={(e) => {setFilterDateTo(e.target.value);if(teamCalendar)setRecordsPage(1);}}
                   className="h-9 w-40 text-sm font-normal"
                 />
               </div>
@@ -575,14 +587,14 @@ export default function AttendancePage() {
                 <select
                   id="filter-status-select"
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
+                  onChange={(e) => {setFilterStatus(e.target.value);if(teamCalendar)setRecordsPage(1);}}
                   className="h-9 rounded-lg border border-input bg-background/80 px-3 text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
                 >
                   <option value="">All Statuses</option>
-                  <option value="OPEN">Open (Active)</option>
+                  {teamCalendar ? ATTENDANCE_STATUSES.map(status=><option key={status} value={status}>{STATUS_LABELS[status] || status}</option>) : <><option value="OPEN">Open (Active)</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="MISSING_CHECKOUT">Missing Checkout</option>
-                  <option value="CORRECTED">Corrected</option>
+                  <option value="CORRECTED">Corrected</option></>}
                 </select>
               </div>
               <Button
@@ -602,8 +614,8 @@ export default function AttendancePage() {
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setFilterDateFrom("");
-                    setFilterDateTo("");
+                    setFilterDateFrom(selectedTeamDate);
+                    setFilterDateTo(selectedTeamDate);
                     setFilterStatus("");
                     setRecordsPage(1);
                   }}
@@ -697,7 +709,7 @@ export default function AttendancePage() {
                                   : "border-border bg-muted/60 text-muted-foreground"
                               }`}
                           >
-                            {r.status}
+                            {r._teamRow ? teamStatus(r._teamRow) : r.status}
                           </span>
                           {r.approvedAdjustment && (isManager ? <details className="attendance-adjustment-details"><summary>Approved adjustment</summary><p>{r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable). Original punches remain unchanged.</p></details> : <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable).</p>)}
                         </td>
