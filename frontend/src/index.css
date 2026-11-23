@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./styles/vendor/shadcn-tailwind.css";
 @import "@fontsource-variable/inter";
 
 /* Shared scale: page titles 24/30px; sections 18px; dialogs 20px;

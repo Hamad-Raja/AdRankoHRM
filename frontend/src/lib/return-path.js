@@ -10,9 +10,10 @@ export function loginDestination(requested, role) {
   const common = ['/dashboard', '/account', '/attendance', '/reports', '/my-payslips', '/announcements', '/notifications', '/leaves', '/my-profile', '/employment'];
   const management = ['ADMIN', 'HR'].includes(role)
     && /^\/(employees(?:\/new|\/[0-9a-f-]{36})?|organization|attendance-settings|shifts)$/.test(url.pathname);
+  const reportDetail = /^\/reports\/attendance\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(url.pathname);
   const selfService = ['MANAGER', 'EMPLOYEE'].includes(role) && url.pathname === '/my-employees';
   return ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'].includes(role)
-    && (common.includes(url.pathname) || role === 'ADMIN' && url.pathname === '/audit' || management || selfService
+    && (common.includes(url.pathname) || role === 'ADMIN' && ['/audit', '/employee-records'].includes(url.pathname) || management || selfService || reportDetail
       || ['ADMIN', 'HR'].includes(role) && url.pathname === '/payroll')
     ? url.pathname + url.search : '/dashboard';
 }

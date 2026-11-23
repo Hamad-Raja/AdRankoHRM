@@ -121,6 +121,7 @@ frontend/tests/
 **/tests/
 **/test/
 **/__tests__/
+/ops/
 
 # Track root repository configuration and README
 !/.gitignore

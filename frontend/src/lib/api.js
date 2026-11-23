@@ -1,3 +1,4 @@
+import {resolveApiBaseUrl} from './api-base-url';
 const REQUEST_TIMEOUT_MS = 20_000;
 
 export class ApiError extends Error {
@@ -15,25 +16,7 @@ export class ApiError extends Error {
 }
 
 function getApiBaseUrl() {
-  const configuredUrl = import.meta.env.VITE_API_URL?.trim();
-
-  if (!configuredUrl) {
-    throw new Error("VITE_API_URL is required in the frontend .env file.");
-  }
-
-  const url = new URL(configuredUrl);
-
-  if (
-    !["http:", "https:"].includes(url.protocol) ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  ) {
-    throw new Error("VITE_API_URL must be a valid HTTP or HTTPS base URL.");
-  }
-
-  return url.href.replace(/\/+$/, "");
+  return resolveApiBaseUrl(import.meta.env.VITE_API_URL, globalThis.location?.origin);
 }
 
 const API_BASE_URL = getApiBaseUrl();
