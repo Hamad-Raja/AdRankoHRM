@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.js",
+    "test": "node --import tsx --test --test-concurrency=1 scripts/employment-case-check.cjs scripts/release-rules.test.cjs tests/*.test.js",
     "test:integration": "node --import tsx --test --test-concurrency=1 tests/auth.integration.test.js",
     "test:employees": "node --import tsx --test --test-concurrency=1 tests/employee*.integration.test.js",
     "test:browser": "node --import tsx tests/browser-check.cjs",
@@ -29,7 +29,10 @@
     "test:dashboard-browser": "node --import tsx tests/dashboard-browser-check.cjs",
     "test:connection-browser": "node --import tsx tests/connection-browser-check.cjs",
     "test:reports-browser": "node --import tsx tests/reports-browser-check.cjs",
-    "acceptance:serve": "node --import tsx tests/manual-acceptance.cjs"
+    "acceptance:serve": "node --import tsx tests/manual-acceptance.cjs",
+    "test:release": "node --import tsx scripts/release-audit-check.cjs",
+    "test:release-browser": "node --import tsx scripts/release-browser-check.cjs",
+    "test:release-security": "node --import tsx scripts/release-security-check.cjs"
   },
   "keywords": [],
   "author": "",

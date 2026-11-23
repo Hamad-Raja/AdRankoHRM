@@ -24,6 +24,9 @@ const {
 } = require("./src/config/auth");
 
 const app = express();
+const lifecycleWorker = require('./src/utils/employment-worker').createEmploymentWorker({
+  processDue: () => require('./src/services/employment-access.service').processDue(),
+});
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.NODE_ENV === "production" ? "0.0.0.0" : process.env.HOST || "127.0.0.1";
@@ -65,6 +68,16 @@ app.get("/api/health", (req, res) => {
     success: true,
     service: "OfficeHR API",
     status: "ok",
+  });
+});
+
+
+app.get('/api/health/ready', (req, res) => {
+  const worker = lifecycleWorker.health();
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(worker.healthy ? 200 : 503).json({
+    success: worker.healthy, status: worker.healthy ? 'ready' : 'not-ready',
+    components: {employmentWorker: worker.state},
   });
 });
 
@@ -127,6 +140,7 @@ async function shutdown(reason, exitCode = 0) {
       });
     }
 
+    await lifecycleWorker.stop();
     await prisma.$disconnect();
 
     console.log("Database disconnected.");
@@ -142,6 +156,7 @@ async function shutdown(reason, exitCode = 0) {
 
 async function startServer() {
   try {
+    await require("./src/config/document-storage").verifyDocumentStorage();
     await prisma.$connect();
     await prisma.$queryRaw`SELECT 1`;
 
@@ -152,8 +167,7 @@ async function startServer() {
     console.log("Database connection verified.");
     // Auth/login also enforce approved cutoffs synchronously. This worker is
     // supplementary and never runs merely from importing the app in tests.
-    const lifecycleTimer=setInterval(()=>void require('./src/services/employment-access.service').processDue().catch(()=>console.error('Lifecycle worker unavailable.')),60000);
-    lifecycleTimer.unref();
+    lifecycleWorker.start();
 
     server = app.listen(PORT, HOST, (error) => {
       // Express 5 also invokes this callback on a listen failure.

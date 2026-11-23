@@ -5,12 +5,7 @@ const { randomUUID } = require('node:crypto');
 const { inflateSync } = require('node:zlib');
 const { actor, audit, transaction, fail } = require('./organization.service');
 const MAX_BYTES = 5 * 1024 * 1024;
-const storageRoot = path.resolve(process.env.DOCUMENT_STORAGE_DIR || path.join(__dirname, '../../../private/employee-documents'));
-const publicRoots = ['../../../frontend/public', '../../../frontend/dist'].map(p => path.resolve(__dirname, p));
-for (const root of publicRoots) {
-  const relative = path.relative(root, storageRoot);
-  if (!relative || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))) throw new Error('Document storage must be outside public roots.');
-}
+const {storageRoot, publicRoots} = require('../config/document-storage').getDocumentStorage();
 function filePath(name) {
   if (!/^[a-f0-9-]{36}\.(txt|png)$/.test(name)) fail(500, 'Document storage record is invalid.', 'STORAGE_ERROR');
   return path.join(storageRoot, name);
