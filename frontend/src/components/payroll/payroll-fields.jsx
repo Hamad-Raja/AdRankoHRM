@@ -1,5 +1,10 @@
 import {cloneElement, useId, useState} from 'react';
-import {readable} from './payroll-format';
+import {pkr,readable} from './payroll-format';
+
+export function PayrollFinancialComparison({before,after}) {
+  if(!before||!after)return null;
+  return <details className="mt-2 text-xs font-normal"><summary className="cursor-pointer font-medium">Financial breakdown</summary><dl className="mt-2 space-y-2">{[['Earned basic','earnedBasic'],['Additional earnings','additionalEarnings'],['Gross pay','grossPay'],['Deductions','totalDeductions']].map(([label,key])=><div key={key}><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 break-words">{pkr(before[key])} → {pkr(after[key])}</dd></div>)}</dl></details>;
+}
 
 export function PayrollField({label, children, hint, error}) {
   const id = useId();

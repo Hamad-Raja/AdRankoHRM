@@ -8,7 +8,7 @@ import {usePayrollResource} from './use-payroll-resource';
 import {PayrollField} from './payroll-fields';
 import {currentMonth,inputClass,pkr,readable,earningTypes,deductionTypes,salaryForMonth} from './payroll-format';
 
-function Adjustments({kind,items,onChange,disabled,error}) {
+export function Adjustments({kind,items,onChange,disabled,error}) {
   const earnings=kind==='earnings', singular=earnings?'earning':'deduction', types=earnings?earningTypes:deductionTypes;
   return <fieldset disabled={disabled} className="min-w-0 space-y-4 rounded-xl border border-border p-4">
     <legend className="px-1 font-semibold">{earnings?'Earnings':'Deductions'} <span className="text-sm font-normal text-muted-foreground">(Optional)</span></legend>

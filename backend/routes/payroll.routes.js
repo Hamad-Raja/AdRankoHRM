@@ -15,7 +15,15 @@ router.get('/salaries/:employeeId',run(req=>service.salaryHistory(req.auth.user.
 router.post('/salaries/:employeeId',csrfProtection,run(req=>service.saveSalary(req.auth.user.id,parse(schema.id,req.params.employeeId),parse(schema.salary,req.body))));
 router.post('/preview',csrfProtection,run(req=>service.preview(req.auth.user.id,parse(schema.preview,req.body))));
 router.get('/',run(req=>service.list(req.auth.user.id,parse(schema.list,req.query))));
+const workbook=require('../src/services/payroll-workbook.service');
+const download=work=>async(req,res,next)=>{try{const buffer=await work(req);res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');res.setHeader('Content-Disposition','attachment; filename="payroll.xlsx"');res.send(buffer);}catch(e){next(e);}};
+router.get('/export',download(req=>{const filters=parse(schema.list,req.query);if(!filters.month)throw new ApiError(400,'Select a payroll month.','VALIDATION_ERROR');return workbook.report(req.auth.user.id,filters);}));
+router.post('/adjustment-template',authorize('HR'),csrfProtection,download(req=>workbook.template(req.auth.user.id,parse(schema.template,req.body))));
+router.post('/import/preview',authorize('HR'),csrfProtection,require('express').raw({type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',limit:'2mb'}),run(req=>workbook.importPreview(req.auth.user.id,req.body)));
 router.post('/',authorize('HR'),csrfProtection,run(req=>service.createDraft(req.auth.user.id,parse(schema.draft,req.body))));
+router.post('/bulk-drafts',authorize('HR'),csrfProtection,run(req=>service.bulkDrafts(req.auth.user.id,parse(schema.bulk,req.body))));
+router.post('/changes/preview',authorize('HR'),csrfProtection,run(req=>service.batchChanges(req.auth.user.id,parse(schema.changes,req.body),false)));
+router.post('/changes/apply',authorize('HR'),csrfProtection,run(req=>service.batchChanges(req.auth.user.id,parse(schema.changes,req.body),true)));
 router.get('/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id))));
 router.patch('/:id',authorize('HR'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(schema.edit,req.body),'edit')));
 for(const action of ['hr-approve','return','approve','pay'])router.post(`/:id/${action}`,authorize(action==='hr-approve'?'HR':'ADMIN'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(action==='pay'?schema.payment:['hr-approve','approve'].includes(action)?schema.approval:schema.decision,req.body),action)));

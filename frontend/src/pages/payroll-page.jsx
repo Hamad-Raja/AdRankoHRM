@@ -1,3 +1,4 @@
+import MonthlyPayrollWorkspace from '@/components/payroll/monthly-payroll-workspace';
 import {useEffect, useRef, useState} from 'react';
 import {useLocation,useSearchParams} from 'react-router';
 import {UserRound, Plus, RefreshCw} from 'lucide-react';
@@ -126,7 +127,7 @@ function PayrollWorkspace({own}) {
     {notice&&<p role="status" className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring">{notice}</p>}
     {writeError&&!modal&&<p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{writeError.message}</p>}
     {uncertain&&!modal&&<p role="alert" className="text-sm text-muted-foreground">Reload saved data before another write. No automatic retry was sent.</p>}
-    {admin&&<nav aria-label="Admin payroll workspace" className="app-tabs">
+    {admin&&<nav aria-label="Admin payroll workspace" className="app-tabs"><Button variant="outline" onClick={()=>updateAdminQuery({tab:'monthly',payrollId:null})}>Monthly Payroll</Button>
       <Button variant={adminTab==='approvals'?'default':'outline'} aria-pressed={adminTab==='approvals'} className="h-auto min-h-10 whitespace-normal" disabled={busy} onClick={()=>selectAdminTab('approvals')}>Payroll Approvals</Button>
       <Button variant={adminTab==='salary'?'default':'outline'} aria-pressed={adminTab==='salary'} className="h-auto min-h-10 whitespace-normal" disabled={busy} onClick={()=>selectAdminTab('salary')}>Salary Management</Button>
     </nav>}
@@ -178,5 +179,7 @@ function PayrollWorkspace({own}) {
 }
 export default function PayrollPage({own=false}) {
   const {user}=useAuth();
+  const [params]=useSearchParams();
+  if(!own&&!params.get('payrollId')&&!(user.role==='ADMIN'&&['approvals','salary'].includes(params.get('tab'))))return <MonthlyPayrollWorkspace key={user.id+':'+user.role}/>;
   return <PayrollWorkspace key={`${user.id}:${user.role}:${own}`} own={own}/>;
 }
