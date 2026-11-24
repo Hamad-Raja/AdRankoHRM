@@ -28,7 +28,7 @@ export default function MonthlyPayrollWorkspace(){
  const [checked,setChecked]=useState([]),[batch,setBatch]=useState(null),bulkToolbar=useRef(null);
  const [mode,setMode]=useState(null),[selected,setSelected]=useState(null),[detailId,setDetailId]=useState(null),[opener,setOpener]=useState(null),[annualEmployee,setAnnualEmployee]=useState(null);
  const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[error,setError]=useState(null),[notice,setNotice]=useState(''),[revision,setRevision]=useState(0),lock=useRef(false);
- const list=usePayrollResource('/?'+payrollQuery({workspace:'monthly',month,status,search,page,pageSize:20}));
+ const list=usePayrollResource('?'+payrollQuery({workspace:'monthly',month,status,search,page,pageSize:20}));
  const salary=usePayrollResource(selected&&['salary-info','salary'].includes(mode?.type)?'/salaries/'+selected.id:null),detail=usePayrollResource(detailId?'/'+detailId:null);
  const readFailure=list.error||salary.error||detail.error;
  useEffect(()=>{if(readFailure&&(readFailure.status===401||readFailure.code==='PASSWORD_CHANGE_REQUIRED'))void refreshSession();},[readFailure,refreshSession]);

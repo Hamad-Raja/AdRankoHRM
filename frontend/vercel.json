@@ -3,6 +3,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/:path*/",
+      "destination": "https://adrankohrm.onrender.com/api/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://adrankohrm.onrender.com/api/:path*"
     },

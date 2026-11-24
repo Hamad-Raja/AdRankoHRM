@@ -54,8 +54,17 @@ test('startup reports denied writes without leaking filesystem details or choosi
 
 test('Vercel API routing precedes the SPA and deployment build forces the same-origin base',async()=>{
  const root=path.resolve(__dirname,'../..'),config=JSON.parse(await fs.readFile(path.join(root,'frontend/vercel.json'),'utf8'));
- assert.deepEqual(config.rewrites[0],{source:'/api/:path*',destination:'https://adrankohrm.onrender.com/api/:path*'});
- const spa=new RegExp('^'+config.rewrites[1].source+'$');assert.equal(spa.test('/api'),false);assert.equal(spa.test('/api/auth/me'),false);assert.equal(spa.test('/assets/main.js'),false);assert.equal(spa.test('/reports/attendance/employee'),true);
+ assert.deepEqual(config.rewrites.slice(0,2),[{source:'/api/:path*/',destination:'https://adrankohrm.onrender.com/api/:path*'},{source:'/api/:path*',destination:'https://adrankohrm.onrender.com/api/:path*'}]);
+ const spa=new RegExp('^'+config.rewrites[2].source+'$');assert.equal(spa.test('/api'),false);assert.equal(spa.test('/api/auth/me'),false);assert.equal(spa.test('/assets/main.js'),false);assert.equal(spa.test('/reports/attendance/employee'),true);
+ // Check ordered pathname captures separately from the untouched query string.
+ for(const pathname of ['/api','/api/','/api/payroll','/api/payroll/','/api/auth/me','/api/auth/me/','/api/auth/refresh','/api/auth/refresh/']){
+  const incoming=new URL(pathname+'?workspace=monthly&month=2026-11&page=1&pageSize=20','https://ad-ranko-hrm.vercel.app');
+  const match=pathname.match(/^\/api\/(.*?)\/$/)||pathname.match(/^\/api(?:\/(.*?))?\/?$/);assert.ok(match,pathname);
+  const destination=new URL(config.rewrites[0].destination.replace(':path*',match[1]||''));destination.search=incoming.search;
+  assert.equal(destination.origin,'https://adrankohrm.onrender.com');assert.equal(destination.pathname.replace(/\/$/,''),pathname.replace(/\/$/,''));assert.equal(destination.search,incoming.search);assert.equal(spa.test(pathname),false);
+ }
+ const workspace=await fs.readFile(path.join(root,'frontend/src/components/payroll/monthly-payroll-workspace.jsx'),'utf8');
+ assert.ok(workspace.includes("usePayrollResource('?'+payrollQuery({workspace:'monthly'"));
  assert.equal(config.buildCommand,'npm run build:vercel');
 });
 test('storage startup probe leaves existing private files unchanged and removes only its canary',async()=>{
