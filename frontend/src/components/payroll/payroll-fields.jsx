@@ -18,5 +18,5 @@ export function PayrollField({label, children, hint, error}) {
   </div>;
 }
 export function PayrollStatus({status,needsCorrection=false}) {
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status==='PAID'||status==='APPROVED'?'bg-primary/10 text-primary':'bg-muted text-muted-foreground'}`}>{status==='DRAFT'&&needsCorrection?'Needs Correction':readable(status)}</span>;
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${status==='PAID'||status==='APPROVED'?'bg-primary/10 text-primary':'bg-muted text-muted-foreground'}`}>{status==='DRAFT'&&needsCorrection?'Needs Correction':status==='HR_APPROVED'?'Pending Admin Approval':readable(status)}</span>;
 }

@@ -22,7 +22,7 @@ export default function PayrollWorkflow({record,user,busy,uncertain,error,onRelo
     if(decisionBlocked)return;
     const body={expectedVersion:record.version,reason};
     if(name==='pay')Object.assign(body,{method,paidOn,...(reference?{reference}:{}),...(note?{note}:{})});
-    const saved=await onSave('/'+record.id+'/'+name,body);if(saved)setDecision(null);
+    const saved=await onSave('/'+record.id+'/'+name,body);if(saved){setDecision(null);setReason('');setPaidOn('');setReference('');setNote('');}
   }
   const actions=(editable||reviewable||payable)&&<section aria-label="Payroll actions" className="payroll-workflow-actions space-y-4 rounded-2xl border border-border bg-card p-5">{!compact&&<h3 className="text-lg font-semibold">Approval Actions</h3>}
       <fieldset disabled={busy||uncertain} className="space-y-4">
@@ -47,8 +47,8 @@ export default function PayrollWorkflow({record,user,busy,uncertain,error,onRelo
           <PayrollField label="Payment reference"><input className={inputClass} required={method!=='CASH'} maxLength={120} value={reference} onChange={event=>setReference(event.target.value)}/></PayrollField>
           <PayrollField label="Payment note (Optional)"><input className={inputClass} maxLength={1000} value={note} onChange={event=>setNote(event.target.value)}/></PayrollField>
           <PayrollField label="Payment audit reason"><input className={inputClass} required maxLength={1000} value={reason} onChange={event=>setReason(event.target.value)}/></PayrollField>
-        </fieldset>:<PayrollField label={returning?'Reason for Sending Back':'Approval note'} hint={returning?undefined:'Required for approval history.'}>{returning?<textarea className={`${inputClass} h-auto min-h-28 py-3`} required maxLength={1000} value={reason} placeholder="Explain what HR needs to correct..." onChange={event=>setReason(event.target.value)}/>:<input className={inputClass} required maxLength={1000} value={reason} onChange={event=>setReason(event.target.value)}/>}</PayrollField>}</div>
-        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border bg-card pt-4"><Button type="button" variant="outline" disabled={busy} onClick={close}>Cancel</Button><Button type="submit" disabled={busy||uncertain||decisionBlocked||!reason.trim()}>{busy?'Saving…':decision==='pay'?'Record Full Payment':returning?'Confirm Send Back':finalizing?'Confirm Final Approval':record.needsCorrection?'Confirm Resubmission':'Confirm HR Approval'}</Button></footer>
+        </fieldset>:<PayrollField label={returning?'Reason for Sending Back':'Approval Note (Optional)'} >{returning?<textarea className={`${inputClass} h-auto min-h-28 py-3`} required maxLength={1000} value={reason} placeholder="Explain what HR needs to correct..." onChange={event=>setReason(event.target.value)}/>:<input className={inputClass} maxLength={1000} value={reason} placeholder="Add a note if necessary..." onChange={event=>setReason(event.target.value)}/>}</PayrollField>}</div>
+        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-border bg-card pt-4"><Button type="button" variant="outline" disabled={busy} onClick={close}>Cancel</Button><Button type="submit" disabled={busy||uncertain||decisionBlocked||((returning||decision==='pay')&&!reason.trim())}>{busy?'Saving…':decision==='pay'?'Record Full Payment':returning?'Confirm Send Back':finalizing?'Confirm Final Approval':record.needsCorrection?'Confirm Resubmission':'Confirm HR Approval'}</Button></footer>
       </form>}
     </PayrollDialog>}
   </>;

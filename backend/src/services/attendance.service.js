@@ -865,6 +865,11 @@ async function listCorrections(
 async function getDailySummary(userId, shiftDate) {
   return transaction(async (tx) => {
     const user = await actor(tx, userId); // Admin/HR only
+    if (!shiftDate) {
+      const duty = await getScheduleContext(tx, clock.now());
+      if (!duty) fail(409, 'The operational duty date is unavailable. Review the published schedule or select a historical duty date.', 'SCHEDULE_UNAVAILABLE');
+      shiftDate = duty.shiftDate;
+    }
 
     const records = await tx.attendanceRecord.findMany({
       where: { shiftDate: dateValue(shiftDate) },

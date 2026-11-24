@@ -106,7 +106,7 @@ export async function getAttendanceList(
 }
 
 export async function getDailySummary(date, options = {}) {
-  const path = `/attendance/daily-summary/${encodeURIComponent(date)}`;
+  const path = date ? `/attendance/daily-summary/${encodeURIComponent(date)}` : '/attendance/daily-summary';
   const value = data(await apiRequest(path, options));
   return value;
 }

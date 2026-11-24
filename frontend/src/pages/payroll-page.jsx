@@ -105,8 +105,10 @@ function PayrollWorkspace({own}) {
       await Promise.all([records.reload(),salary.reload(),detailId===saved.id?detail.reload():Promise.resolve()]);
       if(!alive.current||controller.signal.aborted)return null;
       setAnnualRevision(value=>value+1);
-      if(saved.month){if(!detailId)setDetailOpener(modal?.returnFocus||document.activeElement);setSelection({query:requestedId,id:saved.id});if(!admin)setMonth(saved.month);setPage(1);}
-      setNotice(path.startsWith('/salaries/')?'Salary change saved. Previous salaries remain in history.':method==='PATCH'?'Draft changes saved successfully.':'Saved successfully.');
+      const workflowAction=/\/(hr-approve|approve|return|pay)$/.test(path);
+      if(workflowAction){setModal(null);setDetailAction(null);setSelection({query:null,id:null});const next=new URLSearchParams(query);next.delete('payrollId');setQuery(next,{replace:true,state:location.state});}
+      if(saved.month&&!workflowAction){if(!detailId)setDetailOpener(modal?.returnFocus||document.activeElement);setSelection({query:requestedId,id:saved.id});if(!admin)setMonth(saved.month);setPage(1);}
+      setNotice(({'hr-approve':'Payroll submitted for Admin approval.',approve:'Payroll approved.',return:'Payroll returned for correction.',pay:'Payment recorded.'})[path.split('/').at(-1)]||(path.startsWith('/salaries/')?'Salary change saved. Previous salaries remain in history.':method==='PATCH'?'Draft changes saved successfully.':'Saved successfully.'));
       return saved;
     }catch(error){
       if(!alive.current||controller.signal.aborted)return null;

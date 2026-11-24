@@ -1,6 +1,10 @@
+<<<<<<< Updated upstream
 import {apiRequest} from '@/lib/api';
 import {validDate,ATTENDANCE_STATUSES,STATUS_LABELS} from '@/lib/reports';
 import {teamStatus} from '@/components/dashboard/personal-dashboard-data';
+=======
+import {attendanceStatus,attendanceDate} from '@/lib/attendance-clock-presentation';
+>>>>>>> Stashed changes
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from 'react-router';
 import { useAuth } from "@/context/auth-context";
@@ -48,14 +52,7 @@ export default function AttendancePage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // ─── Daily Summary State (Admin/HR) ──────────────────────────────
-  const [todayStr] = useState(() => new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Karachi",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date()));
-
-  const [summaryDate, setSummaryDate] = useState(todayStr);
+  const [summaryDate, setSummaryDate] = useState('');
   const [dailySummary, setDailySummary] = useState(null);
   const [dailySearch, setDailySearch] = useState("");
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -360,12 +357,12 @@ export default function AttendancePage() {
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
             <div className="flex flex-wrap items-center gap-3">
               <label htmlFor="summary-date-input" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
-                Shift Date:
+                Duty Date:
               </label>
               <Input
                 id="summary-date-input"
                 type="date"
-                value={summaryDate}
+                value={summaryDate || dailySummary?.date || ''}
                 onChange={(e) => setSummaryDate(e.target.value)}
                 className="h-9 w-44 text-sm font-normal"
               />
@@ -396,41 +393,41 @@ export default function AttendancePage() {
                 <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Clock-Ins</dt>
                 <Users className="size-4 text-primary/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-foreground font-mono">{dailySummary?.totalRecords ?? 'Unavailable'}</dd>
+              <dd className="mt-2 text-2xl font-black tracking-tight text-foreground">{dailySummary?.totalRecords ?? 'Unavailable'}</dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
                 <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On Time</dt>
                 <CheckCircle2 className="size-4 text-emerald-500/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+              <dd className="mt-2 text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
                 {dailySummary?.onTime ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Late (Past Grace)</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Late Arrivals</dt>
                 <Clock className="size-4 text-amber-500/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400 font-mono">
+              <dd className="mt-2 text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">
                 {dailySummary?.late ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Early Out</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Early Clock-Out</dt>
                 <LogOut className="size-4 text-rose-500/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400 font-mono">
+              <dd className="mt-2 text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
                 {dailySummary?.earlyDeparture ?? 'Unavailable'}
               </dd>
             </div>
             <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-card to-background p-4 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
-                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Missing Out</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Missing Clock-Out</dt>
                 <AlertCircle className="size-4 text-destructive/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-destructive font-mono">
+              <dd className="mt-2 text-2xl font-black tracking-tight text-destructive">
                 {dailySummary?.missingCheckout ?? 'Unavailable'}
               </dd>
             </div>
@@ -439,7 +436,7 @@ export default function AttendancePage() {
                 <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completed</dt>
                 <Check className="size-4 text-blue-500/70" />
               </div>
-              <dd className="mt-2 text-2xl font-black tracking-tight text-blue-600 dark:text-blue-400 font-mono">
+              <dd className="mt-2 text-2xl font-black tracking-tight text-blue-600 dark:text-blue-400">
                 {dailySummary?.completed ?? 'Unavailable'}
               </dd>
             </div>
@@ -449,7 +446,7 @@ export default function AttendancePage() {
           <div className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden">
             <div className="border-b border-border/80 p-4 sm:p-5">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Daily Records for {summaryDate}
+                Daily Records for {attendanceDate(summaryDate || dailySummary?.date)}
               </h2>
             </div>
             <div className="overflow-x-auto">
@@ -459,7 +456,7 @@ export default function AttendancePage() {
                     <th className="py-2.5 px-4 font-semibold">Employee</th>
                     <th className="py-2.5 px-4 font-semibold">Clock In</th>
                     <th className="py-2.5 px-4 font-semibold">Clock Out</th>
-                    <th className="py-2.5 px-4 font-semibold">Raw elapsed</th>
+                    <th className="py-2.5 px-4 font-semibold">Duty Duration</th>
                     <th className="py-2.5 px-4 font-semibold">Status</th>
                     <th className="py-2.5 px-4 font-semibold">Lateness</th>
                   </tr>
@@ -474,7 +471,7 @@ export default function AttendancePage() {
                   ) : dailyRecords.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                        {summaryError ? 'Daily records unavailable. Refresh to retry.' : dailySummary?.records?.length ? 'No matching employees' : `No employees clocked in on ${summaryDate}.`}
+                        {summaryError ? 'Daily records unavailable. Refresh to retry.' : dailySummary?.records?.length ? 'No matching employees' : `No employees clocked in on ${attendanceDate(summaryDate || dailySummary?.date)}.`}
                       </td>
                     </tr>
                   ) : (
@@ -482,11 +479,11 @@ export default function AttendancePage() {
                       <tr key={r.id} className="hover:bg-muted/30 transition-colors">
                         <td className="py-3 px-4 font-semibold text-sm text-foreground">
                           <div>{r.employee?.fullName}</div>
-                          <div className="text-xs text-muted-foreground font-mono font-normal">
+                          <div className="text-xs text-muted-foreground font-normal">
                             {r.employee?.employeeCode}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-mono text-sm">
+                        <td className="py-3 px-4 text-sm">
                           {r.clockInAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -496,7 +493,7 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockInAt))
                             : "—"}
                         </td>
-                        <td className="py-3 px-4 font-mono text-sm">
+                        <td className="py-3 px-4 text-sm">
                           {r.clockOutAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -504,24 +501,15 @@ export default function AttendancePage() {
                               minute: "2-digit",
                               hour12: true,
                             }).format(new Date(r.clockOutAt))
-                            : "No actual checkout"}
+                            : "—"}
                         </td>
-                        <td className="py-3 px-4 text-sm font-mono font-medium">
+                        <td className="py-3 px-4 text-sm font-medium">
                           {r.workedMinutes != null
                             ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m`
                             : "—"}
                         </td>
                         <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${r.status === "COMPLETED"
-                                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : r.status === "OPEN"
-                                  ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                  : "border-border bg-muted/60 text-muted-foreground"
-                              }`}
-                          >
-                            {r.status}
-                          </span>
+                          <span className={attendanceStatus(r).className}>{attendanceStatus(r).label}</span>
                           {r.approvedAdjustment && <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable).</p>}
                         </td>
                         <td className="py-3 px-4">
@@ -558,7 +546,7 @@ export default function AttendancePage() {
             <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
               <div className="flex  items-center gap-2.5">
                 <label htmlFor="filter-from-date" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
-                  From Shift Date
+                  From Duty Date
                 </label>
                 <Input
                   id="filter-from-date"
@@ -570,7 +558,7 @@ export default function AttendancePage() {
               </div>
               <div className="flex items-center gap-2.5">
                 <label htmlFor="filter-to-date" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
-                  To Shift Date
+                  To Duty Date
                 </label>
                 <Input
                   id="filter-to-date"
@@ -591,10 +579,17 @@ export default function AttendancePage() {
                   className="h-9 rounded-lg border border-input bg-background/80 px-3 text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
                 >
                   <option value="">All Statuses</option>
+<<<<<<< Updated upstream
                   {teamCalendar ? ATTENDANCE_STATUSES.map(status=><option key={status} value={status}>{STATUS_LABELS[status] || status}</option>) : <><option value="OPEN">Open (Active)</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="MISSING_CHECKOUT">Missing Checkout</option>
                   <option value="CORRECTED">Corrected</option></>}
+=======
+                  <option value="OPEN">On Duty</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="MISSING_CHECKOUT">Missing Clock-Out</option>
+                  <option value="CORRECTED">Corrected</option>
+>>>>>>> Stashed changes
                 </select>
               </div>
               <Button
@@ -644,12 +639,12 @@ export default function AttendancePage() {
                 <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
                   <tr>
                     <th className="py-2.5 px-4 font-semibold">Employee</th>
-                    <th className="py-2.5 px-4 font-semibold">Shift Date</th>
+                    <th className="py-2.5 px-4 font-semibold">Duty Date</th>
                     <th className="py-2.5 px-4 font-semibold">Clock In</th>
                     <th className="py-2.5 px-4 font-semibold">Clock Out</th>
-                    <th className="py-2.5 px-4 font-semibold">Raw elapsed</th>
+                    <th className="py-2.5 px-4 font-semibold">Duty Duration</th>
                     <th className="py-2.5 px-4 font-semibold">Status</th>
-                    <th className="py-2.5 px-4 font-semibold">Flags</th>
+                    <th className="py-2.5 px-4 font-semibold">Attendance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -670,12 +665,12 @@ export default function AttendancePage() {
                       <tr key={r.id} className="hover:bg-muted/30 transition-colors">
                         <td className="py-3 px-4 font-semibold text-sm text-foreground">
                           <div>{r.employee?.fullName}</div>
-                          <div className="text-xs text-muted-foreground font-mono font-normal">
+                          <div className="text-xs text-muted-foreground font-normal">
                             {r.employee?.employeeCode}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-semibold text-sm font-mono">{r.shiftDate}</td>
-                        <td className="py-3 px-4 font-mono text-sm">
+                        <td className="py-3 px-4 font-semibold text-sm">{attendanceDate(r.shiftDate)}</td>
+                        <td className="py-3 px-4 text-sm">
                           {r.clockInAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -685,7 +680,7 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockInAt))
                             : "—"}
                         </td>
-                        <td className="py-3 px-4 font-mono text-sm">
+                        <td className="py-3 px-4 text-sm">
                           {r.clockOutAt
                             ? new Intl.DateTimeFormat("en-PK", {
                               timeZone: "Asia/Karachi",
@@ -695,12 +690,13 @@ export default function AttendancePage() {
                             }).format(new Date(r.clockOutAt))
                             : "—"}
                         </td>
-                        <td className="py-3 px-4 text-sm font-mono font-medium">
+                        <td className="py-3 px-4 text-sm font-medium">
                           {r.workedMinutes != null
                             ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m`
                             : "—"}
                         </td>
                         <td className="py-3 px-4">
+<<<<<<< Updated upstream
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${r.status === "COMPLETED"
                                 ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
@@ -711,6 +707,9 @@ export default function AttendancePage() {
                           >
                             {r._teamRow ? teamStatus(r._teamRow) : r.status}
                           </span>
+=======
+                          <span className={attendanceStatus(r).className}>{attendanceStatus(r).label}</span>
+>>>>>>> Stashed changes
                           {r.approvedAdjustment && (isManager ? <details className="attendance-adjustment-details"><summary>Approved adjustment</summary><p>{r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable). Original punches remain unchanged.</p></details> : <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable).</p>)}
                         </td>
                         <td className="py-3 px-4">
@@ -722,12 +721,12 @@ export default function AttendancePage() {
                             )}
                             {r.isEarlyDeparture && (
                               <span className="rounded-md border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                                Early Out
+                                Early Clock-Out
                               </span>
                             )}
                             {r.isMissingCheckout && (
                               <span className="rounded-md border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
-                                Missing Out
+                                Missing Clock-Out
                               </span>
                             )}
                             {!r.isLate && !r.isEarlyDeparture && !r.isMissingCheckout && (
@@ -817,7 +816,7 @@ export default function AttendancePage() {
                 <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
                   <tr>
                     <th className="py-2.5 px-4 font-semibold">Employee</th>
-                    <th className="py-2.5 px-4 font-semibold">Shift Date</th>
+                    <th className="py-2.5 px-4 font-semibold">Duty Date</th>
                     <th className="py-2.5 px-4 font-semibold">Correction Type</th>
                     <th className="py-2.5 px-4 font-semibold">Requested Times</th>
                     <th className="py-2.5 px-4 font-semibold">Employee Reason</th>
@@ -842,13 +841,13 @@ export default function AttendancePage() {
                       <tr key={c.id} className="hover:bg-muted/30 transition-colors">
                         <td className="py-3 px-4 font-semibold text-sm text-foreground">
                           <div>{c.employee?.fullName}</div>
-                          <div className="text-xs text-muted-foreground font-mono font-normal">
+                          <div className="text-xs text-muted-foreground font-normal">
                             {c.employee?.employeeCode}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-semibold text-sm font-mono">{c.shiftDate}</td>
+                        <td className="py-3 px-4 font-semibold text-sm">{attendanceDate(c.shiftDate)}</td>
                         <td className="py-3 px-4 text-sm font-medium">{c.requestType}</td>
-                        <td className="py-3 px-4 text-sm font-mono">
+                        <td className="py-3 px-4 text-sm">
                           {c.correctedClockIn && (
                             <div>In: {new Date(c.correctedClockIn).toLocaleTimeString([], { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit' })}</div>
                           )}
@@ -945,7 +944,7 @@ export default function AttendancePage() {
               <p className="font-semibold text-foreground">
                 Employee: {selectedCorrection.employee?.fullName} ({selectedCorrection.employee?.employeeCode})
               </p>
-              <p className="text-muted-foreground">Shift Date: {selectedCorrection.shiftDate}</p>
+              <p className="text-muted-foreground">Duty Date: {attendanceDate(selectedCorrection.shiftDate)}</p>
               <p className="text-muted-foreground">Reason: {selectedCorrection.reason}</p>
             </div>
 

@@ -21,7 +21,7 @@ export default function PaidLeaveAttendance({ tabular = false }) {
                 <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal"><tr><th className="py-2.5 px-4 font-semibold">Employee</th><th className="py-2.5 px-4 font-semibold">Leave Date</th><th className="py-2.5 px-4 font-semibold">Days</th></tr></thead>
                 <tbody className="divide-y divide-border/60">
                     {!current ? <tr><td colSpan={3} className="py-8 text-center text-sm text-muted-foreground" role="status">Loading approved leave...</td></tr> : !current.rows.length ? <tr><td colSpan={3} className="py-8 text-center text-sm text-muted-foreground">{searchTerm ? "No matching employees" : "No approved paid leave for this month"}</td></tr> : current.rows.map(r => <tr key={`${r.employee.id}:${r.shiftDate}`} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-sm text-foreground"><div>{r.employee.fullName}</div><div className="text-xs text-muted-foreground font-mono font-normal">{r.employee.employeeCode}</div></td>
+                        <td className="py-3 px-4 font-semibold text-sm text-foreground"><div>{r.employee.fullName}</div><div className="text-xs text-muted-foreground font-normal">{r.employee.employeeCode}</div></td>
                         <td className="py-3 px-4 text-sm">{r.shiftDate}{r.leaveConflict && <p>Calendar/employment conflict: HR review required.</p>}{r.scheduleState === 'SETUP_REQUIRED' && <p>Attendance setup required; leave remains recorded.</p>}</td>
                         <td className="py-3 px-4 text-sm">1</td>
                     </tr>)}

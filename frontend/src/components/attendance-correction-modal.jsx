@@ -40,7 +40,7 @@ function CorrectionDialog({
     e.preventDefault();
     if (submitting||submitLock.current) return;
     if (!shiftDate) {
-      setError("Shift date is required.");
+      setError("Duty date is required.");
       return;
     }
     if (!reason.trim()) {
@@ -128,10 +128,10 @@ function CorrectionDialog({
 
           <div className="space-y-1">
             <label className="block text-sm font-medium text-foreground">
-              Duty Shift Date (YYYY-MM-DD)
+              Duty Date
             </label>
             <Input
-              aria-label="Shift date" type="date"
+              aria-label="Duty Date" type="date"
               value={shiftDate}
               onChange={(e) => setShiftDate(e.target.value)}
               required

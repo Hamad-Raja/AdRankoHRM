@@ -96,7 +96,7 @@ async function mutate(userId,id,input,action){return transaction(async tx=>{
  let record=await tx.payrollRecord.findUnique({where:{id}});if(!record)fail(404,'Payroll not found.','NOT_FOUND');await lock(tx,record.employeeId);
  if(record.version!==input.expectedVersion)fail(409,'Payroll changed. Reload before trying again.','VERSION_CONFLICT');
  if(record.version>=2147483647)fail(409,'Payroll revision limit reached. No changes were saved.','VERSION_EXHAUSTED');
- const data={updatedByUserId:user.id,changeReason:input.reason,version:{increment:1}};const now=new Date();
+ const data={updatedByUserId:user.id,changeReason:input.reason||(['hr-approve','approve'].includes(action)?(action==='hr-approve'?'HR approval (no note provided).':'Admin approval (no note provided).'):input.reason),version:{increment:1}};const now=new Date();
  if(action==='edit'){
   if(record.status!=='DRAFT')fail(409,'Only drafts can be edited.','INVALID_TRANSITION');
   const {salary,result}=await calculation(tx,record.employeeId,monthOf(record.payrollMonth),input);Object.assign(data,financial(result),{salaryVersionId:salary.id});
@@ -115,7 +115,7 @@ async function mutate(userId,id,input,action){return transaction(async tx=>{
  }else fail(400,'Unknown payroll action.');
  record=await tx.payrollRecord.update({where:{id,version:input.expectedVersion},data,include:{payment:true}});
  const resubmitted=action==='hr-approve'&&Boolean(await tx.auditLog.findFirst({where:{targetType:'Payroll',targetId:id,action:'PAYROLL_RETURN',success:true},select:{id:true}}));
- await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason,version:record.version,status:record.status,...(resubmitted?{resubmitted:true}:{})});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
+ await event(tx,user.id,`PAYROLL_${action.toUpperCase().replaceAll('-','_')}`,id,{reason:input.reason||null,version:record.version,status:record.status,...(resubmitted?{resubmitted:true}:{})});await require('./workflow-notifications').payrollChanged(tx,record,action,user.id);return view(record);
 });}
 async function annualSummary(userId,input,own=false){return transaction(async tx=>{
  const user=await actor(tx,userId,false);

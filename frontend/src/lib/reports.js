@@ -7,10 +7,10 @@ export const REPORT_TYPES = [
 ];
 
 export const STATUS_LABELS = {
-  OPEN: "Open",
+  OPEN: "On Duty",
   COMPLETED: "Completed",
   CORRECTED: "Adjusted",
-  MISSING_CHECKOUT: "Missing checkout",
+  MISSING_CHECKOUT: "Missing Clock-Out",
   NO_CLOCK_IN: "No clock-in",
   APPROVED_EXCEPTION: "Approved exception",
   PAID_LEAVE: "Approved paid leave",
@@ -20,8 +20,8 @@ export const STATUS_LABELS = {
   NOT_ELIGIBLE: "Not eligible",
   SETUP_REQUIRED: "Setup required",
   LEGACY_ASSIGNMENT_REVIEW: "Assignment review required",
-  LATE: "Late entry",
-  EARLY_DEPARTURE: "Early departure",
+  LATE: "Late Arrivals",
+  EARLY_DEPARTURE: "Early Clock-Out",
   AFTER_SCHEDULE_END: "Checkout after duty",
   PENDING: "Pending",
   APPROVED: "Approved",

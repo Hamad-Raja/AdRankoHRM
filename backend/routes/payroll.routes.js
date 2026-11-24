@@ -18,5 +18,5 @@ router.get('/',run(req=>service.list(req.auth.user.id,parse(schema.list,req.quer
 router.post('/',authorize('HR'),csrfProtection,run(req=>service.createDraft(req.auth.user.id,parse(schema.draft,req.body))));
 router.get('/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id))));
 router.patch('/:id',authorize('HR'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(schema.edit,req.body),'edit')));
-for(const action of ['hr-approve','return','approve','pay'])router.post(`/:id/${action}`,authorize(action==='hr-approve'?'HR':'ADMIN'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(action==='pay'?schema.payment:schema.decision,req.body),action)));
+for(const action of ['hr-approve','return','approve','pay'])router.post(`/:id/${action}`,authorize(action==='hr-approve'?'HR':'ADMIN'),csrfProtection,run(req=>service.mutate(req.auth.user.id,parse(schema.id,req.params.id),parse(action==='pay'?schema.payment:['hr-approve','approve'].includes(action)?schema.approval:schema.decision,req.body),action)));
 module.exports=router;

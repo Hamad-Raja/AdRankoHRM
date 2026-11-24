@@ -33,6 +33,7 @@ router.get('/history',endpoint(req => service.getOwnHistory(req.auth.user.id,par
 router.post('/corrections',csrfProtection,endpoint(req => service.submitCorrectionRequest(req.auth.user.id,parse(correction,req.body))));
 router.get('/corrections',endpoint(req => service.listCorrections(req.auth.user.id,{...parse(corrections,req.query),ownOnly:true})));
 router.get('/all',endpoint(req => service.getAttendanceList(req.auth.user.id,parse(list,req.query))));
+router.get('/daily-summary',authorize('ADMIN','HR'),endpoint(req => service.getDailySummary(req.auth.user.id)));
 router.get('/daily-summary/:date',authorize('ADMIN','HR'),endpoint(req => service.getDailySummary(req.auth.user.id,parse(date,req.params.date))));
 router.post('/corrections/:id/review',authorize('ADMIN','HR'),csrfProtection,endpoint(req => service.reviewCorrection(req.auth.user.id,parse(z.uuid(),req.params.id),parse(review,req.body))));
 router.get('/corrections/all',authorize('ADMIN','HR'),endpoint(req => service.listCorrections(req.auth.user.id,parse(corrections,req.query))));

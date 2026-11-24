@@ -1,3 +1,4 @@
+import {attendanceStatus,attendanceDate} from '@/lib/attendance-clock-presentation';
 import { useState, useEffect, useCallback, useRef, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,7 +83,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           </div>
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              My Attendance Records & Requests
+              My Attendance
             </h2>
             <p className="text-xs text-muted-foreground">
               Review personal attendance logs and check status of submitted corrections.
@@ -184,12 +185,12 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
               <tr>
-                <th className="py-2.5 px-3.5 font-semibold">Duty Shift Date</th>
+                <th className="py-2.5 px-3.5 font-semibold">Duty Date</th>
                 <th className="py-2.5 px-3.5 font-semibold">Clock In</th>
                 <th className="py-2.5 px-3.5 font-semibold">Clock Out</th>
-                <th className="py-2.5 px-3.5 font-semibold">Raw elapsed (not payable)</th>
+                <th className="py-2.5 px-3.5 font-semibold">Duty Duration (not payable)</th>
                 <th className="py-2.5 px-3.5 font-semibold">Status</th>
-                <th className="py-2.5 px-3.5 font-semibold">Flags</th>
+                <th className="py-2.5 px-3.5 font-semibold">Attendance</th>
                 <th className="py-2.5 px-3.5 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -209,8 +210,8 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               ) : (
                 records.map((r) => (
                   <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-3.5 font-semibold text-foreground text-sm">{r.shiftDate}</td>
-                    <td className="py-3 px-3.5 font-mono text-sm">
+                    <td className="py-3 px-3.5 font-semibold text-foreground text-sm">{attendanceDate(r.shiftDate)}</td>
+                    <td className="py-3 px-3.5 text-sm">
                       {r.clockInAt
                         ? new Intl.DateTimeFormat("en-PK", {
                             timeZone: "Asia/Karachi",
@@ -220,7 +221,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                           }).format(new Date(r.clockInAt))
                         : "—"}
                     </td>
-                    <td className="py-3 px-3.5 font-mono text-sm">
+                    <td className="py-3 px-3.5 text-sm">
                       {r.clockOutAt
                         ? new Intl.DateTimeFormat("en-PK", {
                             timeZone: "Asia/Karachi",
@@ -230,23 +231,13 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                           }).format(new Date(r.clockOutAt))
                         : "—"}
                     </td>
-                    <td className="py-3 px-3.5 text-sm font-mono font-medium">
+                    <td className="py-3 px-3.5 text-sm font-medium">
                       {r.workedMinutes != null
                         ? `${Math.floor(r.workedMinutes / 60)}h ${r.workedMinutes % 60}m`
                         : "—"}
                     </td>
                     <td className="py-3 px-3.5">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
-                          r.status === "COMPLETED"
-                            ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                            : r.status === "OPEN"
-                            ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                            : "border-border bg-muted/60 text-muted-foreground"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
+                      <span className={attendanceStatus(r).className}>{attendanceStatus(r).label}</span>
                       {r.approvedAdjustment && <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes.</p>}
                     </td>
                     <td className="py-3 px-3.5">
@@ -258,12 +249,12 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                         )}
                         {r.isEarlyDeparture && (
                           <span className="rounded-md border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                            Early Out
+                            Early Clock-Out
                           </span>
                         )}
                         {r.isMissingCheckout && (
                           <span className="rounded-md border border-destructive/30 bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
-                            Missing Out
+                            Missing Clock-Out
                           </span>
                         )}
                         {!r.isLate && !r.isEarlyDeparture && !r.isMissingCheckout && (
@@ -281,7 +272,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
                         }}
                         className="h-7 px-2.5 text-sm font-semibold"
                       >
-                        Correct
+                        Request Correction
                       </Button>
                     </td>
                   </tr>
@@ -296,7 +287,7 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border/80 bg-muted/40 text-sm font-semibold text-muted-foreground normal-case tracking-normal">
               <tr>
-                <th className="py-2.5 px-3.5 font-semibold">Shift Date</th>
+                <th className="py-2.5 px-3.5 font-semibold">Duty Date</th>
                 <th className="py-2.5 px-3.5 font-semibold">Type</th>
                 <th className="py-2.5 px-3.5 font-semibold">Requested Correction</th>
                 <th className="py-2.5 px-3.5 font-semibold">Reason</th>
@@ -320,9 +311,9 @@ export default function AttendanceHistory({ refreshTrigger = 0 }) {
               ) : (
                 corrections.map((c) => (
                   <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-3.5 font-semibold text-foreground text-sm">{c.shiftDate}</td>
+                    <td className="py-3 px-3.5 font-semibold text-foreground text-sm">{attendanceDate(c.shiftDate)}</td>
                     <td className="py-3 px-3.5 text-sm font-medium">{c.requestType}</td>
-                    <td className="py-3 px-3.5 text-sm font-mono">
+                    <td className="py-3 px-3.5 text-sm">
                       {c.correctedClockIn && (
                         <div>In: {new Date(c.correctedClockIn).toLocaleTimeString([], { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit' })}</div>
                       )}

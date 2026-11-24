@@ -58,3 +58,28 @@ export function dutyTime(value,timeZone='Asia/Karachi'){
  return new Intl.DateTimeFormat('en-GB',{timeZone,hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(value));
 }
 export function nextDay(schedule){return !!schedule?.startsAt&&!!schedule?.endsAt&&new Intl.DateTimeFormat('en-CA',{timeZone:schedule.timeZone}).format(new Date(schedule.startsAt))!==new Intl.DateTimeFormat('en-CA',{timeZone:schedule.timeZone}).format(new Date(schedule.endsAt));}
+
+// Shared display labels only; action flags and stored enums stay server-owned.
+export function attendanceStatus(record, now) {
+ const complete=['COMPLETED','CLOSED'].includes(record?.status);
+ const missing=!record?.clockOutAt&&(record?.isMissingCheckout||record?.status==='MISSING_CHECKOUT'||(record?.status==='OPEN'&&now&&Date.parse(record.scheduledEnd)<=+now));
+ const tone=complete||record?.status==='CORRECTED'?'blue':missing?'red':record?.status==='OPEN'?'green':'neutral';
+ const label=complete?'Completed':record?.status==='CORRECTED'?'Corrected':missing?'Missing Clock-Out':record?.status==='OPEN'?'On Duty':record?.status||'Not clocked in';
+ const colors={blue:'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300',red:'border-destructive/30 bg-destructive/10 text-destructive',green:'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',neutral:'border-border bg-muted text-muted-foreground'};
+ return {label,className:'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium '+colors[tone]};
+}
+export function attendanceDate(value) {
+ if(!value||!Number.isFinite(Date.parse(value)))return '—';
+ return new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'}).format(new Date(value));
+}
+export function attendanceDuration(record, asOf, now) {
+ if(!record?.clockInAt)return '—';
+ let minutes=record.workedMinutes;
+ if(minutes==null){
+  const ongoing=record.status==='OPEN'&&!record.isMissingCheckout&&!record.clockOutAt&&now&&+now<Date.parse(record.scheduledEnd);
+  const end=record.clockOutAt||(ongoing?now:asOf);
+  if(!end)return '—';minutes=Math.max(0,Math.floor((+new Date(end)-Date.parse(record.clockInAt))/60000));
+ }
+ if(!Number.isFinite(minutes))return '—';
+ return String(Math.floor(minutes/60)).padStart(2,'0')+'h '+String(minutes%60).padStart(2,'0')+'m';
+}
