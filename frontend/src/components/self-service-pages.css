@@ -139,3 +139,8 @@
 }
 
 @media(min-width:640px){.self-service-page h1{font-size:var(--text-3xl);}}
+
+/* Personal leave requests share the existing accessible modal and theme. */
+.leave-detail-dialog{max-width:42rem;}
+.leave-personal-request{display:flex;flex-direction:column;min-width:0;}
+.leave-personal-request>button{align-self:flex-start;margin-top:auto;}
