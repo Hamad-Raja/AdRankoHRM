@@ -88,7 +88,7 @@ async function updateUnit(id,unitId,data){
 }
 async function validatePlacement(tx,data,employeeUserId){
  const selected={departmentId:data.departmentId||null,campaignId:data.campaignId||null,teamId:data.teamId||null,designationId:data.designationId,reportingManagerId:data.reportingManagerId||null};
- if(selected.teamId){const selectedTeam=await team(tx,selected.teamId);if(selected.departmentId&&selected.departmentId!==selectedTeam.departmentId)fail(400,'Team does not belong to the selected department.');if(Object.hasOwn(data,'campaignId')&&selected.campaignId!==selectedTeam.campaignId)fail(400,'Team does not belong to the selected campaign.');selected.departmentId=selectedTeam.departmentId;selected.campaignId=selectedTeam.campaignId;}
+ if(selected.teamId){const selectedTeam=await team(tx,selected.teamId);if(Object.hasOwn(data,'campaignId')&&selected.campaignId!==selectedTeam.campaignId)fail(400,'Team does not belong to the selected campaign.');if(!selected.departmentId)selected.departmentId=selectedTeam.departmentId;selected.campaignId=selectedTeam.campaignId;}
  if(!selected.departmentId)fail(400,'Select a department.');
  await validateParents(tx,selected);await activeUnit(tx,selected.designationId,'DESIGNATION');
  if(selected.reportingManagerId){const manager=await tx.user.findUnique({where:{id:selected.reportingManagerId}});if(!manager||manager.role!=='MANAGER'||manager.status!=='ACTIVE')fail(400,'Select an active Manager account.');if(employeeUserId===manager.id)fail(400,'An employee cannot report to themselves.');}
@@ -133,7 +133,10 @@ async function assignEmployee(id, employeeId, data) {
     if (!employee) fail(404, 'Employee not found.', 'NOT_FOUND');
     await assertEmploymentPlacement(tx,employeeId,null,data.effectiveFrom);
     await assertEmploymentPlacement(tx,null,data.reportingManagerId,data.effectiveFrom);
-    const placement=await validatePlacement(tx,data,employee.userId);
+    // Legacy callers may omit department; retain the employee's latest dated
+    // department rather than silently adopting team ownership.
+    const previous=!data.departmentId&&data.teamId?await tx.organizationAssignment.findFirst({where:{employeeId,effectiveFrom:{lte:date(data.effectiveFrom)}},orderBy:[{effectiveFrom:'desc'},{id:'desc'}],select:{departmentId:true}}):null;
+    const placement=await validatePlacement(tx,previous?.departmentId?{...data,departmentId:previous.departmentId}:data,employee.userId);
     const dates = await replaceInterval('organizationAssignment', 'employeeId', employeeId, tx, data);
     const assignment = await tx.organizationAssignment.create({ data: { ...data,...placement, ...dates, employeeId, actorUserId: id } });
     await audit(tx, id, 'EMPLOYEE_ORGANIZATION_ASSIGNED', employeeId, { assignmentId: assignment.id, effectiveFrom: data.effectiveFrom }); return assignment;

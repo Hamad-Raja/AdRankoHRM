@@ -1,3 +1,4 @@
+import {teamMatchesCampaign,retainEligibleTeam} from './management-utils';
 import {employeeCreationRoles} from './employee-account-rules';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -47,8 +48,8 @@ export default function EmployeeForm({ employee = null, onSubmit, busy = false, 
   function suggestedManager(teamId,date){return (metadata?.managers||[]).find(item=>item.teamId===teamId&&item.effectiveFrom.slice(0,10)<=date&&(!item.effectiveTo||item.effectiveTo.slice(0,10)>=date))?.managerUserId || '';}
   function change(event){const {name,value,type,checked}=event.target;onDirtyChange?.(true);setValues(old=>{
     const next={...old,[name]:type==='checkbox'?checked:value};
-    if(name==='departmentId')Object.assign(next,{campaignId:'',teamId:'',reportingManagerId:''});
-    if(name==='campaignId')Object.assign(next,{teamId:'',reportingManagerId:''});
+    if(name==='departmentId'||name==='campaignId')Object.assign(next,retainEligibleTeam(next,units,active));
+
     if(name==='teamId'||name==='startDate')next.reportingManagerId=suggestedManager(next.teamId,next.startDate);
     if(name==='status'&&value==='PROBATION')next.confirmedOn='';return next;
   });setErrors(old=>({...old,[name]:''}));}
@@ -88,7 +89,8 @@ export default function EmployeeForm({ employee = null, onSubmit, busy = false, 
       <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {field('departmentId','Department',Building2,{options:choices('DEPARTMENT'),required:true})}
         {field('campaignId','Campaign',Megaphone,{options:choices('CAMPAIGN',unit=>!unit.departmentId||unit.departmentId===values.departmentId),disabled:!values.departmentId})}
-        {field('teamId','Team',UsersRound,{options:choices('TEAM',unit=>unit.departmentId===values.departmentId&&(unit.campaignId||'')===values.campaignId),disabled:!values.departmentId})}
+        {field('teamId','Team',UsersRound,{options:choices('TEAM',unit=>teamMatchesCampaign(unit,values.campaignId)),disabled:!values.departmentId})}
+      {values.departmentId&&choices('TEAM',unit=>teamMatchesCampaign(unit,values.campaignId)).length===1&&<p className="text-sm text-muted-foreground">{values.campaignId?'No active teams are available for the selected campaign.':'No active teams are available without a campaign.'}</p>}
         {field('designationId','Designation (Job Title)',BriefcaseBusiness,{options:choices('DESIGNATION'),required:true})}
       </div><div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {field('reportingManagerId','Reporting Manager',UserRound,{options:managerOptions})}

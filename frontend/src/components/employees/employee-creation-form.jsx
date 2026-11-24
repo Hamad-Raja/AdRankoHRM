@@ -1,3 +1,4 @@
+import {teamMatchesCampaign,retainEligibleTeam} from './management-utils';
 import {employeeCreationRoles} from './employee-account-rules';
 import {useEffect,useRef,useState} from 'react';
 import {Eye,EyeOff,ShieldCheck,ChevronRight,ChevronLeft,LoaderCircle} from 'lucide-react';
@@ -28,8 +29,8 @@ export default function EmployeeCreationForm({busy,blocked,onSave,onClose,onDirt
   function suggestedManager(teamId,date){return metadata?.managers?.find(item=>item.teamId===teamId&&item.effectiveFrom.slice(0,10)<=date&&(!item.effectiveTo||item.effectiveTo.slice(0,10)>=date))?.managerUserId||'';}
   function update(next){setValues(next);onDirtyChange(JSON.stringify(next)!==JSON.stringify(initial));}
   function change(event){const {name,value,type,checked}=event.target,next={...values,[name]:type==='checkbox'?checked:value};
-    if(name==='departmentId')Object.assign(next,{campaignId:'',teamId:'',reportingManagerId:''});
-    if(name==='campaignId')Object.assign(next,{teamId:'',reportingManagerId:''});
+    if(name==='departmentId'||name==='campaignId')Object.assign(next,retainEligibleTeam(next,units,active));
+
     if(name==='teamId'||name==='startDate')next.reportingManagerId=suggestedManager(next.teamId,next.startDate);
     if(name==='status'&&value==='PROBATION')next.confirmedOn='';
     if(name==='salaryMonth')setSalaryMonthEdited(true);
@@ -59,7 +60,8 @@ export default function EmployeeCreationForm({busy,blocked,onSave,onClose,onDirt
             <div className="sm:col-span-2">{field('address','Address',{maxLength:1000,placeholder:'Complete address'})}</div>
             {field('cnic','CNIC (Optional)',{inputMode:'numeric',maxLength:15,pattern:'(?:[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9])',placeholder:'12345-1234567-1'})}{field('location','Location (Optional)',{maxLength:160,placeholder:'Office or city'})}
             {select('departmentId','Department',choices('DEPARTMENT'),{required:true})}{select('designationId','Designation (Job Title)',choices('DESIGNATION'),{required:true})}
-            {select('campaignId','Campaign',choices('CAMPAIGN',unit=>!unit.departmentId||unit.departmentId===values.departmentId),{disabled:!values.departmentId})}{select('teamId','Team',choices('TEAM',unit=>unit.departmentId===values.departmentId&&(unit.campaignId||'')===values.campaignId),{disabled:!values.departmentId})}
+            {select('campaignId','Campaign',choices('CAMPAIGN',unit=>!unit.departmentId||unit.departmentId===values.departmentId),{disabled:!values.departmentId})}{select('teamId','Team',choices('TEAM',unit=>teamMatchesCampaign(unit,values.campaignId)),{disabled:!values.departmentId})}
+      {values.departmentId&&choices('TEAM',unit=>teamMatchesCampaign(unit,values.campaignId)).length===1&&<p className="text-sm text-muted-foreground">{values.campaignId?'No active teams are available for the selected campaign.':'No active teams are available without a campaign.'}</p>}
             <div className="sm:col-span-2">{select('reportingManagerId','Reporting Manager',managers)}</div>
             {field('startDate','Joining Date',{type:'date',required:true,min:'0001-01-01',max:'9999-12-31'})}{select('employmentType','Employment Type',[['','Not specified'],...employmentTypes])}
             {select('status','Employment Status',[['ACTIVE','Active'],['PROBATION','Probation']],{required:true})}
