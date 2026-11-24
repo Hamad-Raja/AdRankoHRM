@@ -1,10 +1,7 @@
-<<<<<<< Updated upstream
 import {apiRequest} from '@/lib/api';
 import {validDate,ATTENDANCE_STATUSES,STATUS_LABELS} from '@/lib/reports';
 import {teamStatus} from '@/components/dashboard/personal-dashboard-data';
-=======
 import {attendanceStatus,attendanceDate} from '@/lib/attendance-clock-presentation';
->>>>>>> Stashed changes
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from 'react-router';
 import { useAuth } from "@/context/auth-context";
@@ -579,17 +576,10 @@ export default function AttendancePage() {
                   className="h-9 rounded-lg border border-input bg-background/80 px-3 text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
                 >
                   <option value="">All Statuses</option>
-<<<<<<< Updated upstream
-                  {teamCalendar ? ATTENDANCE_STATUSES.map(status=><option key={status} value={status}>{STATUS_LABELS[status] || status}</option>) : <><option value="OPEN">Open (Active)</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="MISSING_CHECKOUT">Missing Checkout</option>
-                  <option value="CORRECTED">Corrected</option></>}
-=======
-                  <option value="OPEN">On Duty</option>
+                  {teamCalendar ? ATTENDANCE_STATUSES.map(status=><option key={status} value={status}>{STATUS_LABELS[status] || status}</option>) : <><option value="OPEN">On Duty</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="MISSING_CHECKOUT">Missing Clock-Out</option>
-                  <option value="CORRECTED">Corrected</option>
->>>>>>> Stashed changes
+                  <option value="CORRECTED">Corrected</option></>}
                 </select>
               </div>
               <Button
@@ -696,20 +686,7 @@ export default function AttendancePage() {
                             : "—"}
                         </td>
                         <td className="py-3 px-4">
-<<<<<<< Updated upstream
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${r.status === "COMPLETED"
-                                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : r.status === "OPEN"
-                                  ? "border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                  : "border-border bg-muted/60 text-muted-foreground"
-                              }`}
-                          >
-                            {r._teamRow ? teamStatus(r._teamRow) : r.status}
-                          </span>
-=======
-                          <span className={attendanceStatus(r).className}>{attendanceStatus(r).label}</span>
->>>>>>> Stashed changes
+                          <span className={attendanceStatus(r).className}>{r._teamRow ? teamStatus(r._teamRow) : attendanceStatus(r).label}</span>
                           {r.approvedAdjustment && (isManager ? <details className="attendance-adjustment-details"><summary>Approved adjustment</summary><p>{r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable). Original punches remain unchanged.</p></details> : <p className="text-xs">Approved adjustment: {r.approvedAdjustment.clockInAt} to {r.approvedAdjustment.clockOutAt || "unresolved"}; {r.approvedAdjustment.minutes ?? "unresolved"} minutes (not payable).</p>)}
                         </td>
                         <td className="py-3 px-4">
