@@ -51,6 +51,10 @@ router.post(
   endpoint((req) => service.saveDraft(req.auth.user.id, req.validatedBody)),
 );
 router.post(
+  "/draft/discard", csrfProtection, validate(readiness.discardSchema),
+  endpoint((req) => service.discardDraft(req.auth.user.id, req.validatedBody)),
+);
+router.post(
   "/activate",
   csrfProtection,
   validate(readiness.activationSchema),

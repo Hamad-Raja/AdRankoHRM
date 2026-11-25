@@ -18,3 +18,5 @@ export async function activateSchedule(body,options) {const value=data(await api
 function eventData(payload,action) {const value=data(payload);if(!uuid(value.id)||typeof value.holidayDate!=='string'||value.action!==action||!Number.isInteger(value.revision))invalid();return value;}
 export const announceHoliday = async (body,options) => eventData(await apiRequest('/attendance-settings/holidays',{...options,method:'POST',body}),'ANNOUNCE');
 export const cancelHoliday = async (id,body,options) => eventData(await apiRequest(`/attendance-settings/holidays/${encodeURIComponent(id)}/cancel`,{...options,method:'POST',body}),'CANCEL');
+
+export async function discardScheduleDraft(body,options) {const value=data(await apiRequest('/attendance-settings/draft/discard',{...options,method:'POST',body}));if(value.draftId!==body.draftId||!uuid(value.actorUserId)||!Number.isFinite(Date.parse(value.discardedAt)))invalid();return value;}

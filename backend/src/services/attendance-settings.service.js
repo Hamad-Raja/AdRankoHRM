@@ -40,12 +40,14 @@ async function settings(userId) {
     const versions = await tx.officeSchedule.findMany({
       orderBy: { effectiveFrom: "asc" },
     });
-    const draft = await tx.officeScheduleDraft.findFirst({
+    const drafts = await tx.officeScheduleDraft.findMany({
       orderBy: { revision: "desc" },
       include: {
         activation: { select: { id: true, effectiveFrom: true, policy: true } },
+        discard: true,
       },
     });
+    const draft = drafts[0] || null;
     const now = new Date(),
       active = activeVersion(versions, now);
     const holidays = await tx.companyHolidayEvent.findMany({
@@ -60,9 +62,11 @@ async function settings(userId) {
       duty: { startTime: "19:00", endTime: "05:00", endsNextDay: true },
       asOf: now.toISOString(),
       confirmedPolicy: schemas.confirmedPolicy,
+      draftHistory: drafts,
       draft: draft
         ? {
             ...draft,
+            canDiscard: !draft.activation && !draft.discard,
             activation: draft.activation
               ? {
                   id: draft.activation.id,
@@ -73,6 +77,8 @@ async function settings(userId) {
         : null,
       draftStatus: !draft
         ? "NOT_SAVED"
+        : draft.discard
+          ? "DISCARDED"
         : !draft.activation
           ? "PENDING_ACTIVATION"
           : effectiveInstant(draft.activation) > now
@@ -197,14 +203,15 @@ async function activate(userId, input) {
   const data = parse(schemas.activationSchema, input);
   return transaction(async (tx) => {
     await actor(tx, userId);
+    await tx.$queryRaw`SELECT id FROM office_schedule_drafts WHERE id=${data.draftId}::uuid FOR UPDATE`;
     const draft = await tx.officeScheduleDraft.findFirst({
       orderBy: { revision: "desc" },
-      include: { activation: { select: { id: true } } },
+      include: { activation: { select: { id: true } }, discard: true },
     });
-    if (!draft || draft.id !== data.draftId || draft.activation)
+    if (!draft || draft.id !== data.draftId || draft.activation || draft.discard)
       fail(
         409,
-        "Select the current unactivated draft. Reload settings.",
+        "Select the current unpublished, undiscarded draft. Reload settings.",
         "DRAFT_VERSION_CONFLICT",
       );
     const policy = parse(schemas.policySchema, draft.policy);
@@ -227,6 +234,22 @@ async function activate(userId, input) {
         "ACTIVATION_HOLIDAY",
       );
     return appendVersion(tx, userId, { ...data, policy }, draft.id);
+  });
+}
+async function discardDraft(userId, input) {
+  const data = parse(schemas.discardSchema, input);
+  return transaction(async (tx) => {
+    await actor(tx, userId);
+    // Same row lock as activation; Serializable isolation also rejects stale snapshots.
+    await tx.$queryRaw`SELECT id FROM office_schedule_drafts WHERE id=${data.draftId}::uuid FOR UPDATE`;
+    const draft = await tx.officeScheduleDraft.findFirst({
+      orderBy: { revision: 'desc' }, include: { activation: true, discard: true },
+    });
+    if (!draft || draft.id !== data.draftId || draft.revision !== data.expectedRevision || draft.activation || draft.discard)
+      fail(409, 'This revision changed, was discarded, or already has an approved activation. Reload settings before another action.', 'DRAFT_VERSION_CONFLICT');
+    const result = await tx.officeScheduleDraftDiscard.create({data: {draftId: draft.id, actorUserId: userId}});
+    await audit(tx, userId, 'OFFICE_SCHEDULE_DRAFT_DISCARDED', draft.id, {revision: draft.revision, reason: 'Unpublished attendance draft discarded.'});
+    return result;
   });
 }
 async function upcoming(tx, date, now = new Date()) {
@@ -359,10 +382,11 @@ async function myShift(userId, now = new Date()) {
     const rows = await tx.officeSchedule.findMany({
       orderBy: { effectiveFrom: "asc" },
     });
-    const draft = await tx.officeScheduleDraft.findFirst({
+    const savedDraft = await tx.officeScheduleDraft.findFirst({
       orderBy: { revision: "desc" },
-      select: { policy: true },
+      select: { policy: true, discard: {select: {draftId: true}} },
     });
+    const draft = savedDraft?.discard ? null : savedDraft;
     const preview = draft
       ? {
           label: "Inactive draft preview; not an operational schedule",
@@ -454,6 +478,7 @@ async function myShift(userId, now = new Date()) {
 module.exports = {
   settings,
   saveDraft,
+  discardDraft,
   activate,
   announceHoliday,
   cancelHoliday,

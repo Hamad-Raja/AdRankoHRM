@@ -66,6 +66,7 @@ model User {
   shiftDefinitions               ShiftDefinition[]
   officeSchedules                OfficeSchedule[]
   officeScheduleDrafts           OfficeScheduleDraft[]
+  officeScheduleDraftDiscards    OfficeScheduleDraftDiscard[]
   companyHolidayEvents           CompanyHolidayEvent[]
   shiftAssignments               EmployeeShiftAssignment[]     @relation("ShiftAssignmentActor")
   shiftAssignmentClosures        EmployeeShiftAssignment[]     @relation("ShiftAssignmentCloser")
@@ -474,8 +475,20 @@ model OfficeScheduleDraft {
 
   actor      User            @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
   activation OfficeSchedule?
+  discard    OfficeScheduleDraftDiscard?
 
   @@map("office_schedule_drafts")
+}
+
+model OfficeScheduleDraftDiscard {
+  draftId     String   @id @db.Uuid
+  actorUserId String   @db.Uuid
+  discardedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  draft OfficeScheduleDraft @relation(fields: [draftId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("office_schedule_draft_discards")
 }
 
 model CompanyHolidayEvent {

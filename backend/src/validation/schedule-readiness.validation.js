@@ -12,6 +12,7 @@ const policySchema=z.strictObject({
 });
 const draftSchema=z.strictObject({expectedPreviousId:z.uuid().nullable(),reason,policy:policySchema});
 const activationSchema=z.strictObject({draftId:z.uuid(),expectedPreviousId:z.uuid().nullable(),effectiveFrom:calendar,reason});
+const discardSchema=z.strictObject({draftId:z.uuid(),expectedRevision:z.number().int().positive().max(2147483647)});
 const holidaySchema=z.strictObject({holidayDate:calendar,expectedPreviousId:z.uuid().nullable(),reason});
 const cancellationSchema=z.strictObject({expectedPreviousId:z.uuid(),reason});
-module.exports={confirmedPolicy,policySchema,draftSchema,activationSchema,holidaySchema,cancellationSchema};
+module.exports={confirmedPolicy,policySchema,draftSchema,activationSchema,discardSchema,holidaySchema,cancellationSchema};
