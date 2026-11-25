@@ -176,7 +176,7 @@ export default function EmploymentPage() {
     selectedEmployment.status !== "EXITED";
   const canUse = !list.loading && !list.error,
     self = record?.employee.userId === user.id;
-  const personalCase=self&&record.kind==="RESIGNATION"&&user.role!=="ADMIN";
+  const personalCase=self&&record.kind==="RESIGNATION";
   return (
     <section className="min-w-0 space-y-6">
       {manage && params.get("state") === "ADMIN_APPROVAL" && (
@@ -371,7 +371,7 @@ export default function EmploymentPage() {
       {id && (
         <Dialog
           title={personalCase?"My resignation":"Employment Case Details"}
-          description={personalCase?record.employee.fullName+" - "+record.employee.employeeCode:"Permitted case details, confirmed access times and retained history."}
+          description={record?record.employee.fullName+" - "+record.employee.employeeCode:"Permitted case details, confirmed access times and retained history."}
           wide
           confirmDiscard
           busy={busy}
@@ -400,74 +400,7 @@ export default function EmploymentPage() {
                   </div>
                 ) : (
                   record && (
-                    personalCase?<PersonalEmploymentDetails record={record} withdrawAction={canWithdrawPersonal(record,user)?action('withdraw','Withdraw resignation'):null} canDownload={manage||user.role==='EMPLOYEE'} onDownload={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)}/>:<>
-                      <div className="rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">
-                          {record.employee.fullName} ·{" "}
-                          {record.employee.employeeCode}
-                        </h2>
-                        <p className="mt-1 text-sm">
-                          {readable(record.kind)} · {readable(record.state)}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {readable(record.source)} · Recorded by{" "}
-                          {record.recordedBy} · Server submission{" "}
-                          {dateTime(record.submittedAt)}
-                        </p>
-                      </div>
-                      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-                        {[
-                          ['Approval & original request',[
-                            ['Approval stage',readable(record.state)],['Next responsible role',record.nextRole||'No pending approval'],['Source',record.source==='SELF'?'Employee self-submission':record.source==='HR_RECORDED'?'HR recorded on behalf':'Company initiated'],['Server submission',dateTime(record.submittedAt)],['Original received date',record.receivedDate||dateTime(record.submittedAt)],['Original proposed final shift',record.proposedLastDate||'Not recorded'],['Original reason',record.reason],['Supporting information',record.supportingInfo],['Approved by',record.approvedBy||record.approvedById||'Awaiting approval'],['Approval timestamp',record.approvedAt?dateTime(record.approvedAt):'Awaiting approval']]],
-                          ['Employment arrangements',record.kind==='REHIRE'?[['Employment status',record.employmentStatus]]:[
-                            ['HR-confirmed final duty date',record.confirmedLastDate||'Not confirmed'],['Notice period',record.noticeDays===null?'Not confirmed':record.noticeDays+' calendar days'],['Notice start / basis',record.noticeStartDate||'Not confirmed'],['Suggested notice end (start + days)',record.noticeSuggestedEnd||'Not confirmed'],['Final shift start (Asia/Karachi)',record.finalShiftStart?dateTime(record.finalShiftStart):'Not confirmed'],['Final shift end (Asia/Karachi)',record.finalShiftEnd?dateTime(record.finalShiftEnd):'Not confirmed'],['Employment ends (Asia/Karachi)',record.employmentEndsAt?dateTime(record.employmentEndsAt):record.employmentEndDate||'Not confirmed'],['Employment status',record.employmentStatus],['Employment processed at',record.employmentEndedAt?dateTime(record.employmentEndedAt):'Not yet processed']]],
-                          ['Login access',[
-                            ['Access arrangement',record.kind==='REHIRE'?'Explicit rehire decision':record.accessMode==='ON_APPROVAL'?'Disable access on Admin approval':'Scheduled access disable'],[record.approvedAt?'Approved access time (Asia/Karachi)':'Proposed access time (Asia/Karachi)',record.accessCutoff?dateTime(record.accessCutoff):record.accessMode==='ON_APPROVAL'?'Awaiting approval: disable immediately':'Not confirmed'],['Login account status',record.accountStatus||'Not recorded'],['Access processed at',record.accessDisabledAt?dateTime(record.accessDisabledAt):'Not yet processed']]],
-                          ['Handover & clearance',[
-                            ['Handover',readable(record.handoverStatus)],['Clearance',readable(record.clearanceStatus)],['Progress','Tasks are separate from approval and do not extend approved login access. Payroll remains manual.'],['Administrative processing completed',record.completedAt?dateTime(record.completedAt):'Not yet completed']]],
-                          ...(manage?[['HR preparation (restricted)',[
-                            ['Prepared by',record.preparedBy||record.preparedById],['Preparation reason',record.preparationReason],['HR remarks',record.hrRemarks],['Decision date',record.companyDecisionDate],['Termination category',record.terminationCategory?readable(record.terminationCategory):null],['Notice handling (information only)',record.noticeHandling?readable(record.noticeHandling):null],['Optional Manager consultation',record.managerNote],['Legacy routing note',record.fallbackReason],['Arrangement explanation',record.overrideReason]]]]:[])
-                        ].map(([heading,fields])=><section key={heading} className="min-w-0 rounded-xl border border-border p-4"><h3 className="font-semibold">{heading}</h3><dl className="mt-3 space-y-3 text-sm">{fields.filter(([,value])=>value!==undefined&&value!==null).map(([label,value])=><div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{value}</dd></div>)}</dl></section>)}
-                      </div>
-                      {record.rehirePlan && (
-                        <div className="rounded-xl border border-border p-4 text-sm">
-                          <h3 className="font-semibold">
-                            Explicit rehire decisions
-                          </h3>
-                          <p>Joining: {record.rehirePlan.joiningDate}</p>
-                          <p>
-                            Salary: {readable(record.rehirePlan.salaryDecision)}
-                            {record.rehirePlan.salary
-                              ? " · PKR " +
-                                record.rehirePlan.salary.monthlyBasic
-                              : ""}
-                          </p>
-                          <p>
-                            Account:{" "}
-                            {readable(record.rehirePlan.accountDecision)}
-                          </p>
-                          <p>
-                            {record.manualAccessHold
-                              ? "Manual access hold is active. Automatic processing will not clear it."
-                              : "No manual access hold."}
-                          </p>
-                        </div>
-                      )}
-                      {(manage||user.role==='EMPLOYEE'&&record.employee.userId===user.id)&&record.supportingDocument&&<div className="rounded-xl border border-border p-3 text-sm"><p className="break-words font-medium">Supporting document: {record.supportingDocument.title}</p><Button variant="outline" className="mt-2" onClick={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)}>Download supporting document</Button></div>}
-                      {manage && (
-                        <p className="text-sm text-muted-foreground">
-                          Affected teams:{" "}
-                          {record.affectedTeams
-                            ?.map((a) => a.team.name)
-                            .join(", ") || "None"}{" "}
-                          · Direct reports:{" "}
-                          {record.affectedDirectReports
-                            ?.map((a) => a.employee.fullName)
-                            .join(", ") || "None"}
-                          . No replacement manager is invented.
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-2">
+                    <PersonalEmploymentDetails record={record} personal={self&&record.kind==='RESIGNATION'} management={manage&&!personalCase} formatHistoryValue={historyValue} withdrawAction={canWithdrawPersonal(record,user)?action('withdraw','Withdraw resignation'):null} canDownload={manage||user.role==='EMPLOYEE'&&self} onDownload={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)} actions={<>
                         {["MANAGER_REVIEW","HR_PREPARATION","ADMIN_APPROVAL"].includes(record.state) &&
                           record.managerReviewerId === user.id &&
                           user.role === "MANAGER" &&
@@ -492,14 +425,6 @@ export default function EmploymentPage() {
                           ].includes(user.id) &&
                           action("approve", "Approve case")}
                         {record.state==="ADMIN_APPROVAL"&&record.kind!=="REHIRE"&&user.role==="ADMIN"&&!self&&action("return","Return to HR")}
-                        {[
-                          "MANAGER_REVIEW",
-                          "HR_PREPARATION",
-                          "ADMIN_APPROVAL",
-                        ].includes(record.state) &&
-                          self &&
-                          record.kind === "RESIGNATION" &&
-                          action("withdraw", "Withdraw my resignation")}
                         {manage && !self && record.canCancel && (
                           <>
                             {action("cancel", "Cancel case")}
@@ -519,31 +444,7 @@ export default function EmploymentPage() {
                             record.state,
                           ) &&
                           action("clearance", "Update handover / clearance")}
-                      </div>
-                      <details className="rounded-xl border border-border p-4">
-                        <summary className="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-ring">
-                          Employment Case History
-                        </summary>
-                        <ol className="mt-4 space-y-3 text-sm">
-                          {record.history.map((entry, i) => (
-                            <li key={i} className="border-t border-border pt-3">
-                              <p>
-                                {readable(entry.action)} · {entry.actor}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {dateTime(entry.at)}
-                              </p>
-                              {manage&&entry.details&&<dl className="mt-2 grid min-w-0 gap-2 sm:grid-cols-2">{Object.entries(entry.details).filter(([,value])=>value!==null).map(([label,value])=><div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label.replace(/([A-Z])/g,' $1')}</dt><dd className="break-words whitespace-pre-wrap text-xs">{historyValue(label,value)}</dd></div>)}</dl>}
-                              {entry.reason && (
-                                <p className="mt-1 whitespace-pre-wrap break-words">
-                                  {entry.reason}
-                                </p>
-                              )}
-                            </li>
-                          ))}
-                        </ol>
-                      </details>
-                    </>
+</>}/>
                   )
                 )}
               </div>

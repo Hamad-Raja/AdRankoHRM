@@ -5,6 +5,11 @@ const instant=value=>value?Date.parse(value):NaN;
 export function canWithdrawPersonal(record,user){return record?.kind==='RESIGNATION'&&record.employee?.userId===user.id&&unapproved.includes(record.state);}
 export function personalStage(record,now=Date.now()){
  if(terminal.includes(record.state))return {label:readable(record.state),tone:record.state==='REJECTED'?'negative':'neutral',next:'This request is closed. Review its history below.'};
+ if(record.kind==='REHIRE'){
+  if(record.state==='COMPLETED')return {label:'Rehire completed',tone:'positive',next:'Rehire processing is recorded. Login access follows the explicit account decision and any manual hold.'};
+  if(record.state==='APPROVED')return {label:Number.isFinite(instant(record.accessCutoff))?(instant(record.accessCutoff)>now?'Approved · Rehire scheduled':'Approved · Awaiting processing'):'Approved · Timing unavailable',tone:'positive',next:'Rehire is approved. Joining, salary and account access follow the recorded decisions; no access restoration is inferred.'};
+  return {label:record.state==='ADMIN_APPROVAL'?'Awaiting Admin approval':'Pending HR review',tone:'pending',next:'Review the prepared joining, salary and account decisions before approval.'};
+ }
  if(record.state==='COMPLETED'||record.state==='APPROVED'&&record.employmentEndedAt)return {label:'Employment ended',tone:'neutral',next:'Employment end is recorded. Login access and clearance are tracked separately.'};
  if(record.state==='APPROVED'){
   const noticeStart=instant(record.noticeStartDate?record.noticeStartDate+'T00:00:00+05:00':null),noticeEnd=instant(record.finalShiftEnd);
