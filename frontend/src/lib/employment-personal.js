@@ -22,3 +22,5 @@ export function personalStage(record,now=Date.now()){
  const returned=record.history?.some(entry=>entry.action==='EMPLOYMENT_RETURNED_TO_HR');
  return {label:returned?'Under HR review':'Pending HR review',tone:'pending',next:returned?'The request was returned to HR for review before another Admin decision.':'HR reviews your notice and final shift. Prepared arrangements are then sent to Admin for approval.'};
 }
+
+export function noticeHandlingLabel(value){return ({WORKED:'Notice served',WAIVED:'Notice waived',PAYMENT_IN_LIEU:'Payment in lieu - record only',OTHER:'Other arrangement'})[value]||readable(value);}

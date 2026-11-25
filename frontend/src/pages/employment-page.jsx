@@ -1,6 +1,6 @@
 import {PersonalEmploymentOverview,PersonalEmploymentDetails} from '@/components/employees/employment-personal-view';
 import {canWithdrawPersonal} from '@/lib/employment-personal';
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "@/context/auth-context";
 import { apiRequest } from "@/lib/api";
@@ -14,7 +14,7 @@ import {
 } from "@/components/payroll/payroll-format";
 import EmployeeCombobox from "@/components/payroll/employee-combobox";
 import {downloadDocument} from '@/services/organization.service';
-import {EmploymentSelect} from '@/components/employees/employment-dialog';
+import {EmploymentMoreActions,EmploymentSelect} from '@/components/employees/employment-dialog';
 import EmploymentDialog from "@/components/employees/employment-dialog";
 const readable = (value) =>
   value === "APPROVED" ? "Approved" : value === "MANAGER_REVIEW" ? "Awaiting HR review" : value === "HR_PREPARATION" ? "HR preparation" : value === "ADMIN_APPROVAL" ? "Awaiting Admin approval" : payrollReadable(value);
@@ -33,7 +33,8 @@ export default function EmploymentPage() {
     [uncertain, setUncertain] = useState(false),
     [error, setError] = useState(null),
     [notice, setNotice] = useState(""),
-    lock = useRef(false);
+    lock = useRef(false),returnAction=useRef(null);
+  useEffect(()=>{if(!mode&&returnAction.current){const name=returnAction.current;returnAction.current=null;requestAnimationFrame(()=>document.querySelector(`dialog[open] [data-employment-action="${name}"]`)?.focus({preventScroll:true}));}},[mode]);
   const initialId = /^[0-9a-f-]{36}$/i.test(params.get("employeeId") || "")
       ? params.get("employeeId")
       : null,
@@ -53,13 +54,15 @@ export default function EmploymentPage() {
       (user.role === "ADMIN"
         ? ["HR", "MANAGER", "EMPLOYEE"].includes(selectedRole)
         : ["MANAGER", "EMPLOYEE"].includes(selectedRole));
+  const adminQueue=params.get('queue')==='all'||!params.has('queue')&&params.has('state')?'all':'awaiting-my-approval';
   const list = useApiResource(
       "/employment/cases?" +
         new URLSearchParams({
           page: String(page),
           pageSize: "20",
+          ...(user.role==='ADMIN'?{queue:adminQueue}:{}),
           ...(employee ? { employeeId: employee.id } : {}),
-          ...(manage && ["MANAGER_REVIEW","HR_PREPARATION","ADMIN_APPROVAL","APPROVED","COMPLETED","WITHDRAWN","CANCELLED","REJECTED"].includes(params.get("state"))
+          ...(manage && (user.role!=='ADMIN'||adminQueue==='all') && ["MANAGER_REVIEW","HR_PREPARATION","ADMIN_APPROVAL","APPROVED","COMPLETED","WITHDRAWN","CANCELLED","REJECTED"].includes(params.get("state"))
             ? { state: params.get("state") }
             : {}),
         }),
@@ -69,6 +72,7 @@ export default function EmploymentPage() {
       : null,
     detail = useApiResource(id ? "/employment/cases/" + id : null),
     record = detail.data;
+  useEffect(()=>{if(user.role==='ADMIN'&&list.data&&page>Math.max(1,list.data.totalPages))setPage(Math.max(1,list.data.totalPages));},[list.data,page,user.role]);
   const activeCase=myResignation.data?.case;
   const activeDetails=useApiResource(activeCase?'/employment/cases/'+activeCase.id:null);
   const personalHistory=useApiResource(['HR','MANAGER'].includes(user.role)&&own.data?.employee?'/employment/cases?'+new URLSearchParams({employeeId:own.data.employee.id,page:String(personalPage),pageSize:'20'}):null);
@@ -82,7 +86,7 @@ export default function EmploymentPage() {
   function select(value) {
     setSelection({ touched: true, value });
     setPage(1);
-    setParams({});
+    if(user.role==='ADMIN'){const next=new URLSearchParams(params);next.delete('id');next.delete('employeeId');setParams(next);}else setParams({});
     setError(null);
     setMode(null);
   }
@@ -107,7 +111,7 @@ export default function EmploymentPage() {
       setBusy(false);
     }
   }
-  async function save(path, body) {
+  async function save(path, body, {keepOpen=false}={}) {
     if (lock.current || uncertain) return;
     lock.current = true;
     setBusy(true);
@@ -129,13 +133,14 @@ export default function EmploymentPage() {
         personalHistory.reload(),
         id ? detail.reload() : Promise.resolve(),
       ]);
-      if (response.data?.id) openRecord(response.data);
-      setMode(null);
+      if (!keepOpen&&response.data?.id) openRecord(response.data);
+      if(!keepOpen)setMode(null);
       setNotice(
         response.data?.failed
           ? `${response.data.processed} actions processed; ${response.data.failed} require review. Access cutoffs remain enforced. Reload case details before resolving conflicts.`
-          : body.source==="SELF"?"Submitted - awaiting HR review":"Employment action saved. Review the current stage and next action.",
+          : path.endsWith("/clearance")?"Saved":body.source==="SELF"?"Submitted - awaiting HR review":"Employment action saved. Review the current stage and next action.",
       );
+      return response.data;
     } catch (failure) {
       setError(failure);
       if(failure.code==="OPEN_RESIGNATION_EXISTS"&&failure.details?.caseId){setMode(null);openRecord({id:failure.details.caseId});await myResignation.reload().catch(()=>{});setNotice("An open resignation already exists. Review it before submitting another.");return;}
@@ -153,14 +158,16 @@ export default function EmploymentPage() {
       setBusy(false);
     }
   }
-  const action = (name, label) => (
+  const action = (name, label, options={}) => (
     <Button
       key={name}
+      data-employment-action={name}
       variant={
-        ["disable", "cancel", "reject"].includes(name) ? "outline" : "default"
+        options.variant||(["disable", "cancel", "reject"].includes(name) ? "outline" : "default")
       }
-      disabled={busy || uncertain}
+      disabled={busy || uncertain || options.disabled}
       onClick={() => {
+        returnAction.current=name;
         setError(null);
         setActionRecord(null);
         setMode(name);
@@ -179,7 +186,7 @@ export default function EmploymentPage() {
   const personalCase=self&&record.kind==="RESIGNATION";
   return (
     <section className="min-w-0 space-y-6">
-      {manage && params.get("state") === "ADMIN_APPROVAL" && (
+      {manage && user.role!=="ADMIN" && params.get("state") === "ADMIN_APPROVAL" && (
         <p className="text-sm text-muted-foreground">
           Awaiting Admin approval, including blocked cases.{" "}
           <Button
@@ -237,7 +244,9 @@ export default function EmploymentPage() {
       )}
       {user.role==='ADMIN'&&myResignation.error&&<p role="alert" className="text-sm text-destructive">Unable to check your current resignation. Reload employment records before starting a request.</p>}
       {user.role==='ADMIN'&&myResignation.data?.case&&<div className="rounded-xl border border-border bg-card p-4 text-sm"><p className="font-semibold">My resignation: {readable(myResignation.data.case.state)}</p><p className="mt-1 text-muted-foreground">Next responsible role: {myResignation.data.case.nextRole||"Approved timing / scheduled processing"}. Handover and clearance are tracked separately.</p></div>}
-      {manage&&<div className="max-w-sm"><label className="mb-2 block text-sm font-medium" htmlFor="employment-stage">Case stage</label><EmploymentSelect id="employment-stage" value={params.get("state")||""} placeholder="All stages" options={["HR_PREPARATION","ADMIN_APPROVAL","APPROVED","COMPLETED","MANAGER_REVIEW","WITHDRAWN","CANCELLED","REJECTED"].map(value=>[value,readable(value)])} onChange={e=>{const next=new URLSearchParams(params);if(e.target.value)next.set("state",e.target.value);else next.delete("state");setParams(next);setPage(1);}}/></div>}
+      {user.role==='ADMIN'&&<nav className="app-tabs" aria-label="Admin employment queues">{[['awaiting-my-approval','Awaiting my approval'],['all','All cases']].map(([value,label])=><button type="button" key={value} aria-pressed={adminQueue===value} disabled={busy||uncertain} onClick={()=>{const next=new URLSearchParams(params);next.set('queue',value);setParams(next);setPage(1);}}>{label}</button>)}</nav>}
+      {user.role==='ADMIN'&&adminQueue==='awaiting-my-approval'&&<p className="text-sm text-muted-foreground">Submitted cases requiring a distinct Admin decision. Unsent preparations and cases you cannot approve remain in All cases.</p>}
+      {manage&&(user.role!=='ADMIN'||adminQueue==='all')&&<div className="max-w-sm"><label className="mb-2 block text-sm font-medium" htmlFor="employment-stage">Case stage</label><EmploymentSelect id="employment-stage" value={params.get("state")||""} placeholder="All stages" options={["HR_PREPARATION","ADMIN_APPROVAL","APPROVED","COMPLETED","MANAGER_REVIEW","WITHDRAWN","CANCELLED","REJECTED"].map(value=>[value,readable(value)])} onChange={e=>{const next=new URLSearchParams(params);if(e.target.value)next.set("state",e.target.value);else next.delete("state");setParams(next);setPage(1);}}/></div>}
       <div className="flex flex-wrap gap-3 empty:hidden">
         {canUse && !myResignation.loading && !myResignation.error && myResignation.data && !myResignation.data.case &&
           own.data?.employee?.employmentEpisodes.some(
@@ -340,7 +349,7 @@ export default function EmploymentPage() {
             </div>
             {!queueCases.length && (
               <p className="p-8 text-center text-sm text-muted-foreground">
-                No permitted employment cases.
+                {user.role==='ADMIN'&&adminQueue==='awaiting-my-approval'?'No cases are awaiting your approval.':'No permitted employment cases.'}
               </p>
             )}
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 text-sm">
@@ -368,7 +377,7 @@ export default function EmploymentPage() {
           </div>
         )
       ))}
-      {id && (
+      {id && !mode && (
         <Dialog
           title={personalCase?"My resignation":"Employment Case Details"}
           description={record?record.employee.fullName+" - "+record.employee.employeeCode:"Permitted case details, confirmed access times and retained history."}
@@ -400,7 +409,7 @@ export default function EmploymentPage() {
                   </div>
                 ) : (
                   record && (
-                    <PersonalEmploymentDetails record={record} personal={self&&record.kind==='RESIGNATION'} management={manage&&!personalCase} formatHistoryValue={historyValue} withdrawAction={canWithdrawPersonal(record,user)?action('withdraw','Withdraw resignation'):null} canDownload={manage||user.role==='EMPLOYEE'&&self} onDownload={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)} actions={<>
+                    <PersonalEmploymentDetails record={record} personal={self&&record.kind==='RESIGNATION'} management={manage&&!personalCase} adminReview={user.role==='ADMIN'&&!self} formatHistoryValue={historyValue} withdrawAction={canWithdrawPersonal(record,user)?action('withdraw','Withdraw resignation'):null} checklistAction={user.role==='HR'&&!self&&!['WITHDRAWN','CANCELLED','REJECTED'].includes(record.state)?action('clearance','Edit checklist',{variant:'outline'}):null} canDownload={manage||user.role==='EMPLOYEE'&&self} onDownload={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)} actions={<>
                         {["MANAGER_REVIEW","HR_PREPARATION","ADMIN_APPROVAL"].includes(record.state) &&
                           record.managerReviewerId === user.id &&
                           user.role === "MANAGER" &&
@@ -410,12 +419,12 @@ export default function EmploymentPage() {
                           record.managerFallbackAllowed &&
                           manage &&
                           !self &&
-                          action("fallback", "Move legacy case to HR")}
+                          action("fallback", "Move legacy case to HR",{variant:user.role==="HR"?"outline":"default"})}
                         {["MANAGER_REVIEW","HR_PREPARATION","ADMIN_APPROVAL"].includes(record.state) && record.kind!=="REHIRE" &&
                           user.role === "HR" &&
                           !self &&
-                          action("prepare", record.preparedById?"Edit preparation":"Prepare exit details")}
-                        {record.state==="HR_PREPARATION"&&record.preparedById&&record.kind!=="REHIRE"&&user.role==="HR"&&!self&&action("submit","Send to Admin")}
+                          action("prepare", record.preparedById?"Edit preparation":"Prepare exit details",{variant:record.preparedById?"outline":"default"})}
+                        {record.state==="HR_PREPARATION"&&record.preparedById&&record.kind!=="REHIRE"&&user.role==="HR"&&!self&&action("submit","Send to Admin",{disabled:record.submissionReadiness?.ready!==true})}
                         {record.state === "ADMIN_APPROVAL" &&
                           user.role === "ADMIN" &&
                           !self &&
@@ -424,11 +433,10 @@ export default function EmploymentPage() {
                             record.recordedById,
                           ].includes(user.id) &&
                           action("approve", "Approve case")}
-                        {record.state==="ADMIN_APPROVAL"&&record.kind!=="REHIRE"&&user.role==="ADMIN"&&!self&&action("return","Return to HR")}
+                        {record.state==="ADMIN_APPROVAL"&&record.kind!=="REHIRE"&&user.role==="ADMIN"&&!self&&action("return","Return to HR",{variant:"outline"})}
                         {manage && !self && record.canCancel && (
                           <>
-                            {action("cancel", "Cancel case")}
-                            {action("reject", "Reject case")}
+                            {manage?<EmploymentMoreActions disabled={busy||uncertain} onAction={name=>{returnAction.current="more";setError(null);setActionRecord(null);setMode(name);}}/>:<>{action("cancel", "Cancel case")}{action("reject", "Reject case")}</>}
                           </>
                         )}
                         {user.role === "ADMIN" &&
@@ -438,12 +446,6 @@ export default function EmploymentPage() {
                           record.manualAccessHold &&
                           record.rehirePlan?.accountDecision === "REACTIVATE" &&
                           action("enable", "Approve access for this rehire")}
-                        {user.role === "HR" &&
-                          !self &&
-                          !["WITHDRAWN", "CANCELLED", "REJECTED"].includes(
-                            record.state,
-                          ) &&
-                          action("clearance", "Update handover / clearance")}
 </>}/>
                   )
                 )}
@@ -469,6 +471,8 @@ export default function EmploymentPage() {
           uncertain={uncertain}
           error={error}
           onSave={save}
+          onDownload={record?.supportingDocument?()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError):undefined}
+          onClearError={()=>setError(null)}
           onReload={reload}
           onClose={() => {setMode(null);setActionRecord(null);}}
         />
