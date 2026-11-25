@@ -1,7 +1,15 @@
 import {
   Bell,
-  CalendarCheck,
-  Clock,
+  CalendarDays,
+  CalendarRange,
+  ChartNoAxesColumnIncreasing,
+  BriefcaseBusiness,
+  ContactRound,
+  Network,
+  ScrollText,
+  Settings2,
+  ShieldCheck,
+  WalletCards,
   FileText,
   LayoutDashboard,
   Megaphone,
@@ -11,6 +19,7 @@ import {
 
 import { Link, NavLink } from "react-router";
 import AdRankoLogo from '@/components/adranko-logo';
+import { InitialsAvatar } from '@/components/employees/directory-parts';
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -36,27 +45,27 @@ const MANAGEMENT_NAVIGATION = [
   {
     label: "Organization",
     to: "/organization",
-    icon: UsersRound,
+    icon: Network,
   },
   {
     label: "Attendance",
     to: "/attendance",
-    icon: CalendarCheck,
+    icon: CalendarDays,
   },
   {
     label: "Leave Management",
     to: "/leaves",
-    icon: CalendarCheck,
+    icon: CalendarRange,
   },
   {
     label: "Payroll",
     to: "/payroll",
-    icon: FileText,
+    icon: WalletCards,
   },
   {
     label: "Reports",
     to: "/reports",
-    icon: FileText,
+    icon: ChartNoAxesColumnIncreasing,
   },
   {
     label: "Announcements",
@@ -76,7 +85,7 @@ const MANAGEMENT_NAVIGATION = [
   {
     label: "Attendance Settings",
     to: "/attendance-settings",
-    icon: Clock,
+    icon: Settings2,
   },
 ];
 
@@ -94,17 +103,17 @@ const MANAGER_NAVIGATION = [
   {
     label: "Attendance",
     to: "/attendance",
-    icon: CalendarCheck,
+    icon: CalendarDays,
   },
   {
     label: "My Leave",
     to: "/leaves",
-    icon: CalendarCheck,
+    icon: CalendarRange,
   },
   {
     label: "Reports",
     to: "/reports",
-    icon: FileText,
+    icon: ChartNoAxesColumnIncreasing,
   },
   {
     label: "My Payslips",
@@ -132,17 +141,17 @@ const EMPLOYEE_NAVIGATION = [
   {
     label: "My Attendance",
     to: "/attendance",
-    icon: CalendarCheck,
+    icon: CalendarDays,
   },
   {
     label: "My Leave",
     to: "/leaves",
-    icon: CalendarCheck,
+    icon: CalendarRange,
   },
   {
     label: "My Reports",
     to: "/reports",
-    icon: FileText,
+    icon: ChartNoAxesColumnIncreasing,
   },
   {
     label: "My Payslips",
@@ -165,17 +174,17 @@ const NAVIGATION_BY_ROLE = {
   ADMIN: [
     {label:'Dashboard',to:'/dashboard',icon:LayoutDashboard},
     {label:'Employees',to:'/employees',icon:UsersRound,end:false},
-    {label:'Organization',to:'/organization',icon:UsersRound},
-    {label:'Attendance',to:'/attendance',icon:CalendarCheck},
-    {label:'Leave Overview',to:'/leaves?view=management',icon:CalendarCheck},
-    {label:'Payroll',to:'/payroll',icon:FileText},
-    {label:'Employment Management',to:'/employment',icon:UsersRound},
-    {label:'Reports',to:'/reports',icon:FileText},
-    {label:'Employee Records',to:'/employee-records',icon:UsersRound},
+    {label:'Organization',to:'/organization',icon:Network},
+    {label:'Attendance',to:'/attendance',icon:CalendarDays},
+    {label:'Leave Overview',to:'/leaves?view=management',icon:CalendarRange},
+    {label:'Payroll',to:'/payroll',icon:WalletCards},
+    {label:'Employment Management',to:'/employment',icon:BriefcaseBusiness},
+    {label:'Reports',to:'/reports',icon:ChartNoAxesColumnIncreasing},
+    {label:'Employee Records',to:'/employee-records',icon:ContactRound},
     {label:'Announcements',to:'/announcements',icon:Megaphone},
-    {label:'Attendance Settings',to:'/attendance-settings',icon:Clock},
-    {label:'Global Audit Log',to:'/audit',icon:FileText},
-    {label:'Account & Security',to:'/my-profile?tab=security',icon:UserRound},
+    {label:'Attendance Settings',to:'/attendance-settings',icon:Settings2},
+    {label:'Global Audit Log',to:'/audit',icon:ScrollText},
+    {label:'Account & Security',to:'/my-profile?tab=security',icon:ShieldCheck},
   ],
   HR: MANAGEMENT_NAVIGATION,
   MANAGER: MANAGER_NAVIGATION,
@@ -193,7 +202,7 @@ export default function PortalSidebar({ onNavigate }) {
     ? "/my-profile?tab=security"
     : "/dashboard";
 
-  const navigation = user.role==='ADMIN' ? NAVIGATION_BY_ROLE.ADMIN : [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'Employment',to:'/employment',icon:UsersRound},{label:'My Profile',to:'/my-profile',icon:UserRound}];
+  const navigation = user.role==='ADMIN' ? NAVIGATION_BY_ROLE.ADMIN : [...(NAVIGATION_BY_ROLE[user.role] || []),{label:'Employment',to:'/employment',icon:BriefcaseBusiness},{label:'My Profile',to:'/my-profile',icon:UserRound}];
 
   // Preserve the existing first-login password-change restriction.
   const visibleItems = user.mustChangePassword
@@ -201,24 +210,24 @@ export default function PortalSidebar({ onNavigate }) {
     : navigation;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="shrink-0 border-b border-sidebar-border px-6 py-6">
+    <div className="portal-sidebar relative isolate flex h-full min-h-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+      <div className="relative z-10 shrink-0 border-b border-sidebar-border px-5 py-5">
         <Link
           to={homePath}
           onClick={() => onNavigate?.()}
           aria-label="AdRankoHRM home"
-          className="inline-flex items-center gap-2 whitespace-nowrap rounded-sm text-xl font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
+          className="inline-flex max-w-full items-center gap-2 rounded-sm text-xl font-semibold tracking-tight text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
         >
           <AdRankoLogo />
-          <span>AdRanko<span className="text-sidebar-ring">HRM</span></span>
+          <span className="min-w-0">AdRanko<span className="portal-sidebar-brand-accent">HRM</span></span>
         </Link>
       </div>
 
       <nav
         aria-label="Main navigation"
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-5"
+        className="relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3"
       >
-        <ul className="space-y-1.5">
+        <ul className="space-y-0.5">
           {visibleItems.map((item) => {
             const Icon = item.icon;
 
@@ -230,22 +239,23 @@ export default function PortalSidebar({ onNavigate }) {
                   onClick={() => onNavigate?.()}
                   className={({ isActive }) =>
                     cn(
-                      "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2",
+                      "portal-sidebar-link relative flex min-h-9.5 min-w-0 items-center gap-3 rounded-lg px-3 py-2",
                       "text-sm transition-colors",
                       "focus-visible:outline-2 focus-visible:outline-offset-2",
                       "focus-visible:outline-sidebar-ring",
                       isActive
-                        ? "bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-2xs"
-                        : "font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground"
+                        ? "portal-sidebar-link-active font-semibold text-sidebar-primary-foreground"
+                        : "font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )
                   }
                 >
                   <Icon
                     className="size-5 shrink-0"
+                    strokeWidth={1.75}
                     aria-hidden="true"
                   />
 
-                  <span>{item.label}</span>
+                  <span className="min-w-0 break-words">{item.label}</span>
                 </NavLink>
               </li>
             );
@@ -253,21 +263,13 @@ export default function PortalSidebar({ onNavigate }) {
         </ul>
       </nav>
 
-      <footer className="shrink-0 border-t border-sidebar-border px-6 py-5">
-        <p className="text-xs text-sidebar-foreground/70">
-          Signed in as
-        </p>
-
-        <p
-          title={user.displayName}
-          className="mt-2 truncate text-sm font-semibold"
-        >
-          {user.displayName}
-        </p>
-
-        <p className="mt-1 text-xs text-sidebar-foreground/80">
-          {ROLE_LABELS[user.role]}
-        </p>
+      <footer className="portal-sidebar-footer relative z-10 mx-4 flex shrink-0 items-center gap-3 border-t border-sidebar-border py-4">
+        <InitialsAvatar name={user.displayName} small />
+        <div className="min-w-0">
+          <p className="text-xs text-sidebar-foreground/70">Signed in as</p>
+          <p title={user.displayName} className="truncate text-sm font-semibold text-white">{user.displayName}</p>
+          <p className="text-xs text-sidebar-foreground/80">{ROLE_LABELS[user.role]}</p>
+        </div>
       </footer>
     </div>
   );
