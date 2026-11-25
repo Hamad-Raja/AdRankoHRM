@@ -81,3 +81,9 @@ test('incomplete backup cannot pass verification',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'adranko-backup-unit-'));try{await fs.writeFile(path.join(root,'manifest.json'),JSON.stringify({version:1,complete:false}));await assert.rejects(verifyBackup(root));}finally{await fs.rm(root,{recursive:true});}
 });
 
+test('documented package check commands reference present files, not missing legacy tests',async()=>{
+ const backend=path.resolve(__dirname,'..'),pkg=JSON.parse(await fs.readFile(path.join(backend,'package.json'),'utf8'));
+ for(const [name,command]of Object.entries(pkg.scripts).filter(([name])=>name.startsWith('test')||name.startsWith('acceptance:'))){for(const [file]of command.matchAll(/\b(?:scripts|tests)\/[^\s]+\.(?:cjs|js)/g))await fs.access(path.join(backend,file)).catch(()=>assert.fail(name+' references missing '+file));}
+ assert.equal(pkg.overrides['@prisma/config'].effect,'3.22.1');
+});
+

@@ -1,5 +1,5 @@
-import {PersonalEmploymentOverview,PersonalEmploymentDetails} from '@/components/employees/employment-personal-view';
-import {canWithdrawPersonal} from '@/lib/employment-personal';
+import {PersonalEmploymentOverview,PersonalEmploymentDetails,PersonalStatus} from '@/components/employees/employment-personal-view';
+import {canWithdrawPersonal,personalStage} from '@/lib/employment-personal';
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "@/context/auth-context";
@@ -17,7 +17,7 @@ import {downloadDocument} from '@/services/organization.service';
 import {EmploymentMoreActions,EmploymentSelect} from '@/components/employees/employment-dialog';
 import EmploymentDialog from "@/components/employees/employment-dialog";
 const readable = (value) =>
-  value === "APPROVED" ? "Approved" : value === "MANAGER_REVIEW" ? "Awaiting HR review" : value === "HR_PREPARATION" ? "HR preparation" : value === "ADMIN_APPROVAL" ? "Awaiting Admin approval" : payrollReadable(value);
+  value === "APPROVED" ? "Approved" : value === "MANAGER_REVIEW" ? "Pending HR review" : value === "HR_PREPARATION" ? "HR preparation" : value === "ADMIN_APPROVAL" ? "Pending Admin approval" : payrollReadable(value);
 const historyValue=(field,value)=>['finalShiftStart','finalShiftEnd','employmentEndsAt','employmentEndedAt','accessCutoff','accessDisabledAt'].includes(field)?dateTime(value):['receivedDate','proposedLastDate','confirmedLastDate','noticeStartDate','employmentEndDate','companyDecisionDate'].includes(field)?calendarDate(String(value).slice(0,10)):field==='accessMode'?(value==='ON_APPROVAL'?'Disable access on approval':'Scheduled access disable'):['terminationCategory','noticeHandling'].includes(field)?readable(value):String(value);
 export default function EmploymentPage() {
   const { user, getCsrfToken, refreshSession } = useAuth(),
@@ -243,7 +243,7 @@ export default function EmploymentPage() {
         </p>
       )}
       {user.role==='ADMIN'&&myResignation.error&&<p role="alert" className="text-sm text-destructive">Unable to check your current resignation. Reload employment records before starting a request.</p>}
-      {user.role==='ADMIN'&&myResignation.data?.case&&<div className="rounded-xl border border-border bg-card p-4 text-sm"><p className="font-semibold">My resignation: {readable(myResignation.data.case.state)}</p><p className="mt-1 text-muted-foreground">Next responsible role: {myResignation.data.case.nextRole||"Approved timing / scheduled processing"}. Handover and clearance are tracked separately.</p></div>}
+      {user.role==='ADMIN'&&myResignation.data?.case&&<div className="rounded-xl border border-border bg-card p-4 text-sm"><p className="font-semibold">My resignation: {activeRecord?personalStage(activeRecord).label:activeError?'Case status unavailable':'Loading case status...'}</p><p className="mt-1 text-muted-foreground">Next action: {activeRecord?personalStage(activeRecord).nextAction:'Review saved case details'}. Handover and clearance are tracked separately.</p></div>}
       {user.role==='ADMIN'&&<nav className="app-tabs" aria-label="Admin employment queues">{[['awaiting-my-approval','Awaiting my approval'],['all','All cases']].map(([value,label])=><button type="button" key={value} aria-pressed={adminQueue===value} disabled={busy||uncertain} onClick={()=>{const next=new URLSearchParams(params);next.set('queue',value);setParams(next);setPage(1);}}>{label}</button>)}</nav>}
       {user.role==='ADMIN'&&adminQueue==='awaiting-my-approval'&&<p className="text-sm text-muted-foreground">Submitted cases requiring a distinct Admin decision. Unsent preparations and cases you cannot approve remain in All cases.</p>}
       {manage&&(user.role!=='ADMIN'||adminQueue==='all')&&<div className="max-w-sm"><label className="mb-2 block text-sm font-medium" htmlFor="employment-stage">Case stage</label><EmploymentSelect id="employment-stage" value={params.get("state")||""} placeholder="All stages" options={["HR_PREPARATION","ADMIN_APPROVAL","APPROVED","COMPLETED","MANAGER_REVIEW","WITHDRAWN","CANCELLED","REJECTED"].map(value=>[value,readable(value)])} onChange={e=>{const next=new URLSearchParams(params);if(e.target.value)next.set("state",e.target.value);else next.delete("state");setParams(next);setPage(1);}}/></div>}
@@ -305,7 +305,7 @@ export default function EmploymentPage() {
                     {[
                       "Employee",
                       "Type",
-                      "State",
+                      "Case status",
                       "Next action",
                       "Source",
                       "Submitted",
@@ -330,8 +330,8 @@ export default function EmploymentPage() {
                         </p>
                       </td>
                       <td className="px-4 py-4">{readable(row.kind)}</td>
-                      <td className="px-4 py-4">{readable(row.state)}</td>
-                      <td className="px-4 py-4">{row.nextRole==='HR'?'HR: prepare exit details':row.nextRole==='ADMIN'?'Admin: review prepared values':row.state==='APPROVED'?'Enforce approved timing':'Review history / outstanding tasks'}</td><td className="px-4 py-4">{readable(row.source)}</td>
+                      <td className="px-4 py-4"><PersonalStatus record={row}/></td>
+                      <td className="max-w-56 whitespace-normal break-words px-4 py-4">{personalStage(row).nextAction}</td><td className="px-4 py-4">{readable(row.source)}</td>
                       <td className="px-4 py-4">{dateTime(row.submittedAt)}</td>
                       <td className="px-4 py-4">
                         <Button

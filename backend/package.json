@@ -5,15 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "node --import tsx --test --test-concurrency=1 scripts/employment-case-check.cjs scripts/release-rules.test.cjs scripts/release-gates.test.cjs",
-    "test:integration": "node --import tsx --test --test-concurrency=1 tests/auth.integration.test.js",
-    "test:employees": "node --import tsx --test --test-concurrency=1 tests/employee*.integration.test.js",
-    "test:browser": "node --import tsx tests/browser-check.cjs",
-    "test:phase2": "node --import tsx --test tests/phase2.integration.test.js",
-    "test:phase2-browser": "node --import tsx tests/employee-browser-check.cjs",
-    "test:phase4-browser": "node --import tsx tests/phase4-browser-check.cjs",
-    "test:payroll": "node --import tsx --test --test-concurrency=1 tests/payroll*.test.js",
-    "test:payroll-browser": "node --import tsx tests/payroll-browser-check.cjs",
-    "test:announcements-browser": "node --import tsx tests/announcements-browser-check.cjs",
+    "test:integration": "node --import tsx scripts/release-audit-check.cjs",
+    "test:employees": "node --import tsx scripts/employee-record-check.cjs",
+    "test:browser": "node --import tsx scripts/release-browser-check.cjs",
+    "test:payroll": "node --test scripts/payroll-workbook.test.cjs scripts/release-rules.test.cjs",
+    "test:payroll-browser": "node --import tsx scripts/payroll-preparation-check.cjs",
     "check": "node --check app.js && node --check routes/auth.routes.js && node --check routes/employee.routes.js && node --check src/validation/employee.validation.js && node --check src/services/employee.service.js && node --check src/controllers/employee.controller.js",
     "predev": "prisma generate --config prisma7.config.ts",
     "dev": "node --import tsx --watch app.js",
@@ -23,16 +19,12 @@
     "db:deploy": "prisma migrate deploy --config prisma7.config.ts",
     "test:employment": "node scripts/employment-case-check.cjs",
     "test:employee-records": "node --import tsx scripts/employee-record-check.cjs",
-    "test:employment-integration": "node --import tsx scripts/employment-hr-workflow-check.cjs",
-    "test:schedule-browser": "node --import tsx tests/schedule-browser-check.cjs",
-    "test:leave-browser": "node --import tsx tests/leave-browser-check.cjs",
-    "test:dashboard-browser": "node --import tsx tests/dashboard-browser-check.cjs",
-    "test:connection-browser": "node --import tsx tests/connection-browser-check.cjs",
-    "test:reports-browser": "node --import tsx tests/reports-browser-check.cjs",
-    "acceptance:serve": "node --import tsx tests/manual-acceptance.cjs",
+    "test:employment-integration": "node --import tsx scripts/employment-hr-workflow-check.cjs --api-only",
     "test:release": "node --import tsx scripts/release-audit-check.cjs",
     "test:release-browser": "node --import tsx scripts/release-browser-check.cjs",
-    "test:release-security": "node --import tsx scripts/release-security-check.cjs"
+    "test:release-security": "node --import tsx scripts/release-security-check.cjs",
+    "test:payroll-workspace": "node --import tsx scripts/payroll-workspace-check.cjs --phase7",
+    "test:employment-browser": "node --import tsx scripts/employment-hr-workflow-check.cjs --dialogs-only"
   },
   "keywords": [],
   "author": "",
@@ -60,6 +52,9 @@
   "overrides": {
     "express": {
       "body-parser": "2.4.0"
+    },
+    "@prisma/config": {
+      "effect": "3.22.1"
     }
   }
 }

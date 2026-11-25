@@ -11,7 +11,7 @@ const {chromium}=require(path.join(root,'frontend/node_modules/playwright-core')
 const results=[],accounts={},people={},sessions={},password='Synthetic-'+randomUUID();
 let prisma,server,browser,now=new Date('2026-11-24T14:15:00Z');
 function result(name,ok,detail){results.push({name,result:ok===null?'SKIP':ok?'PASS':'FAIL',detail});fs.writeFileSync(path.join(out,'functional-results.json'),JSON.stringify(results,null,2));console.log((ok===null?'SKIP ':ok?'PASS ':'FAIL ')+name+(detail?' — '+detail:''));}
-async function check(name,work){try{const outcome=await work();result(name,outcome==='SKIP'?null:true);}catch(error){result(name,false,error.message);}}
+async function check(name,work){if(process.argv.includes('--api-only')&&name.startsWith('All-role real-browser')){result(name,null,'Explicit API-only run; use test:browser for browser coverage');return;}try{const outcome=await work();result(name,outcome==='SKIP'?null:true);}catch(error){result(name,false,error.message);}}
 async function api(key,url,body,method,extra={}){
  const context=sessions[key],cookies=context?await context.cookies('http://localhost:3020'):[],csrf=cookies.find(c=>c.name==='officehr_csrf')?.value;
  const request=context?.request||browser.request;
@@ -23,7 +23,7 @@ async function expect(key,url,body,status=200,method,extra){const r=await api(ke
 async function login(key,pass=password){const r=await sessions[key].request.post('http://localhost:3020/api/auth/login',{data:{email:accounts[key].email,password:pass},headers:{origin:process.env.FRONTEND_ORIGIN}});return r.status();}
 async function main(){
  const pg=new(require('pg').Client)({connectionString:database});try{await pg.connect();const row=(await pg.query("select current_database() name,host(inet_server_addr()) address,(select count(*) from information_schema.tables where table_schema='public') n")).rows[0];assert.equal(row.name,target.pathname.slice(1));assert.equal(row.address,'127.0.0.1');assert.equal(Number(row.n),0);}finally{await pg.end();}
- const migrate=spawnSync(process.execPath,[path.join(backend,'node_modules/prisma/build/index.js'),'migrate','deploy','--config','prisma7.config.ts'],{cwd:backend,env:process.env,encoding:'utf8'});assert.equal(migrate.status,0,migrate.stderr);result('17 migrations on fresh isolated PostgreSQL',true);
+ const migrate=spawnSync(process.execPath,[path.join(backend,'node_modules/prisma/build/index.js'),'migrate','deploy','--config','prisma7.config.ts'],{cwd:backend,env:process.env,encoding:'utf8'});assert.equal(migrate.status,0,migrate.stderr);result(fs.readdirSync(path.join(backend,'prisma/migrations'),{withFileTypes:true}).filter(e=>e.isDirectory()).length+' migrations on fresh isolated PostgreSQL',true);
  prisma=require('../src/config/prisma');for(const name of ['attendance','leave','dashboard','employment','notification'])require('../src/utils/'+name+'-clock').now=()=>new Date(now);
  const passwordHash=await require('../src/utils/password').hashPassword(password);
  accounts.admin=await prisma.user.create({data:{email:'admin@release.invalid',displayName:'Synthetic Admin',role:'ADMIN',status:'ACTIVE',mustChangePassword:false,passwordHash}});
@@ -93,7 +93,9 @@ async function main(){
  });
  const policy=require('../src/validation/schedule-readiness.validation').confirmedPolicy;
  const draft=await expect('hr','/attendance-settings/draft',{expectedPreviousId:null,reason:'Isolated schedule',policy});
- await expect('hr','/attendance-settings/activate',{draftId:draft.id,expectedPreviousId:null,effectiveFrom:'2026-11-24',reason:'Isolated publication'});
+ // Historical fixture, not a production activation: actual activation correctly rejects past dates.
+ await prisma.officeSchedule.create({data:{draftId:draft.id,policy,effectiveFrom:new Date('2026-11-24'),actorUserId:accounts.hr.id,reason:'Synthetic historical schedule fixture',startTime:'19:00',endTime:'05:00',endsNextDay:true}});
+ result('Historical schedule fixture seeded (not activation API coverage)',true);
  await check('Attendance policy persists; no automatic punches; bounded concurrent reads',async()=>{
   const before=await prisma.attendanceRecord.count();for(const key of ['hr','manager','employee'])await expect(key,'/attendance-settings/my-shift');
   const start=performance.now();const reads=await Promise.all(Array.from({length:6},(_,i)=>api(i%2?'hr':'employee',i%3?'/attendance/status':'/attendance-settings/my-shift')));assert.ok(reads.every(r=>r.status===200));assert.equal(await prisma.attendanceRecord.count(),before);result('6 concurrent attendance reads',true,Math.round(performance.now()-start)+' ms');
