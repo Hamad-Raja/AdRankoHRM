@@ -263,12 +263,12 @@ export default function PortalSidebar({ onNavigate }) {
         </ul>
       </nav>
 
-      <footer className="portal-sidebar-footer relative z-10 mx-4 flex shrink-0 items-center gap-3 border-t border-sidebar-border py-4">
-        <InitialsAvatar name={user.displayName} small />
-        <div className="min-w-0">
-          <p className="text-xs text-sidebar-foreground/70">Signed in as</p>
-          <p title={user.displayName} className="truncate text-sm font-semibold text-white">{user.displayName}</p>
-          <p className="text-xs text-sidebar-foreground/80">{ROLE_LABELS[user.role]}</p>
+      <footer className="portal-sidebar-footer relative z-10 mx-4 flex min-w-0 shrink-0 items-center gap-3 border-t border-sidebar-border pt-4 pb-5">
+        <InitialsAvatar name={user.displayName} />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="text-xs leading-4 text-sidebar-foreground/70">Signed in as</p>
+          <p title={user.displayName} className="whitespace-normal text-sm leading-5 font-semibold normal-case text-white [overflow-wrap:anywhere]">{user.displayName}</p>
+          <p className="text-xs leading-4 text-sidebar-foreground/70 [overflow-wrap:anywhere]">{ROLE_LABELS[user.role]}</p>
         </div>
       </footer>
     </div>
