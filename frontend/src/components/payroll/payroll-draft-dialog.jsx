@@ -8,17 +8,18 @@ import {usePayrollResource} from './use-payroll-resource';
 import {PayrollField} from './payroll-fields';
 import {currentMonth,inputClass,pkr,readable,earningTypes,deductionTypes,salaryForMonth} from './payroll-format';
 
-export function Adjustments({kind,items,onChange,disabled,error}) {
+export function Adjustments({kind,items,onChange,disabled,error,withReasons=false,fieldError=()=>undefined}) {
   const earnings=kind==='earnings', singular=earnings?'earning':'deduction', types=earnings?earningTypes:deductionTypes;
   return <fieldset disabled={disabled} className="min-w-0 space-y-4 rounded-xl border border-border p-4">
     <legend className="px-1 font-semibold">{earnings?'Earnings':'Deductions'} <span className="text-sm font-normal text-muted-foreground">(Optional)</span></legend>
     {error&&<p className="text-sm text-destructive">{error}</p>}
     {!items.length&&<p className="text-sm text-muted-foreground">No {kind} added.</p>}
     {items.map((item,index)=><div key={item.key} className="grid min-w-0 gap-3 rounded-lg bg-background/40 p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1.2fr_1fr_auto]">
-      <PayrollField label={`${earnings?'Payment':'Deduction'} Type ${index+1}`}><select className={inputClass} required value={item.type} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,type:event.target.value}:row))}><option value="">Select type</option>{types.map(type=><option key={type} value={type}>{readable(type)}</option>)}</select></PayrollField>
-      <PayrollField label={`${earnings?'Payment':'Deduction'} Description ${index+1} (Optional)`}><input className={inputClass} maxLength={120} value={item.label} placeholder={item.type?readable(item.type):'Description'} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,label:event.target.value}:row))}/></PayrollField>
-      <PayrollField label={`${earnings?'Earning':'Deduction'} Amount ${index+1} (PKR)`}><input className={inputClass} inputMode="decimal" required value={item.amount} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,amount:event.target.value}:row))}/></PayrollField>
+      <PayrollField error={fieldError(`${kind}.${index}.type`)} label={`${earnings?'Payment':'Deduction'} Type ${index+1}`}><select className={inputClass} required value={item.type} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,type:event.target.value}:row))}><option value="">Select type</option>{types.map(type=><option key={type} value={type}>{readable(type)}</option>)}</select></PayrollField>
+      <PayrollField error={fieldError(`${kind}.${index}.label`)} label={`${earnings?'Payment':'Deduction'} ${withReasons?'Title':'Description'} ${index+1} (Optional)`}><input className={inputClass} maxLength={120} value={item.label} placeholder={item.type?readable(item.type):'Description'} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,label:event.target.value}:row))}/></PayrollField>
+      <PayrollField error={fieldError(`${kind}.${index}.amount`)} label={`${earnings?'Earning':'Deduction'} Amount ${index+1} (PKR)`}><input className={inputClass} inputMode="decimal" required value={item.amount} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,amount:event.target.value}:row))}/></PayrollField>
       <Button type="button" variant="outline" className="self-end" aria-label={`Remove ${singular} ${index+1}`} onClick={()=>onChange(items.filter(row=>row.key!==item.key))}><Trash2 aria-hidden="true"/><span className="lg:sr-only">Remove</span></Button>
+      {withReasons&&<div className="sm:col-span-2 lg:col-span-4"><PayrollField error={fieldError(`${kind}.${index}.reason`)} label={`${earnings?'Earning':'Deduction'} Reason ${index+1} (Optional)`}><input className={inputClass} maxLength={1000} value={item.reason||''} onChange={event=>onChange(items.map(row=>row.key===item.key?{...row,reason:event.target.value}:row))}/></PayrollField></div>}
     </div>)}
     <div className="flex flex-wrap items-center gap-3"><Button type="button" variant="outline" disabled={disabled||items.length>=50} onClick={()=>onChange([...items,{key:crypto.randomUUID(),type:'',label:'',amount:''}])}><Plus aria-hidden="true"/>Add {earnings?'Earning':'Deduction'}</Button><p className="text-xs text-muted-foreground">Blank descriptions use the selected type.</p></div>
   </fieldset>;

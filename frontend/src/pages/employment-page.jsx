@@ -1,3 +1,5 @@
+import {PersonalEmploymentOverview,PersonalEmploymentDetails} from '@/components/employees/employment-personal-view';
+import {canWithdrawPersonal} from '@/lib/employment-personal';
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "@/context/auth-context";
@@ -25,6 +27,8 @@ export default function EmploymentPage() {
   const [selection, setSelection] = useState({ touched: false, value: null }),
     [page, setPage] = useState(1),
     [mode, setMode] = useState(null),
+    [personalPage,setPersonalPage]=useState(1),
+    [actionRecord,setActionRecord]=useState(null),
     [busy, setBusy] = useState(false),
     [uncertain, setUncertain] = useState(false),
     [error, setError] = useState(null),
@@ -65,6 +69,16 @@ export default function EmploymentPage() {
       : null,
     detail = useApiResource(id ? "/employment/cases/" + id : null),
     record = detail.data;
+  const activeCase=myResignation.data?.case;
+  const activeDetails=useApiResource(activeCase?'/employment/cases/'+activeCase.id:null);
+  const personalHistory=useApiResource(['HR','MANAGER'].includes(user.role)&&own.data?.employee?'/employment/cases?'+new URLSearchParams({employeeId:own.data.employee.id,page:String(personalPage),pageSize:'20'}):null);
+  const historyResource=['HR','MANAGER'].includes(user.role)?personalHistory:list;
+  const activeRecord=activeCase?(activeCase.id===id&&record?record:activeDetails.data):null;
+  const activeLoading=myResignation.loading||Boolean(activeCase&&!activeRecord&&activeDetails.loading);
+  const activeError=myResignation.error||activeDetails.error;
+  const queueCases=manage?list.data?.cases||[]:(list.data?.cases||[]).filter(row=>row.kind==='RESIGNATION'&&row.employee.userId!==user.id);
+  function withdrawOwn(value){setActionRecord(value);setError(null);setMode('withdraw');}
+
   function select(value) {
     setSelection({ touched: true, value });
     setPage(1);
@@ -80,7 +94,7 @@ export default function EmploymentPage() {
     if (lock.current) return;
     setBusy(true);
     try {
-      await Promise.all([list.reload(), detail.reload(), own.reload(), myResignation.reload()]);
+      await Promise.all([list.reload(), detail.reload(), own.reload(), myResignation.reload(), activeDetails.reload(), personalHistory.reload()]);
       setUncertain(false);
       setMode(null);
       setError(null);
@@ -111,6 +125,8 @@ export default function EmploymentPage() {
         list.reload(),
         own.reload(),
         myResignation.reload(),
+        activeDetails.reload(),
+        personalHistory.reload(),
         id ? detail.reload() : Promise.resolve(),
       ]);
       if (response.data?.id) openRecord(response.data);
@@ -146,6 +162,7 @@ export default function EmploymentPage() {
       disabled={busy || uncertain}
       onClick={() => {
         setError(null);
+        setActionRecord(null);
         setMode(name);
       }}
     >
@@ -159,6 +176,7 @@ export default function EmploymentPage() {
     selectedEmployment.status !== "EXITED";
   const canUse = !list.loading && !list.error,
     self = record?.employee.userId === user.id;
+  const personalCase=self&&record.kind==="RESIGNATION"&&user.role!=="ADMIN";
   return (
     <section className="min-w-0 space-y-6">
       {manage && params.get("state") === "ADMIN_APPROVAL" && (
@@ -182,8 +200,7 @@ export default function EmploymentPage() {
         <div>
           <h1 className="text-2xl font-semibold sm:text-3xl tracking-tight leading-tight">{manage?"Employment Management":"My Employment"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Resignation, approved exits, clearance and rehire. Access follows
-            confirmed shift times in Asia/Karachi.
+            {manage?"Resignation, approved exits, clearance and rehire. Access follows confirmed shift times in Asia/Karachi.":"Track your resignation and confirmed exit arrangements."}
           </p>
         </div>
         <Button variant="outline" disabled={busy} onClick={() => void reload()}>
@@ -218,16 +235,16 @@ export default function EmploymentPage() {
           action. No automatic retry was sent.
         </p>
       )}
-      {myResignation.error&&<p role="alert" className="text-sm text-destructive">Unable to check your current resignation. Reload employment records before starting a request.</p>}
-      {myResignation.data?.case&&<div className="rounded-xl border border-border bg-card p-4 text-sm"><p className="font-semibold">My resignation: {readable(myResignation.data.case.state)}</p><p className="mt-1 text-muted-foreground">Next responsible role: {myResignation.data.case.nextRole||"Approved timing / scheduled processing"}. Handover and clearance are tracked separately.</p></div>}
+      {user.role==='ADMIN'&&myResignation.error&&<p role="alert" className="text-sm text-destructive">Unable to check your current resignation. Reload employment records before starting a request.</p>}
+      {user.role==='ADMIN'&&myResignation.data?.case&&<div className="rounded-xl border border-border bg-card p-4 text-sm"><p className="font-semibold">My resignation: {readable(myResignation.data.case.state)}</p><p className="mt-1 text-muted-foreground">Next responsible role: {myResignation.data.case.nextRole||"Approved timing / scheduled processing"}. Handover and clearance are tracked separately.</p></div>}
       {manage&&<div className="max-w-sm"><label className="mb-2 block text-sm font-medium" htmlFor="employment-stage">Case stage</label><EmploymentSelect id="employment-stage" value={params.get("state")||""} placeholder="All stages" options={["HR_PREPARATION","ADMIN_APPROVAL","APPROVED","COMPLETED","MANAGER_REVIEW","WITHDRAWN","CANCELLED","REJECTED"].map(value=>[value,readable(value)])} onChange={e=>{const next=new URLSearchParams(params);if(e.target.value)next.set("state",e.target.value);else next.delete("state");setParams(next);setPage(1);}}/></div>}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 empty:hidden">
         {canUse && !myResignation.loading && !myResignation.error && myResignation.data && !myResignation.data.case &&
           own.data?.employee?.employmentEpisodes.some(
             (e) => !e.endDate && e.status !== "EXITED",
           ) &&
           action("self", "Submit my resignation")}
-        {myResignation.data?.case&&<Button disabled={busy||uncertain} onClick={()=>openRecord(myResignation.data.case)}>View my resignation</Button>}
+        {user.role==='ADMIN'&&myResignation.data?.case&&<Button disabled={busy||uncertain} onClick={()=>openRecord(myResignation.data.case)}>View my resignation</Button>}
         {canUse && user.role === "HR" && employee && (
           <>
             {openEmployment && (
@@ -254,7 +271,8 @@ export default function EmploymentPage() {
           </Button>
         )}
       </div>
-      {list.loading ? (
+      {user.role!=='ADMIN'&&<PersonalEmploymentOverview active={activeRecord} loading={activeLoading} error={activeError} onRetry={()=>void reload()} history={historyResource.data?.cases||[]} historyLoading={historyResource.loading||own.loading} historyError={historyResource.error} onHistoryRetry={()=>void historyResource.reload().catch(()=>{})} page={['HR','MANAGER'].includes(user.role)?personalPage:page} totalPages={historyResource.data?.totalPages||1} onPage={['HR','MANAGER'].includes(user.role)?setPersonalPage:setPage} onOpen={openRecord} onWithdraw={withdrawOwn} user={user} disabled={busy||uncertain}/>}
+      {(manage||user.role==='MANAGER'&&(list.loading||list.error||queueCases.length>0||list.data?.totalPages>1))&&(list.loading ? (
         <p role="status">Loading employment cases…</p>
       ) : list.error ? (
         <div role="alert" className="space-y-3">
@@ -291,7 +309,7 @@ export default function EmploymentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.data.cases.map((row) => (
+                  {queueCases.map((row) => (
                     <tr
                       key={row.id}
                       className="border-t border-border even:bg-muted/20"
@@ -320,7 +338,7 @@ export default function EmploymentPage() {
                 </tbody>
               </table>
             </div>
-            {!list.data.cases.length && (
+            {!queueCases.length && (
               <p className="p-8 text-center text-sm text-muted-foreground">
                 No permitted employment cases.
               </p>
@@ -349,11 +367,11 @@ export default function EmploymentPage() {
             </footer>
           </div>
         )
-      )}
+      ))}
       {id && (
         <Dialog
-          title="Employment Case Details"
-          description="Permitted case details, confirmed access times and retained history."
+          title={personalCase?"My resignation":"Employment Case Details"}
+          description={personalCase?record.employee.fullName+" - "+record.employee.employeeCode:"Permitted case details, confirmed access times and retained history."}
           wide
           confirmDiscard
           busy={busy}
@@ -382,7 +400,7 @@ export default function EmploymentPage() {
                   </div>
                 ) : (
                   record && (
-                    <>
+                    personalCase?<PersonalEmploymentDetails record={record} withdrawAction={canWithdrawPersonal(record,user)?action('withdraw','Withdraw resignation'):null} canDownload={manage||user.role==='EMPLOYEE'} onDownload={()=>void downloadDocument(record.employee.id,record.supportingDocument).catch(setError)}/>:<>
                       <div className="rounded-xl border border-border p-4">
                         <h2 className="font-semibold">
                           {record.employee.fullName} ·{" "}
@@ -540,18 +558,18 @@ export default function EmploymentPage() {
       )}
       {mode && (
         <EmploymentDialog
-          key={`${mode}:${record?.id||employee?.id||own.data?.employee?.id}`}
+          key={`${mode}:${actionRecord?.id||record?.id||employee?.id||own.data?.employee?.id}`}
           mode={mode}
           employee={
-            mode === "self" ? own.data?.employee : record?.employeeSummary || record?.employee || selectedProfile.data?.employee || employee
+            mode === "withdraw"&&actionRecord? actionRecord.employee : mode === "self" ? own.data?.employee : record?.employeeSummary || record?.employee || selectedProfile.data?.employee || employee
           }
-          record={record}
+          record={mode==='withdraw'&&actionRecord?actionRecord:record}
           busy={busy}
           uncertain={uncertain}
           error={error}
           onSave={save}
           onReload={reload}
-          onClose={() => setMode(null)}
+          onClose={() => {setMode(null);setActionRecord(null);}}
         />
       )}
     </section>

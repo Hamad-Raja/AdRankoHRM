@@ -7,9 +7,11 @@ const reason=z.string().trim().min(1).max(1000).regex(/^[^\u0000-\u001f\u007f]+$
 const money=z.string().refine(v=>{try{return moneyToMinor(v)>0n;}catch{return false;}},'Enter positive PKR with at most two decimals.');
 const salary=z.object({effectiveMonth:month,monthlyBasic:money,currency:z.literal('PKR').default('PKR'),expectedPreviousId:z.uuid().nullable(),reason}).strict();
 const adjustment=z.object({type:z.string(),label:z.string().max(120).optional(),amount:z.string()}).strict();
+const preparationAdjustment=adjustment.extend({reason:z.string().trim().max(1000).regex(/^[^\u0000-\u001f\u007f]*$/u).optional()});
 const inputs={totalPayableDays:z.string(),workedDays:z.string(),earnings:z.array(adjustment).max(50).optional(),deductions:z.array(adjustment).max(50).optional()};
-const preview=z.object({employeeId:z.uuid(),month,...inputs}).strict();
-const draft=preview.extend({reason}).strict();
+const preparationInputs={earnings:z.array(preparationAdjustment).max(50).optional(),deductions:z.array(preparationAdjustment).max(50).optional()};
+const preview=z.object({employeeId:z.uuid(),month,...inputs,...preparationInputs}).strict();
+const draft=preview.extend({reason,operationKey:z.uuid().optional(),expectedSalaryVersionId:z.uuid().optional()}).strict();
 const version=z.number().int().positive().max(2147483647);
 const edit=z.object({...inputs,expectedVersion:version,reason}).strict();
 const decision=z.object({expectedVersion:version,reason}).strict();
@@ -17,7 +19,7 @@ const approval=decision.extend({reason:z.string().trim().max(1000).regex(/^[^\u0
 const payment=decision.extend({method:z.enum(['CASH','BANK_TRANSFER','OTHER']),paidOn:z.string().refine(isCalendarDate),reference:z.string().trim().min(1).max(120).optional(),note:reason.optional()}).strict().refine(v=>v.method==='CASH'||!!v.reference,'A reference is required.');
 const list=z.object({page:z.coerce.number().int().min(1).max(1000000).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(20),month:month.optional(),employeeId:z.uuid().optional(),status:z.enum(['DRAFT','HR_APPROVED','APPROVED','PAID','NOT_PREPARED','SALARY_REQUIRED']).optional(),workspace:z.literal('monthly').optional(),search:z.string().trim().max(120).optional()}).strict().refine(value=>!value.workspace||!!value.month,'Select a payroll month.');
 const annual=z.object({year:z.string().regex(/^(?!0000)[0-9]{4}$/,'Use a calendar year from 0001 to 9999.'),employeeId:z.uuid().optional()}).strict();
-const bulk=z.strictObject({month,items:z.array(z.strictObject({employeeId:z.uuid(),expectedSalaryVersionId:z.uuid(),totalPayableDays:z.string().max(16),workedDays:z.string().max(16),reason})).min(1).max(25)}).refine(value=>new Set(value.items.map(item=>item.employeeId)).size===value.items.length,'Select each employee once.');
+const bulk=z.strictObject({month,items:z.array(z.strictObject({employeeId:z.uuid(),expectedSalaryVersionId:z.uuid(),operationKey:z.uuid().optional(),totalPayableDays:z.string().max(16),workedDays:z.string().max(16),reason,...preparationInputs})).min(1).max(25)}).refine(value=>new Set(value.items.map(item=>item.employeeId)).size===value.items.length,'Select each employee once.');
 const changes=z.strictObject({month,items:z.array(z.strictObject({recordId:z.uuid(),operationKey:z.uuid(),expectedVersion:version,expectedSalaryVersionId:z.uuid(),reason,kind:z.enum(['ADD_EARNING','ADD_DEDUCTION','EDIT','IMPORT']),adjustment:adjustment.optional(),additions:z.array(adjustment.extend({operationKey:z.uuid(),kind:z.enum(['EARNING','DEDUCTION']),reason})).max(50).optional(),totalPayableDays:z.string().max(16).optional(),workedDays:z.string().max(16).optional(),earnings:z.array(adjustment).max(50).optional(),deductions:z.array(adjustment).max(50).optional(),previewHash:z.string().regex(/^[a-f0-9]{64}$/).optional()})).min(1).max(25)}).refine(value=>new Set(value.items.map(item=>item.recordId)).size===value.items.length,'Select each draft once.');
 const template=z.strictObject({month,recordIds:z.array(z.uuid()).min(1).max(25)}).refine(value=>new Set(value.recordIds).size===value.recordIds.length,'Select each draft once.');
 module.exports={template,changes,bulk,salary,preview,draft,edit,decision,approval,payment,list,annual,month,id:z.uuid()};

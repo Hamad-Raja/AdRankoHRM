@@ -45,7 +45,8 @@ async function saveSalaryInTransaction(tx,userId,employeeId,input){
  await event(tx,user.id,'SALARY_REVISION_CREATED',record.id,{employeeId,effectiveMonth:input.effectiveMonth,revision:record.revision,reason:input.reason});return salaryView(record);
 }
 async function saveSalary(userId,employeeId,input){return transaction(tx=>saveSalaryInTransaction(tx,userId,employeeId,input));}
-async function calculation(tx,employeeId,month,input){const salary=await applicable(tx,employeeId,month);const result=calculatePayrollPreview({month,monthlyBasic:salary.monthlyBasic.toFixed(2),currency:'PKR',totalPayableDays:input.totalPayableDays,workedDays:input.workedDays,earnings:input.earnings,deductions:input.deductions});return {salary,result};}
+const financialItems=items=>items?.map(({type,label,amount})=>({type,label,amount}));
+async function calculation(tx,employeeId,month,input){const salary=await applicable(tx,employeeId,month);const result=calculatePayrollPreview({month,monthlyBasic:salary.monthlyBasic.toFixed(2),currency:'PKR',totalPayableDays:input.totalPayableDays,workedDays:input.workedDays,earnings:financialItems(input.earnings),deductions:financialItems(input.deductions)});return {salary,result};}
 async function preview(userId,input){return transaction(async tx=>{await actor(tx,userId);const emp=await employee(tx,input.employeeId);const {salary,result}=await calculation(tx,emp.id,input.month,input);return {...result,salaryVersionId:salary.id,employee:emp};});}
 function financial(result){const {month,period,...fields}=result;void month;void period;return fields;}
 function paymentView(p,privateView){if(!p)return null;return {id:p.id,amount:p.amount.toFixed(2),currency:p.currency,method:p.method,paidOn:p.paidOn.toISOString().slice(0,10),recordedAt:p.recordedAt.toISOString(),...(!privateView?{reference:p.reference,note:p.note,actorUserId:p.actorUserId}:{})};}
@@ -63,11 +64,22 @@ async function corrections(tx,records){
 }
 async function createDraft(userId,input,options={}){return transaction(async tx=>{
  const user=await actor(tx,userId);if(user.role!=='HR')fail(403,'HR prepares payroll drafts.','FORBIDDEN');const emp=await employee(tx,input.employeeId);await lock(tx,emp.id);
+ const expectedSalaryVersionId=options.expectedSalaryVersionId||input.expectedSalaryVersionId;
+ const fingerprint=digest({employeeId:emp.id,month:input.month,totalPayableDays:input.totalPayableDays,workedDays:input.workedDays,earnings:input.earnings||[],deductions:input.deductions||[],reason:input.reason,expectedSalaryVersionId:expectedSalaryVersionId||null});
+ if(input.operationKey){
+  const previous=await tx.auditLog.findFirst({where:{actorUserId:user.id,targetType:'Payroll',action:'PAYROLL_BATCH_EDIT',metadata:{path:['operationKey'],equals:input.operationKey}}});
+  if(previous){if(previous.metadata.kind!=='PREPARE'||previous.metadata.fingerprint!==fingerprint)fail(409,'Operation key already belongs to different preparation inputs. Start a new operation.','OPERATION_CONFLICT');const saved=await tx.payrollRecord.findUnique({where:{id:previous.metadata.recordId}});if(!saved)fail(409,'Saved preparation is unavailable. Reload payroll.','PAYROLL_CONFLICT');return {...view(saved),preparationReplayed:true};}
+ }
  if(options.bulk){if(await tx.payrollRecord.findFirst({where:{employeeId:emp.id,payrollMonth:date(input.month)},select:{id:true}}))fail(409,'Payroll already exists.','PAYROLL_EXISTS');if(!await monthEligible(tx,emp.id,input.month))fail(409,'No employment overlaps this payroll month.','MONTH_NOT_ELIGIBLE');}
  const {salary,result}=await calculation(tx,emp.id,input.month,input);
- if(options.expectedSalaryVersionId&&options.expectedSalaryVersionId!==salary.id)fail(409,'Applicable salary changed. Review and select again.','SALARY_STALE');
+ if(expectedSalaryVersionId&&expectedSalaryVersionId!==salary.id)fail(409,'Applicable salary changed. Review and select again.','SALARY_STALE');
  const record=await tx.payrollRecord.create({data:{employeeId:emp.id,salaryVersionId:salary.id,payrollMonth:date(input.month),...financial(result),employeeCodeSnapshot:emp.employeeCode,employeeNameSnapshot:emp.fullName,createdByUserId:user.id,updatedByUserId:user.id,changeReason:input.reason}});
- await event(tx,user.id,'PAYROLL_CREATED',record.id,{reason:input.reason,version:record.version});return view(record);
+ const preparation=Object.fromEntries(['earnings','deductions'].map(kind=>[kind,result[kind].map((line,index)=>({...line,...(input[kind]?.[index]?.reason?{reason:input[kind][index].reason}:{})}))]));
+ await event(tx,user.id,'PAYROLL_CREATED',record.id,{reason:input.reason,version:record.version,preparation});
+ // Self-target the operation UUID so the existing unique audit index protects
+ // the identity across employees, not just within a newly created record.
+ if(input.operationKey)await event(tx,user.id,'PAYROLL_BATCH_EDIT',input.operationKey,{kind:'PREPARE',operationKey:input.operationKey,recordId:record.id,fingerprint,reason:input.reason,version:record.version});
+ return view(record);
 });}
 async function bulkDrafts(userId,input){
  const parsed=require('../validation/payroll-api.validation').bulk.safeParse(input);if(!parsed.success)fail(400,'Select 1 to 25 unique employees with valid preparation inputs.','VALIDATION_ERROR');input=parsed.data;
@@ -75,9 +87,9 @@ async function bulkDrafts(userId,input){
  const results=[];
  // Bounded sequential processing; each employee commits or rolls back independently.
  for(const item of input.items){
-  try{const record=await createDraft(userId,{employeeId:item.employeeId,month:input.month,totalPayableDays:item.totalPayableDays,workedDays:item.workedDays,reason:item.reason,earnings:[],deductions:[]},{bulk:true,expectedSalaryVersionId:item.expectedSalaryVersionId});results.push({employeeId:item.employeeId,outcome:'CREATED',recordId:record.id,reason:'Draft created.'});}
+  try{const prepare=()=>createDraft(userId,{...item,month:input.month},{bulk:true,expectedSalaryVersionId:item.expectedSalaryVersionId});let record;try{record=await prepare();}catch(error){if(item.operationKey&&error.code==='PAYROLL_CONFLICT')record=await prepare();else throw error;}results.push({employeeId:item.employeeId,outcome:record.preparationReplayed?'SKIPPED':'CREATED',recordId:record.id,reason:record.preparationReplayed?'Already prepared; retry did not duplicate adjustments.':'Draft created.'});}
   catch(error){let existing=null;if(['PAYROLL_CONFLICT','PAYROLL_EXISTS'].includes(error.code)){try{existing=await transaction(async tx=>{await actor(tx,userId);return tx.payrollRecord.findFirst({where:{employeeId:item.employeeId,payrollMonth:date(input.month)},select:{id:true}});});}catch{/* A changed authorization must not expose records. */}}
-   const skipped=!!existing||['SALARY_REQUIRED','MONTH_NOT_ELIGIBLE'].includes(error.code);results.push({employeeId:item.employeeId,outcome:skipped?'SKIPPED':'FAILED',...(existing?{recordId:existing.id}:{}),reason:existing?'Payroll already exists; it was not overwritten.':error instanceof ApiError?error.message:'Preparation failed. Reload saved state before retrying.'});
+   const skipped=!!existing||['SALARY_REQUIRED','MONTH_NOT_ELIGIBLE'].includes(error.code);results.push({employeeId:item.employeeId,outcome:skipped?'SKIPPED':'FAILED',...(existing?{recordId:existing.id}:{}),reason:existing?'Payroll already exists; it was not overwritten.':error instanceof ApiError?error.message:'Preparation failed. Reload saved state before retrying.',code:error.code||'UNCONFIRMED',...(error.details?{details:error.details}:{})});
   }
  }
  return {month:input.month,results,created:results.filter(row=>row.outcome==='CREATED').length,skipped:results.filter(row=>row.outcome==='SKIPPED').length,failed:results.filter(row=>row.outcome==='FAILED').length};

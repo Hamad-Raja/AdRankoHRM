@@ -60,11 +60,12 @@ function lineItems(value, field, types) {
 
   const result = [];
 
-  for (const item of value) {
-    object(item, field, ["type", "label", "amount"]);
+  for (const [index,item] of value.entries()) {
+    const itemField = `${field}.${index}`;
+    object(item, itemField, ["type", "label", "amount"]);
 
     if (!types.includes(item.type)) {
-      invalid(field, `Unsupported ${field} type.`);
+      invalid(`${itemField}.type`, `Unsupported ${field} type.`);
     }
 
     if (
@@ -76,19 +77,19 @@ function lineItems(value, field, types) {
       })
     ) {
       invalid(
-        field,
+        `${itemField}.label`,
         `${field} descriptions must contain at most 120 characters without control characters.`
       );
     }
 
     const amount = moneyToMinor(
       item.amount,
-      `${field}.amount`
+      `${itemField}.amount`
     );
 
     if (amount === 0n) {
       invalid(
-        field,
+        `${itemField}.amount`,
         `Omit unused ${field} items instead of adding a zero amount.`
       );
     }

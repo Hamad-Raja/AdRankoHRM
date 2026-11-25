@@ -36,6 +36,14 @@ export function AdminPayrollAction({record,user,busy,uncertain,refreshKey,onOpen
   </div>;
 }
 
+export function MonthlyPayrollPaymentAction({record,user,busy,uncertain,onOpen}) {
+  const action=useAdminPayrollActions(record,user);
+  const canView=['ADMIN','HR'].includes(user.role)&&record.status==='PAID'&&Boolean(record.payment);
+  if(!action.canPay&&!canView)return null;
+  return <Button variant="outline" size="sm" disabled={busy||(action.canPay&&uncertain)}
+    onClick={()=>onOpen(record,action.canPay?'pay':null)}>{action.canPay?'Record payment':'View payment'}</Button>;
+}
+
 export function AdminPayrollSummary({month,search,revision}) {
   return <section aria-label="Payroll approval counts" className="space-y-2">
     <p className="text-xs text-muted-foreground">Full totals across statuses for {month||'all payroll months'} and the current employee search.</p>
