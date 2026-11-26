@@ -216,7 +216,7 @@ export default function PortalSidebar({ onNavigate }) {
           to={homePath}
           onClick={() => onNavigate?.()}
           aria-label="AdRankoHRM home"
-          className="inline-flex max-w-full items-center gap-2 rounded-sm text-xl font-semibold tracking-tight text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
+          className="inline-flex max-w-full items-center gap-2 rounded-sm text-xl font-semibold tracking-tight text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring"
         >
           <AdRankoLogo />
           <span className="min-w-0">AdRanko<span className="portal-sidebar-brand-accent">HRM</span></span>
