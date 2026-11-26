@@ -41,7 +41,7 @@ export function MonthlyPayrollPaymentAction({record,user,busy,uncertain,onOpen})
   const canView=['ADMIN','HR'].includes(user.role)&&record.status==='PAID'&&Boolean(record.payment);
   if(!action.canPay&&!canView)return null;
   return <Button variant="outline" size="sm" disabled={busy||(action.canPay&&uncertain)}
-    onClick={()=>onOpen(record,action.canPay?'pay':null)}>{action.canPay?'Record payment':'View payment'}</Button>;
+    onClick={()=>onOpen(record,action.canPay?'pay':'payment')} aria-label={action.canPay?'Record payment':`View payment for ${record.employeeName} ${record.month}`}>{action.canPay?'Record payment':'View payment'}</Button>;
 }
 
 export function AdminPayrollSummary({month,search,revision}) {

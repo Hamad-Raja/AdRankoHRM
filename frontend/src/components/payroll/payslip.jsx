@@ -1,3 +1,4 @@
+import PaymentDetails from './payment-details';
 import {pkr, readable, dateTime} from './payroll-format';
 import {PayrollStatus} from './payroll-fields';
 import {CheckCircle2,Hourglass} from 'lucide-react';
@@ -31,6 +32,6 @@ export default function Payslip({record,own,compact=false}) {
 
     <p className={compact?'payroll-print-only':'text-xs text-muted-foreground'}>{record.period.dateFrom} through {record.period.dateTo}. Payable and worked days were entered manually. Additional earnings and deductions apply to this period.</p>
     <details className="payroll-calculation text-sm"><summary className="cursor-pointer rounded text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">{compact?'Calculation details':'Calculation and approval details'}</summary><div className="mt-3 space-y-2">{compact&&<><p>{record.period.dateFrom} through {record.period.dateTo}. Payable and worked days were entered manually. Additional earnings and deductions apply to this period.</p>{record.organization&&<p>Organization at period end: {record.organization.asOf}</p>}</>}<p>Gross Pay: {pkr(record.grossPay)}</p><p>Unearned Basic: {pkr(record.unearnedBasic)} (reference only; not deducted again).</p><p>Prorated basic is rounded once to the nearest paisa. Adjustments are not prorated.</p><p>HR approved: {record.hrApprovedAt?dateTime(record.hrApprovedAt):'Pending'}</p><p>Admin approved: {record.adminApprovedAt?dateTime(record.adminApprovedAt):'Pending'}</p></div></details>
-    {record.payment&&<section className="space-y-2 border-t border-border pt-4 text-sm"><h3 className="font-semibold">Payment recorded</h3><p>{pkr(record.payment.amount)} · {readable(record.payment.method)} · {record.payment.paidOn}</p>{!own&&<><p className="break-words">Reference: {record.payment.reference||'Not provided'}</p>{record.payment.note&&<p className="break-words">{record.payment.note}</p>}</>}<p className="text-xs text-muted-foreground">This is a record of payment. AdRankoHRM does not transfer funds.</p></section>}
+    {record.payment&&<div className="border-t border-border pt-4"><PaymentDetails record={record} own={own}/><p className="mt-4 text-xs text-muted-foreground">Records an external payment. AdRankoHRM does not transfer funds.</p></div>}
   </section>;
 }
