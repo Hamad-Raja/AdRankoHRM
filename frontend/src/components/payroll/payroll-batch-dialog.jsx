@@ -1,3 +1,4 @@
+import {FieldInput} from '@/components/ui/field-input';
 import {usePreparationAttendance} from './use-payroll-resource';
 import {PreparationHeader,AdjustmentSummary,PreparationPreview,AttendanceSummary} from './payroll-preparation-parts';
 import {Badge} from '@/components/ui/badge';
@@ -32,10 +33,10 @@ function PreparationEmployee({row,value,onChange,disabled,failure,month,position
   <PreparationHeader employee={row.employee} monthlyBasic={row.monthlyBasic} position={position} total={total}/>
   {problem&&<p role="alert" className="break-words text-sm text-destructive">{problem.message||problem.reason}</p>}
   <AttendanceSummary employee={row.employee} month={month} resource={attendance}/>
-  <div className="grid gap-3 sm:grid-cols-2"><PayrollField label={'Total payable days - '+row.employee.employeeCode} error={fieldError('totalPayableDays')}><input className={inputClass} required type="number" min="0.01" max="31" step="0.01" value={value.totalPayableDays} onChange={e=>onChange('totalPayableDays',e.target.value)}/></PayrollField><PayrollField label={'Worked days - '+row.employee.employeeCode} error={fieldError('workedDays')}><input className={inputClass} required type="number" min="0" max={value.totalPayableDays||'31'} step="0.01" value={value.workedDays} onChange={e=>onChange('workedDays',e.target.value)}/></PayrollField></div>
+  <div className="grid gap-3 sm:grid-cols-2"><PayrollField label={'Total payable days - '+row.employee.employeeCode} error={fieldError('totalPayableDays')}><FieldInput className={inputClass} required type="number" min="0.01" max="31" step="0.01" value={value.totalPayableDays} onChange={e=>onChange('totalPayableDays',e.target.value)}/></PayrollField><PayrollField label={'Worked days - '+row.employee.employeeCode} error={fieldError('workedDays')}><FieldInput className={inputClass} required type="number" min="0" max={value.totalPayableDays||'31'} step="0.01" value={value.workedDays} onChange={e=>onChange('workedDays',e.target.value)}/></PayrollField></div>
   {['earnings','deductions'].map(kind=><details key={kind} ref={node=>{panels.current[kind]=node;}} open={expanded[kind]} onToggle={event=>{const open=event.currentTarget.open;setExpanded(old=>old[kind]===open?old:{...old,[kind]:open});}} className="group min-w-0 rounded-xl border border-border"><AdjustmentSummary kind={kind} count={value[kind].length} total={itemTotal(value[kind])}/><div className="border-t border-border p-3"><Adjustments kind={kind} compact withReasons items={value[kind]} disabled={disabled} onChange={items=>onChange(kind,items)} fieldError={fieldError} error={field?.startsWith(kind)?problem.message||problem.reason:undefined}/></div></details>)}
   <PreparationPreview label={'Calculation preview - '+row.employee.employeeCode} preview={visiblePreview}><Button type="button" variant="outline" disabled={disabled||previewBusy} onClick={()=>void calculate()}>{previewBusy?'Calculating...':'Calculate preview'}</Button></PreparationPreview>
-  <PayrollField label={'Preparation note - '+row.employee.employeeCode} error={fieldError('reason')}><input name="preparationNote" className={inputClass} required maxLength={1000} value={value.reason} onChange={e=>onChange('reason',e.target.value)}/></PayrollField>
+  <PayrollField label={'Preparation note - '+row.employee.employeeCode} error={fieldError('reason')}><FieldInput name="preparationNote" className={inputClass} required maxLength={1000} value={value.reason} onChange={e=>onChange('reason',e.target.value)}/></PayrollField>
  </section>;
 }
 

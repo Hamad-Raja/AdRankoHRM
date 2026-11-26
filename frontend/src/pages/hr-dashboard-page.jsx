@@ -1,3 +1,4 @@
+import {FieldInput} from '@/components/ui/field-input';
 import {
   attendancePeriodMessage,
   attendanceCalendarLabel,
@@ -556,7 +557,7 @@ export default function HrDashboard() {
           controls={
             <label className="hr-month font-medium">
               <span className="sr-only">Payroll summary month</span>
-              <input
+              <FieldInput
                 type="month"
                 aria-label="Payroll summary month"
                 value={month}

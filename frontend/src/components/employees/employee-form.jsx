@@ -1,3 +1,5 @@
+import {FieldInput} from '@/components/ui/field-input';
+import {ThemedSelect} from '@/components/ui/themed-select';
 import {teamMatchesCampaign,retainEligibleTeam} from './management-utils';
 import {employeeCreationRoles} from './employee-account-rules';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -27,7 +29,7 @@ function FormField({ label, icon: Icon, error, options, children, ...props }) {
     <label htmlFor={id} className="block text-sm font-medium">{label}{props.required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}</label>
     <div className="relative">
       {Icon && <Icon aria-hidden="true" className="pointer-events-none absolute top-3 left-3 size-5 text-muted-foreground" />}
-      {options ? <select {...attributes}>{options.map(([value,text]) => <option key={value} value={value}>{text}</option>)}</select> : <input {...attributes} />}
+      {options ? <ThemedSelect {...attributes}>{options.map(([value,text]) => <option key={value} value={value}>{text}</option>)}</ThemedSelect> : <FieldInput {...attributes} />}
       {children}
     </div>
     {message && <p id={id+'-error'} className="text-sm text-destructive">{message}</p>}

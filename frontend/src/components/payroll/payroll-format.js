@@ -1,4 +1,5 @@
-export const inputClass = 'h-11 w-full min-w-0 rounded-lg border border-input bg-background/70 px-3 text-sm font-normal text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60';
+import {fieldAppearance} from '@/components/ui/field-styles';
+export const inputClass = fieldAppearance + ' h-11 w-full min-w-0 rounded-lg border border-input bg-background/70 px-3 text-sm font-normal text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60';
 export const earningTypes = ['ALLOWANCE', 'BONUS', 'COMMISSION', 'OVERTIME', 'OTHER'];
 export const deductionTypes = ['TAX', 'ADVANCE_RECOVERY', 'LOAN_RECOVERY', 'OTHER'];
 export function salaryForMonth(history,month){const boundary=history?.rehireBoundaries?.find(item=>item.month<=month);return history?.versions.find(version=>version.effectiveMonth<=month&&(!boundary||version.effectiveMonth>=boundary.month&&!boundary.excludedVersionIds.includes(version.id)))||null;}

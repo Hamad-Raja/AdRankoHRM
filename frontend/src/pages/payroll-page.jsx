@@ -1,3 +1,5 @@
+import {FieldInput} from '@/components/ui/field-input';
+import {ThemedSelect} from '@/components/ui/themed-select';
 import MonthlyPayrollWorkspace from '@/components/payroll/monthly-payroll-workspace';
 import {useEffect, useRef, useState} from 'react';
 import {useLocation,useSearchParams} from 'react-router';
@@ -146,9 +148,9 @@ function PayrollWorkspace({own}) {
       </div>
       {!own&&user.role==='HR'&&!payrollSalary&&<p className="text-xs text-muted-foreground">{!selected?'Select an employee to prepare a payroll draft.':salary.loading?'Checking salary for this payroll month...':salary.error?'Reload salary history before preparing payroll.':`A salary effective on or before ${payrollMonth} is required to prepare a draft.`}</p>}
       <fieldset disabled={busy} className="grid min-w-0 gap-3 sm:grid-cols-3">
-        <PayrollField label="Filter payroll month"><input className={`${inputClass} h-10`} type="month" value={month} onChange={event=>{filterChange('month',event.target.value);}}/></PayrollField>
-        <PayrollField label="Filter status"><select className={`${inputClass} h-10`} value={status} onChange={event=>{filterChange('status',event.target.value);}}><option value="">All statuses</option>{(own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).map(value=><option key={value} value={value}>{readable(value)}</option>)}</select></PayrollField>
-        <PayrollField label="Payroll employee search"><input className={`${inputClass} h-10`} type="search" maxLength={120} value={search} onChange={event=>{filterChange('search',event.target.value);}} placeholder="Employee name or code"/></PayrollField>
+        <PayrollField label="Filter payroll month"><FieldInput className={`${inputClass} h-10`} type="month" value={month} onChange={event=>{filterChange('month',event.target.value);}}/></PayrollField>
+        <PayrollField label="Filter status"><ThemedSelect className={`${inputClass} h-10`} value={status} onChange={event=>{filterChange('status',event.target.value);}}><option value="">All statuses</option>{(own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).map(value=><option key={value} value={value}>{readable(value)}</option>)}</ThemedSelect></PayrollField>
+        <PayrollField label="Payroll employee search"><FieldInput className={`${inputClass} h-10`} type="search" maxLength={120} value={search} onChange={event=>{filterChange('search',event.target.value);}} placeholder="Employee name or code"/></PayrollField>
       </fieldset>
       {admin&&adminTab==='approvals'&&<AdminPayrollSummary month={month} search={search} revision={annualRevision}/>}
       <div aria-busy={records.loading} className="min-w-0 overflow-hidden rounded-2xl border border-border">

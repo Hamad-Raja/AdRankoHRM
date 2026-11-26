@@ -1,3 +1,4 @@
+import {FieldInput} from '@/components/ui/field-input';
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
@@ -149,7 +150,7 @@ export default function LoginPage() {
                     Email address
                   </label>
 
-                  <input
+                  <FieldInput
                     id="login-email"
                     name="email"
                     type="email"
@@ -170,7 +171,7 @@ export default function LoginPage() {
                   </label>
 
                   <div className="relative">
-                    <input
+                    <FieldInput
                       id="login-password"
                       name="password"
                       type={showPassword ? "text" : "password"}

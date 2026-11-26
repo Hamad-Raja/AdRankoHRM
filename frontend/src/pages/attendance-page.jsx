@@ -1,3 +1,5 @@
+import {FieldTextarea} from '@/components/ui/field-input';
+import {ThemedSelect} from '@/components/ui/themed-select';
 import {apiRequest} from '@/lib/api';
 import {validDate,ATTENDANCE_STATUSES,STATUS_LABELS} from '@/lib/reports';
 import {teamStatus} from '@/components/dashboard/personal-dashboard-data';
@@ -537,7 +539,7 @@ export default function AttendancePage() {
           <RecordFilters {...(isManager ? { className: "attendance-filter-panel" } : {})}>
             <div className="flex flex-wrap gap-3">
               <label className="text-sm font-medium">Employee search<Input aria-label="Employee search" value={search} onChange={e => { setSearch(e.target.value); setRecordsPage(1); }} /></label>
-              {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-sm font-medium">{kind}<select aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>)}
+              {isAdminOrHr && [['DEPARTMENT', departmentId, setDepartmentId], ['CAMPAIGN', campaignId, setCampaignId], ['TEAM', teamId, setTeamId]].map(([kind, value, setter]) => <label key={kind} className="text-sm font-medium">{kind}<ThemedSelect aria-label={kind + ' filter'} value={value} onChange={e => { setter(e.target.value); setRecordsPage(1); }} className="block rounded-lg border bg-background p-2"><option value="">All</option>{units.filter(u => u.kind === kind).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</ThemedSelect></label>)}
             </div>
             {/* Filters */}
             <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
@@ -569,7 +571,7 @@ export default function AttendancePage() {
                 <label htmlFor="filter-status-select" className="text-sm font-medium normal-case tracking-normal text-muted-foreground">
                   Status
                 </label>
-                <select
+                <ThemedSelect
                   id="filter-status-select"
                   value={filterStatus}
                   onChange={(e) => {setFilterStatus(e.target.value);if(teamCalendar)setRecordsPage(1);}}
@@ -580,7 +582,7 @@ export default function AttendancePage() {
                   <option value="COMPLETED">Completed</option>
                   <option value="MISSING_CHECKOUT">Missing Clock-Out</option>
                   <option value="CORRECTED">Corrected</option></>}
-                </select>
+                </ThemedSelect>
               </div>
               <Button
                 size="sm"
@@ -757,7 +759,7 @@ export default function AttendancePage() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={reviewableOnly} onChange={e => { setReviewableOnly(e.target.checked); setCorrectionPage(1); }} />Only pending corrections I can review</label>
-            <label className="text-sm font-medium">Correction status<select aria-label="Correction status" className="ml-2 rounded border bg-background p-2" value={correctionStatus} onChange={e => { setCorrectionStatus(e.target.value); setCorrectionPage(1); }}><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All decisions</option></select></label>
+            <label className="text-sm font-medium">Correction status<ThemedSelect aria-label="Correction status" className="ml-2 rounded border bg-background p-2" value={correctionStatus} onChange={e => { setCorrectionStatus(e.target.value); setCorrectionPage(1); }}><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All decisions</option></ThemedSelect></label>
             <Button variant="outline" disabled={loadingCorrections || correctionPage <= 1} onClick={() => setCorrectionPage(p => p - 1)}>Previous requests</Button>
             <span className="text-xs">Page {correctionPage} of {correctionPages}</span>
             <Button variant="outline" disabled={loadingCorrections || correctionPage >= correctionPages} onClick={() => setCorrectionPage(p => p + 1)}>Next requests</Button>
@@ -929,7 +931,7 @@ export default function AttendancePage() {
               <label htmlFor="review-reason-input" className="block text-sm font-medium text-foreground">
                 Review Decision Notes (Required)
               </label>
-              <textarea
+              <FieldTextarea
                 id="review-reason-input"
                 rows={3}
                 value={reviewReason}

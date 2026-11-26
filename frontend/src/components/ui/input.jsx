@@ -1,4 +1,5 @@
-﻿import { Input as InputPrimitive } from "@base-ui/react/input";
+import {fieldAppearance} from './field-styles';
+import { Input as InputPrimitive } from "@base-ui/react/input";
 
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,8 @@ function Input({ className, type, ...props }) {
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50",
         "aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30",
-        className
+        className,
+        fieldAppearance
       )}
       {...props}
     />

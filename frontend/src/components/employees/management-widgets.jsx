@@ -1,3 +1,4 @@
+import {ThemedSelect} from '@/components/ui/themed-select';
 import {Badge} from '@/components/ui/badge';
 import {employeeDate} from './employee-options';
 import {dateTime} from '@/components/payroll/payroll-format';
@@ -12,7 +13,7 @@ export function Panel({ title, actions, children }) {
 }
 export function Field({ label, options, ...props }) {
   const id = useId();
-  return <div className="min-w-0 space-y-1 text-sm"><label htmlFor={id} className="block font-medium">{label}</label>{options ? <select id={id} className="h-9 w-full rounded-lg border border-input bg-background/80 px-3 py-1.5 text-sm shadow-2xs focus-visible:outline-2 focus-visible:outline-ring" {...props}>{options.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select> : <Input id={id} {...props} />}</div>;
+  return <div className="min-w-0 space-y-1 text-sm"><label htmlFor={id} className="block font-medium">{label}</label>{options ? <ThemedSelect id={id} className="h-9 w-full rounded-lg border border-input bg-background/80 px-3 py-1.5 text-sm shadow-2xs focus-visible:outline-2 focus-visible:outline-ring" {...props}>{options.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</ThemedSelect> : <Input id={id} {...props} />}</div>;
 }
 // Never retry writes. An uncertain response locks this mounted form until an explicit read/reload.
 export function ActionForm({ title, children, action, onSaved, submit = 'Save', reset = true, onBusyChange }) {

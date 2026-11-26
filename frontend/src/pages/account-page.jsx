@@ -1,3 +1,4 @@
+import {FieldInput} from '@/components/ui/field-input';
 import { useState } from "react";
 import { KeyRound, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
 import { Navigate, useLocation } from "react-router";
@@ -117,7 +118,7 @@ function PasswordChangeForm({ canCancel, onCancel }) {
               {field.label}
             </label>
 
-            <input
+            <FieldInput
               id={`account-${field.name}`}
               name={field.name}
               type="password"

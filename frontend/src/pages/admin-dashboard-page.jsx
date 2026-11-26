@@ -1,3 +1,4 @@
+import {FieldInput} from '@/components/ui/field-input';
 import {
   attendancePeriodMessage,
   attendanceCalendarLabel,
@@ -322,7 +323,7 @@ export default function AdminDashboard() {
           controls={
             <label className="admin-month font-medium">
               Payroll month
-              <input
+              <FieldInput
                 aria-label="Payroll month"
                 type="month"
                 value={month}

@@ -1,3 +1,5 @@
+import {FieldTextarea} from '@/components/ui/field-input';
+import {ThemedSelect} from '@/components/ui/themed-select';
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,7 +146,7 @@ function CorrectionDialog({
             <label className="block text-sm font-medium text-foreground">
               Correction Reason Type
             </label>
-            <select
+            <ThemedSelect
               aria-label="Correction type" value={requestType}
               onChange={(e) => setRequestType(e.target.value)}
               className="w-full h-9 rounded-lg border border-input bg-background/80 px-3 text-sm font-normal text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 shadow-2xs outline-none"
@@ -152,7 +154,7 @@ function CorrectionDialog({
               <option value="MISSING_CHECKOUT">Missing Checkout / Clock Out</option>
               <option value="WRONG_TIME">Incorrect Clock In / Out Time</option>
               <option value="OTHER">Other Reason</option>
-            </select>
+            </ThemedSelect>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -185,7 +187,7 @@ function CorrectionDialog({
             <label className="block text-sm font-medium text-foreground">
               Explanation & Reason (Required)
             </label>
-            <textarea
+            <FieldTextarea
               aria-label="Correction reason" rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
