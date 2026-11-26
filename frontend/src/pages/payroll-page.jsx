@@ -141,7 +141,7 @@ function PayrollWorkspace({own}) {
     <section hidden={admin?adminTab!=='approvals':view!=='monthly'} aria-label="Payroll records" className="min-w-0 space-y-5 rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-lg font-semibold">{own?'Approved & Paid Payslips':admin?'Payroll Approvals':'Monthly Payroll'}</h2><p className="mt-1 text-sm text-muted-foreground">{own?'Only your final payslips are available here.':admin?'Review organization payroll without selecting an employee.':selected?'Drafts, approvals and payment history for the selected employee.':'Review payroll records across employees, or select an employee to prepare a draft.'}</p></div>
-        {!own&&user.role==='HR'&&<Button disabled={busy||uncertain||!payrollSalary} onClick={()=>openModal('draft')}><Plus aria-hidden="true"/>Prepare Payroll Draft</Button>}
+        {!own&&user.role==='HR'&&<Button disabled={busy||uncertain||!payrollSalary} onClick={()=>openModal('draft')}><Plus aria-hidden="true"/>Prepare payroll draft</Button>}
       </div>
       {!own&&user.role==='HR'&&!payrollSalary&&<p className="text-xs text-muted-foreground">{!selected?'Select an employee to prepare a payroll draft.':salary.loading?'Checking salary for this payroll month...':salary.error?'Reload salary history before preparing payroll.':`A salary effective on or before ${payrollMonth} is required to prepare a draft.`}</p>}
       <fieldset disabled={busy} className="grid min-w-0 gap-3 sm:grid-cols-3">

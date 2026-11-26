@@ -32,3 +32,14 @@ export function dateTime(value, {numericDate = false} = {}) {
   }
   return value ? new Intl.DateTimeFormat('en-PK', {timeZone:'Asia/Karachi',dateStyle:'medium',timeStyle:'short'}).format(new Date(value)) : 'Not recorded';
 }
+
+export function preparationMonth(value){
+ if(!/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value||''))return 'Payroll month not selected';
+ return new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',month:'long',year:'numeric'}).format(new Date(value+'-01T00:00:00Z'));
+}
+// Existing batch adjustment total, shared for display only; server previews own pay calculations.
+export function adjustmentTotal(items){
+ let sum=0n;
+ for(const item of items){if(!/^(0|[1-9][0-9]*)(?:\.[0-9]{1,2})?$/.test(item.amount)||item.amount.length>16)return 'Incomplete amounts';const [whole,fraction='']=item.amount.split('.');const amount=BigInt(whole)*100n+BigInt(fraction.padEnd(2,'0'));if(amount===0n)return 'Incomplete amounts';sum+=amount;}
+ return pkr(`${sum/100n}.${String(sum%100n).padStart(2,'0')}`);
+}
