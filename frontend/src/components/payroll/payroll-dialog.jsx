@@ -1,24 +1,31 @@
-import {useEffect, useId, useRef, useState} from 'react';
+import {createContext, useContext, useEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {lockPageScroll} from '@/lib/scroll-lock';
 
+const ParentDialogReady=createContext(true);
+
 export default function PayrollDialog({title,titleAccessory,description,wide=false,busy=false,dirty=false,error,uncertain,onReload,onClose,returnFocus,confirmDiscard=false,recoveryLabel='Reload saved data',recoveryDescription='Reload saved records before another write. No automatic retry was sent.',className='',children}) {
-  const id=useId(), dialog=useRef(null), opener=useRef(returnFocus||document.activeElement);
+  const id=useId(), dialog=useRef(null), parentReady=useContext(ParentDialogReady);
+  const [ready,setReady]=useState(false);
   const [discard,setDiscard]=useState(false);
   useEffect(()=>{
-    const element=dialog.current, previous=opener.current;
+    if(!parentReady)return;
+    const element=dialog.current, previous=returnFocus||document.activeElement;
     const scroll={left:window.scrollX,top:window.scrollY};
     const unlock=lockPageScroll();
     element.showModal();
+    // Native top-layer order follows showModal(), not CSS z-index. Open a
+    // nested action only after its parent, including initially selected actions.
+    setReady(true);
     window.scrollTo({...scroll,behavior:'instant'});
     return ()=>{
       element.close();unlock();
       if(previous?.isConnected)previous.focus({preventScroll:true});
       window.scrollTo({...scroll,behavior:'instant'});
     };
-  },[]);
+  },[parentReady,returnFocus]);
   function close() {
     if(busy)return;
     if(confirmDiscard&&(dirty||uncertain)){setDiscard(true);return;}
@@ -40,9 +47,9 @@ export default function PayrollDialog({title,titleAccessory,description,wide=fal
     <header className="mb-5 flex shrink-0 items-start justify-between gap-3 border-b border-border pb-4"><div><div className="flex flex-wrap items-center gap-3"><h2 id={id+'-title'} className="text-xl font-semibold">{title}</h2>{titleAccessory}</div><p id={id+'-description'} className="mt-1 text-sm text-muted-foreground">{description}</p></div><Button type="button" variant="ghost" size="icon" aria-label="Close dialog" disabled={busy} onClick={close}><X aria-hidden="true"/></Button></header>
     {error && <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error.message||error}</p>}
     {uncertain && <div className="mb-4 space-y-2 rounded-lg border border-border p-3 text-sm"><p>{recoveryDescription}</p><Button type="button" variant="outline" disabled={busy} onClick={()=>void onReload()}>{recoveryLabel}</Button></div>}
-    {children(close)}
+    <ParentDialogReady.Provider value={ready}>{children(close)}
     {discard&&<PayrollDialog title={uncertain?'Leave unconfirmed action?':'Discard unsaved changes?'} description={uncertain?'A save may already have completed. Review saved records before submitting again.':'Your unsaved changes will be lost. Keep editing to retain them.'} busy={busy} onClose={()=>setDiscard(false)}>
       {cancel=><footer className="flex flex-wrap justify-end gap-3"><Button variant="outline" disabled={busy} onClick={cancel}>Keep editing</Button><Button disabled={busy} onClick={onClose}>{uncertain?'Close and review':'Discard changes'}</Button></footer>}
-    </PayrollDialog>}
+    </PayrollDialog>}</ParentDialogReady.Provider>
   </dialog>,document.body);
 }

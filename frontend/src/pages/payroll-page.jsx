@@ -42,6 +42,7 @@ function PayrollWorkspace({own}) {
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;writeController.current?.abort();};},[]);
   const salary=usePayrollResource(!own&&selected?'/salaries/'+selected.id:null);
   const records=usePayrollResource((own?'/payslips':'')+'?'+payrollQuery({month,status,search,page,pageSize:20,employeeId:own||admin?'':selected?.id||''}));
+  useEffect(()=>{if(admin&&adminTab==='approvals'&&records.data&&!records.loading&&!records.error&&page>Math.max(1,records.data.totalPages))setPage(Math.max(1,records.data.totalPages));},[admin,adminTab,records.data,records.loading,records.error,page]);
   const detail=usePayrollResource(detailId?(own?'/payslips/':'/')+detailId:null);
   const currentEmployee=salary.data?.employee||selected;
   const todayMonth=currentMonth();
@@ -137,7 +138,7 @@ function PayrollWorkspace({own}) {
     {!own&&(!admin||adminTab==='salary')&&<EmployeeSalaryCard key={'salary-card:'+(selected?.id||'unselected')} employee={currentEmployee} resource={salary} currentSalary={currentSalary} payrollSalary={payrollSalary} month={monthPattern.test(month)?month:''} todayMonth={todayMonth} disabled={busy||uncertain} canRevise={canRevise} onRevise={()=>openModal('salary')}/>}
     {(!admin||adminTab==='salary')&&<nav aria-label="Payroll views" className="app-tabs"><Button variant={view==='monthly'?'default':'outline'} aria-pressed={view==='monthly'} disabled={busy} onClick={()=>setView('monthly')}>{own?'Monthly Payslips':admin?'Salary & History':'Monthly Payroll'}</Button><Button variant={view==='annual'?'default':'outline'} aria-pressed={view==='annual'} disabled={busy} onClick={()=>setView('annual')}>Annual Summary</Button></nav>}
     {view==='annual'&&(!admin||adminTab==='salary')&&<AnnualSummary own={own} employee={selected} onView={openRecord} disabled={busy} revision={annualRevision}/>}
-    {admin&&adminTab==='approvals'&&<AdminPayrollSummary month={month} search={search} revision={annualRevision}/>}
+
     <section hidden={admin?adminTab!=='approvals':view!=='monthly'} aria-label="Payroll records" className="min-w-0 space-y-5 rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-lg font-semibold">{own?'Approved & Paid Payslips':admin?'Payroll Approvals':'Monthly Payroll'}</h2><p className="mt-1 text-sm text-muted-foreground">{own?'Only your final payslips are available here.':admin?'Review organization payroll without selecting an employee.':selected?'Drafts, approvals and payment history for the selected employee.':'Review payroll records across employees, or select an employee to prepare a draft.'}</p></div>
@@ -149,6 +150,7 @@ function PayrollWorkspace({own}) {
         <PayrollField label="Filter status"><select className={`${inputClass} h-10`} value={status} onChange={event=>{filterChange('status',event.target.value);}}><option value="">All statuses</option>{(own?['APPROVED','PAID']:['DRAFT','HR_APPROVED','APPROVED','PAID']).map(value=><option key={value} value={value}>{readable(value)}</option>)}</select></PayrollField>
         <PayrollField label="Payroll employee search"><input className={`${inputClass} h-10`} type="search" maxLength={120} value={search} onChange={event=>{filterChange('search',event.target.value);}} placeholder="Employee name or code"/></PayrollField>
       </fieldset>
+      {admin&&adminTab==='approvals'&&<AdminPayrollSummary month={month} search={search} revision={annualRevision}/>}
       <div aria-busy={records.loading} className="min-w-0 overflow-hidden rounded-2xl border border-border">
         {records.loading?<p role="status" className="py-12 text-center text-sm text-muted-foreground">Loading payroll…</p>
           :records.error?<div role="alert" className="space-y-3 p-5"><p className="text-sm text-destructive">Payroll data unavailable. {records.error.message}</p><Button variant="outline" disabled={busy} onClick={()=>void records.reload().catch(()=>{})}>Retry payroll records</Button></div>

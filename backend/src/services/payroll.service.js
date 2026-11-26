@@ -165,6 +165,7 @@ async function monthlyWorkspace(userId,filters){return transaction(async tx=>{
  WITH candidates AS (
  SELECT e.id,e."fullName",e."employeeCode",p.id AS "payrollId",v.id AS "salaryVersionId",
  coalesce(p."monthlyBasic",v."monthlyBasic")::text AS "monthlyBasic",p."netPay"::text AS "netPay",
+ EXISTS(SELECT 1 FROM payroll_payments payment WHERE payment."payrollRecordId"=p.id) AS "hasPayment",
  CASE WHEN p.id IS NOT NULL THEN p.status::text WHEN v.id IS NULL THEN 'SALARY_REQUIRED' ELSE 'NOT_PREPARED' END AS status,
  (NOT EXISTS(SELECT 1 FROM employment_episodes ep WHERE ep."employeeId"=e.id) OR EXISTS(SELECT 1 FROM employment_episodes ep WHERE ep."employeeId"=e.id AND ep."startDate"<=${to} AND (ep."endDate" IS NULL OR ep."endDate">=${from}))) AS eligible
  FROM employees e LEFT JOIN payroll_records p ON p."employeeId"=e.id AND p."payrollMonth"=${from}
@@ -173,10 +174,12 @@ async function monthlyWorkspace(userId,filters){return transaction(async tx=>{
  AND (boundary.plan IS NULL OR s."effectiveMonth">=to_date(substring(boundary.plan->>'joiningDate',1,7)||'-01','YYYY-MM-DD'))
  AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(coalesce(boundary.plan->'priorSalaryVersionIds','[]'::jsonb)) old WHERE old.value=s.id::text)
  ORDER BY s."effectiveMonth" DESC,s.revision DESC LIMIT 1) v ON true
- ), filtered AS (SELECT * FROM candidates WHERE (eligible OR "payrollId" IS NOT NULL) AND (${employeeFilter}::uuid IS NULL OR id=${employeeFilter}::uuid) AND (${status}='' OR status=${status}) AND (${search}='' OR position(lower(${search}) in lower("fullName"))>0 OR position(lower(${search}) in lower("employeeCode"))>0))
- SELECT (SELECT count(*)::int FROM filtered) total,coalesce((SELECT jsonb_agg(rows ORDER BY rows."fullName",rows.id) FROM (SELECT * FROM filtered ORDER BY "fullName",id LIMIT ${pageSize} OFFSET ${(page-1)*pageSize}) rows),'[]'::jsonb) rows`;
+ ), population AS (SELECT * FROM candidates WHERE (eligible OR "payrollId" IS NOT NULL) AND (${employeeFilter}::uuid IS NULL OR id=${employeeFilter}::uuid) AND (${search}='' OR position(lower(${search}) in lower("fullName"))>0 OR position(lower(${search}) in lower("employeeCode"))>0)),
+ filtered AS (SELECT * FROM population WHERE (${status}='' OR status=${status}))
+ SELECT (SELECT jsonb_build_object('employees',count(*)::int,'notPrepared',count(*) FILTER(WHERE status='NOT_PREPARED')::int,'pendingApproval',count(*) FILTER(WHERE status='HR_APPROVED')::int,'awaitingPayment',count(*) FILTER(WHERE status='APPROVED' AND NOT "hasPayment")::int,'paid',count(*) FILTER(WHERE "hasPayment")::int) FROM population) summary,
+ (SELECT count(*)::int FROM filtered) total,coalesce((SELECT jsonb_agg(rows ORDER BY rows."fullName",rows.id) FROM (SELECT * FROM filtered ORDER BY "fullName",id LIMIT ${pageSize} OFFSET ${(page-1)*pageSize}) rows),'[]'::jsonb) rows`;
  const records=await tx.payrollRecord.findMany({where:{id:{in:result.rows.map(row=>row.payrollId).filter(Boolean)}},include:{payment:true}}),returned=await corrections(tx,records);
- return {month,page,pageSize,total:result.total,totalPages:Math.ceil(result.total/pageSize),rows:result.rows.map(row=>({employee:{id:row.id,fullName:row.fullName,employeeCode:row.employeeCode},monthlyBasic:row.monthlyBasic,netPay:row.netPay,status:row.status,salaryVersionId:row.salaryVersionId,canPrepare:user.role==='HR'&&row.eligible&&!row.payrollId&&!!row.salaryVersionId,record:row.payrollId?{...view(records.find(p=>p.id===row.payrollId)),needsCorrection:returned.has(row.payrollId)}:null}))};
+ return {month,page,pageSize,summary:result.summary,total:result.total,totalPages:Math.ceil(result.total/pageSize),rows:result.rows.map(row=>({employee:{id:row.id,fullName:row.fullName,employeeCode:row.employeeCode},monthlyBasic:row.monthlyBasic,netPay:row.netPay,status:row.status,salaryVersionId:row.salaryVersionId,canPrepare:user.role==='HR'&&row.eligible&&!row.payrollId&&!!row.salaryVersionId,record:row.payrollId?{...view(records.find(p=>p.id===row.payrollId)),needsCorrection:returned.has(row.payrollId)}:null}))};
 });}
 
 async function detail(userId,id,own=false){return transaction(async tx=>{

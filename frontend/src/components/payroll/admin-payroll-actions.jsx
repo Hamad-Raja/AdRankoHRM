@@ -1,7 +1,8 @@
+import {UsersRound,FileText,Clock3,Wallet,CheckCircle2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {payrollQuery,payrollRequest} from '@/services/payroll.service';
 import {usePayrollResource} from './use-payroll-resource';
-import {salaryForMonth} from './payroll-format';
+import {salaryForMonth,preparationMonth} from './payroll-format';
 
 // Presentation of existing server records only; mutation endpoints revalidate
 // versions, distinct approvers and the applicable salary when confirming.
@@ -44,21 +45,18 @@ export function MonthlyPayrollPaymentAction({record,user,busy,uncertain,onOpen})
     onClick={()=>onOpen(record,action.canPay?'pay':'payment')} aria-label={action.canPay?'Record payment':`View payment for ${record.employeeName} ${record.month}`}>{action.canPay?'Record payment':'View payment'}</Button>;
 }
 
-export function AdminPayrollSummary({month,search,revision}) {
-  return <section aria-label="Payroll approval counts" className="space-y-2">
-    <p className="text-xs text-muted-foreground">Full totals across statuses for {month||'all payroll months'} and the current employee search.</p>
-    <div className="grid gap-3 sm:grid-cols-3">
-      {[['Awaiting Approval','HR_APPROVED'],['Awaiting Payment','APPROVED'],['Paid','PAID']].map(([label,status])=>
-        <SummaryCount key={status} label={label} month={month} search={search} status={status} revision={revision}/>)}
-    </div>
-  </section>;
+function PayrollCountCard({label,count,loading,error,onRetry,Icon}) {
+ const valid=Number.isSafeInteger(count)&&count>=0;
+ return <div aria-label={label} className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-4"><Icon aria-hidden="true" className="mt-1 size-6 shrink-0 text-muted-foreground"/><div className="min-w-0"><p className="break-words text-xl font-semibold tabular-nums" aria-live="polite">{loading?'Loading...':error||!valid?'Unavailable':count}</p><p className="mt-1 text-sm text-muted-foreground">{label}</p>{(error||!loading&&!valid)&&<Button type="button" variant="outline" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal" onClick={onRetry}>Retry {label.toLowerCase()}</Button>}</div></div>;
 }
-function SummaryCount({label,month,search,status,revision}) {
-  const resource=usePayrollResource('?'+payrollQuery({month,search,status,page:1,pageSize:1}),payrollRequest,revision);
-  const count=resource.data?.total,valid=Number.isSafeInteger(count)&&count>=0;
-  return <div className="min-w-0 rounded-xl border border-border bg-card p-4">
-    <p className="text-sm text-muted-foreground">{label}</p>
-    <p className="mt-1 text-xl font-semibold tabular-nums" aria-live="polite">{resource.loading?'Loading...':resource.error||!valid?'Unavailable':count}</p>
-    {(resource.error||!resource.loading&&!valid)&&<Button variant="outline" size="sm" onClick={()=>void resource.reload().catch(()=>{})}>Retry {label.toLowerCase()}</Button>}
-  </div>;
+function PayrollCountScope({month}){return <p className="text-xs text-muted-foreground">{month?preparationMonth(month):'All payroll months'} · All statuses · Matches employee search</p>;}
+export function MonthlyPayrollSummary({resource,month}) {
+ return <section aria-label="Monthly payroll counts" className="space-y-2"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[['Employees in payroll','employees',UsersRound],['Not prepared','notPrepared',FileText],['Pending approval','pendingApproval',Clock3],['Awaiting payment','awaitingPayment',Wallet],['Paid','paid',CheckCircle2]].map(([label,key,Icon])=><PayrollCountCard key={key} label={label} Icon={Icon} count={resource.data?.summary?.[key]} loading={resource.loading} error={resource.error} onRetry={()=>void resource.reload().catch(()=>{})}/>)}</div><PayrollCountScope month={month}/><p className="text-xs text-muted-foreground">Pending approval: HR-approved payroll awaiting Admin decision. Drafts, returned payroll and salary setup required are separate states.</p></section>;
+}
+export function AdminPayrollSummary({month,search,revision}) {
+ return <section aria-label="Payroll approval counts" className="space-y-2"><div className="grid gap-3 sm:grid-cols-3">{[['Awaiting Admin approval','HR_APPROVED',Clock3],['Awaiting payment','APPROVED',Wallet],['Paid','PAID',CheckCircle2]].map(([label,status,Icon])=><SummaryCount key={status} label={label} Icon={Icon} month={month} search={search} status={status} revision={revision}/>)}</div><PayrollCountScope month={month}/></section>;
+}
+function SummaryCount({label,month,search,status,revision,Icon}) {
+ const resource=usePayrollResource('?'+payrollQuery({month,search,status,page:1,pageSize:1}),payrollRequest,revision);
+ return <PayrollCountCard label={label} Icon={Icon} count={resource.data?.total} loading={resource.loading} error={resource.error} onRetry={()=>void resource.reload().catch(()=>{})}/>;
 }
