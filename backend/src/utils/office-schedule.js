@@ -8,6 +8,11 @@ function localParts(instant, timeZone) {
   const parts = Object.fromEntries(formatters.get(timeZone).formatToParts(instant).map(p => [p.type, p.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}`, stamp: `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}Z` };
 }
+// Existing overnight duty anchor: before 05:00 belongs to the previous start date.
+function dutyDateAt(instant, zone = 'Asia/Karachi') {
+  const local = localParts(instant, zone);
+  return local.time < '05:00' ? addDays(local.date, -1) : local.date;
+}
 function instantFor(date, time, zone) {
   const target = Date.parse(`${date}T${time}:00Z`); let guess = target;
   for (let i = 0; i < 4; i++) { const delta = target - Date.parse(localParts(new Date(guess), zone).stamp); if (!delta) break; guess += delta; }
@@ -59,4 +64,4 @@ function resolveSchedule(versions, assignments, episodes, now = new Date(), comp
   const selected = current || applicable[applicable.length - 1] || null;
   return { ...base, state: selected?.state || 'SETUP_REQUIRED', missing: selected?.missing || ['effectiveOfficePolicy'], applicable: selected, current, next, nextSearchDays: 366 };
 }
-module.exports = { addDays, localParts, instantFor, missingPolicy, resolveSchedule, scheduleDate };
+module.exports = { dutyDateAt, addDays, localParts, instantFor, missingPolicy, resolveSchedule, scheduleDate };

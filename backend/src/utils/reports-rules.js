@@ -165,7 +165,43 @@ function monthlyRows(rows) {
     || a.employee.id.localeCompare(b.employee.id));
 }
 
+// Payroll reference only. No salary credit, absence inference or manual-day defaults.
+function payrollAttendanceSummaries(rows, employeeIds, { month, dateFrom, dateTo }, now) {
+  const dutyDate = require('./office-schedule').dutyDateAt(now);
+  const through = dateTo < dutyDate ? dateTo : dutyDate;
+  const recordedThrough = through < dateFrom ? null : through;
+  const groups = new Map();
+  for (const row of rows) {
+    if (!groups.has(row.employee.id)) groups.set(row.employee.id, []);
+    groups.get(row.employee.id).push(row);
+  }
+  return {
+    month, timeZone: 'Asia/Karachi', asOf: now.toISOString(), dutyDate, recordedThrough,
+    employees: employeeIds.map(employeeId => {
+      const duties = groups.get(employeeId);
+      if (!duties) return { employeeId, status: 'UNAVAILABLE', scheduledDays: null, daysWorked: null, approvedLeaveDays: null };
+      const dates = new Map(duties.map(row => [row.shiftDate, row]));
+      const scheduled = new Set(), worked = new Set();
+      let leave = 0, unresolved = 0, incomplete = 0, conflicts = 0;
+      for (const row of dates.values()) {
+        if (row.scheduleState === 'SCHEDULED') scheduled.add(row.shiftDate);
+        if (['SETUP_REQUIRED', 'LEGACY_ASSIGNMENT_REVIEW'].includes(row.scheduleState)) unresolved++;
+        if (!recordedThrough || row.shiftDate > recordedThrough) continue;
+        if (row.actual?.clockInAt && new Date(row.actual.clockInAt) <= now) worked.add(row.shiftDate);
+        if (row.paidLeave) leave += row.paidLeave.days;
+        if (row.actual && (!row.actual.clockOutAt || row.unresolvedMissingCheckout)) incomplete++;
+        if (row.leaveConflict) conflicts++;
+      }
+      return {
+        employeeId, status: 'AVAILABLE', scheduledDays: unresolved ? null : scheduled.size,
+        daysWorked: recordedThrough ? worked.size : null, approvedLeaveDays: recordedThrough ? leave : null,
+        scheduleUnresolvedDays: unresolved, incompleteAttendanceDays: incomplete, leaveConflicts: conflicts,
+      };
+    }),
+  };
+}
+
 module.exports = {
-  datesBetween, statusOn, calendarFor, classifyDuty,
+  payrollAttendanceSummaries, datesBetween, statusOn, calendarFor, classifyDuty,
   matchesAttendanceStatus, emptyMetrics, summarize, monthlyRows,
 };

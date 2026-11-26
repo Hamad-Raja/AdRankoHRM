@@ -5,7 +5,7 @@ const { parseReportQuery } = require('../validation/reports.validation');
 const { localParts } = require('../utils/office-schedule');
 const { buildReportScope, overlaps } = require('../utils/reports-scope');
 const {
-  datesBetween, classifyDuty, matchesAttendanceStatus, summarize, monthlyRows, statusOn,
+  payrollAttendanceSummaries, datesBetween, classifyDuty, matchesAttendanceStatus, summarize, monthlyRows, statusOn,
 } = require('../utils/reports-rules');
 
 const READ_LIMITS = Object.freeze({
@@ -142,15 +142,17 @@ function response(rows, totals, meta, filters, exporting) {
 
 // Factory injection is for isolated tests/read-only probes. HTTP callers never choose it.
 function createReportsService({ prisma, actor, now = () => new Date() }) {
-  async function read(userId, rawQuery, report, exporting = false) {
+  async function read(userId, rawQuery, report, exporting = false, summaryIds = null) {
     return prisma.$transaction(async tx => {
+      if(summaryIds!==null)await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
       const user = await actor(tx, userId, false);
+      if(summaryIds!==null&&(!Array.isArray(summaryIds)||!['ADMIN','HR'].includes(user.role)||!summaryIds.length||summaryIds.length>25))fail(403,'Payroll summary access denied.','FORBIDDEN');
       const asOf = now();
       const filters = parseReportQuery(rawQuery, { report, exporting, now: asOf });
       const scope = await buildReportScope(tx, user, filters);
       const employeeLimit = Math.min(READ_LIMITS.maxEmployees, Math.floor(READ_LIMITS.maxDutyCells / filters.rangeDays));
       const employees = bounded(await tx.employee.findMany({
-        where: scope.where, select: employeeSelect(filters),
+        where: summaryIds?{AND:[scope.where,{id:{in:summaryIds}}]}:scope.where, select: employeeSelect(filters),
         orderBy: [{ fullName: 'asc' }, { id: 'asc' }], take: employeeLimit + 1,
       }), employeeLimit, 'Employee/date workload');
       const ids = employees.map(employee => employee.id);
@@ -225,6 +227,7 @@ function createReportsService({ prisma, actor, now = () => new Date() }) {
           rows.push({ ...row, organization: scope.organizationFor(employee, date) });
         }
       }
+      if(summaryIds)return payrollAttendanceSummaries(rows,summaryIds,filters,asOf);
       rows.sort((a, b) => b.shiftDate.localeCompare(a.shiftDate)
         || a.employee.fullName.localeCompare(b.employee.fullName)
         || a.employee.id.localeCompare(b.employee.id));
@@ -248,6 +251,7 @@ function createReportsService({ prisma, actor, now = () => new Date() }) {
     }, READ_TRANSACTION);
   }
   return {
+    getPayrollAttendanceSummary: (userId,{month,employeeIds}) => read(userId,{month},'monthly',false,employeeIds),
     getMonthlyReport: (userId, query = {}) => read(userId, query, 'monthly'),
     getAttendanceReport: (userId, query = {}) => read(userId, query, 'attendance'),
     getCorrectionsReport: (userId, query = {}) => read(userId, query, 'corrections'),
@@ -267,6 +271,7 @@ function defaults() {
 
 module.exports = {
   createReportsService, READ_LIMITS, READ_TRANSACTION,
+  getPayrollAttendanceSummary: (...args) => defaults().getPayrollAttendanceSummary(...args),
   getMonthlyReport: (...args) => defaults().getMonthlyReport(...args),
   getAttendanceReport: (...args) => defaults().getAttendanceReport(...args),
   getCorrectionsReport: (...args) => defaults().getCorrectionsReport(...args),

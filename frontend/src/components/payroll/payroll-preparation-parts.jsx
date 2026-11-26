@@ -1,4 +1,6 @@
-﻿import {CirclePlus,CircleMinus,ChevronRight} from 'lucide-react';
+import {Button} from '@/components/ui/button';
+import {calendarDate} from './payroll-format';
+import {CirclePlus,CircleMinus,ChevronRight,CalendarDays,CircleCheck,CalendarCheck} from 'lucide-react';
 import {InitialsAvatar} from '@/components/employees/directory-parts';
 import {pkr,preparationMonth} from './payroll-format';
 
@@ -11,4 +13,18 @@ export function AdjustmentSummary({kind,count,total}){
 }
 export function PreparationPreview({preview,children,label='Payroll calculation preview'}){
  return <section aria-label={label} className="min-w-0 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm"><div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(9rem,0.65fr)_minmax(0,1.35fr)]"><div className="space-y-3"><h4 className="font-semibold text-primary">Preview</h4>{children}</div><div className="min-w-0 sm:border-l sm:border-primary/20 sm:pl-5">{preview?<><p className="mb-3 text-xs text-muted-foreground">{preparationMonth(preview.month)} - Monthly basic {pkr(preview.monthlyBasic)}</p><dl className="space-y-2">{[['Earned basic',preview.earnedBasic],['Additional earnings',preview.additionalEarnings],...(preview.grossPay!=null?[['Gross pay',preview.grossPay]]:[]),['Deductions',preview.totalDeductions]].map(([title,amount])=><div key={title} className="flex min-w-0 flex-wrap justify-between gap-x-3 gap-y-1"><dt>{title}</dt><dd className="break-words font-semibold tabular-nums">{pkr(amount)}</dd></div>)}<div className="flex flex-wrap items-center justify-between gap-2 border-t border-primary/25 pt-3 text-lg font-semibold text-primary"><dt>Net payable</dt><dd className="break-words text-xl tabular-nums">{pkr(preview.netPay)}</dd></div></dl><p className="mt-3 text-xs italic text-muted-foreground">Unearned basic {pkr(preview.unearnedBasic)} - reference only</p></>:<p className="text-muted-foreground">Enter complete payroll details, then calculate a preview. Changed inputs require a new preview.</p>}<p className="mt-3 text-xs text-muted-foreground">Unearned basic is excluded by proration, not an additional deduction.</p></div></div></section>;
+}
+
+export function AttendanceSummary({employee,month,resource}){
+ const data=resource.data?.month===month?resource.data:null,row=data?.employees?.find(item=>item.employeeId===employee.id);
+ const available=row?.status==='AVAILABLE',retry=()=>void resource.reload().catch(()=>{});
+ const metrics=[['Scheduled days',row?.scheduledDays,CalendarDays],['Days worked',row?.daysWorked,CircleCheck],['Approved leave',row?.approvedLeaveDays,CalendarCheck]];
+ return <section aria-label={'Attendance summary - '+employee.employeeCode} className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-3 text-sm">
+  <header className="flex flex-wrap items-center gap-x-3 gap-y-1"><CalendarDays aria-hidden="true" className="size-5 shrink-0 text-primary"/><h4 className="font-semibold">Attendance summary</h4><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Reference only</span><span className="text-muted-foreground">{preparationMonth(month)}</span></header>
+  {resource.loading?<p role="status" className="text-muted-foreground">Loading attendance summary...</p>:resource.error||!available?<div role="alert" className="flex flex-wrap items-center justify-between gap-2"><p className="text-muted-foreground">Attendance summary unavailable.</p><Button type="button" size="sm" variant="outline" onClick={retry}>Retry attendance summary</Button></div>:<>
+   <dl className="grid min-w-0 gap-3 sm:grid-cols-3">{metrics.map(([label,value,Icon])=><div key={label} className="flex min-w-0 items-start gap-2"><Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground"/><div className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-semibold tabular-nums">{value==null?'Unavailable':value+' '+(value===1?'day':'days')}</dd></div></div>)}</dl>
+   <p className="text-xs text-muted-foreground">Scheduled days: full selected month. Attendance and approved leave: {data.recordedThrough?'through '+calendarDate(data.recordedThrough)+' (duty start date, Asia/Karachi).':'no elapsed duty dates in this month yet.'} These independent totals do not set payroll days.</p>
+   {(row.scheduleUnresolvedDays>0||row.incompleteAttendanceDays>0||row.leaveConflicts>0)&&<p role="note" className="rounded-lg border border-warning bg-warning/20 p-2 text-xs">{row.scheduleUnresolvedDays>0?'Schedule is unresolved for some dates; scheduled total is unavailable. ':''}{row.incompleteAttendanceDays>0?'Attendance includes open or unresolved records. ':''}{row.leaveConflicts>0?'Approved leave conflicts need review.':''}</p>}
+  </>}
+ </section>;
 }

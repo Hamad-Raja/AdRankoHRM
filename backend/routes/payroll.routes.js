@@ -10,6 +10,7 @@ router.get('/payslips',run(req=>service.list(req.auth.user.id,parse(schema.list,
 router.get('/payslips/annual-summary',run(req=>service.annualSummary(req.auth.user.id,parse(schema.annual,req.query),true)));
 router.get('/payslips/:id',run(req=>service.detail(req.auth.user.id,parse(schema.id,req.params.id),true)));
 router.use(authorize('ADMIN','HR'));
+router.get('/attendance-summary',run(req=>require('../src/services/reports.service').getPayrollAttendanceSummary(req.auth.user.id,parse(schema.attendanceSummary,req.query))));
 router.get('/annual-summary',run(req=>service.annualSummary(req.auth.user.id,parse(schema.annual,req.query))));
 router.get('/salaries/:employeeId',run(req=>service.salaryHistory(req.auth.user.id,parse(schema.id,req.params.employeeId))));
 router.post('/salaries/:employeeId',csrfProtection,run(req=>service.saveSalary(req.auth.user.id,parse(schema.id,req.params.employeeId),parse(schema.salary,req.body))));

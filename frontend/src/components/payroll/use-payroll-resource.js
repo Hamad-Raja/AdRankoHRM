@@ -30,3 +30,8 @@ export function usePayrollResource(path,request=payrollRequest,refreshKey=0) {
   const current=result?.path===path?result:null;
   return {data:current?.data||null,error:current?.error||null,loading:Boolean(path&&!current),reload};
 }
+
+export function usePreparationAttendance(employeeIds,month){
+ const ids=[...new Set(employeeIds)].sort().join(',');
+ return usePayrollResource(ids&&month?'/attendance-summary?'+new URLSearchParams({month,employeeIds:ids}):null);
+}

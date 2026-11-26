@@ -1,4 +1,5 @@
-import {PreparationHeader,AdjustmentSummary,PreparationPreview} from './payroll-preparation-parts';
+import {usePreparationAttendance} from './use-payroll-resource';
+import {PreparationHeader,AdjustmentSummary,PreparationPreview,AttendanceSummary} from './payroll-preparation-parts';
 import {useEffect, useRef, useState} from 'react';
 import {Plus, Trash2, Calculator, LoaderCircle} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -33,6 +34,7 @@ export default function PayrollDraftDialog({employee,record,month,busy,uncertain
   const [deductions,setDeductions]=useState(()=>initial.deductions.map(item=>({...item,key:crypto.randomUUID()})));
   const [preview,setPreview]=useState(null), [previewBusy,setPreviewBusy]=useState(false), [previewError,setPreviewError]=useState(null);
   const salary=usePayrollResource('/salaries/'+employee.id);
+  const attendance=usePreparationAttendance(record?[]:[employee.id],values.month);
   useEffect(()=>()=>pendingPreview.current?.abort(),[]);
   const input={employeeId:employee.id,month:values.month,totalPayableDays:values.totalPayableDays,workedDays:values.workedDays,
     earnings:earnings.map(({type,label,amount})=>({type,label,amount})),deductions:deductions.map(({type,label,amount})=>({type,label,amount}))};
@@ -63,6 +65,7 @@ export default function PayrollDraftDialog({employee,record,month,busy,uncertain
           {salary.loading?<p role="status" className="text-sm text-muted-foreground">Loading applicable salary…</p>:salary.error?<div role="alert" className="space-y-2 text-sm text-destructive"><p>Applicable salary unavailable: {salary.error.message}</p><Button type="button" variant="outline" onClick={()=>void salary.reload().catch(()=>{})}>Retry applicable salary</Button></div>:<div className="grid gap-3 text-sm sm:grid-cols-2"><div><p className="text-muted-foreground">Applicable Monthly Basic Salary</p><p className="mt-1 font-semibold tabular-nums">{applicableSalary?pkr(applicableSalary.monthlyBasic):'No salary effective for this month'}</p></div><div><p className="text-muted-foreground">Salary Effective Month</p><p className="mt-1 font-semibold">{applicableSalary?preparationMonth(applicableSalary.effectiveMonth):'Not configured'}</p></div></div>}
           {record&&<p className="text-xs text-muted-foreground">Saved draft basic: {pkr(record.monthlyBasic)}. Preview and save use the applicable salary above; finalized records retain their snapshots.</p>}
         </section>
+        {!record&&<AttendanceSummary employee={employee} month={values.month} resource={attendance}/>}
         <section aria-label="Payroll information" className="space-y-3"><h3 className="font-semibold">Pay Calculation Basis</h3><div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <PayrollField label="Total Payable Days" error={fieldError('totalPayableDays')}><input className={inputClass} name="totalPayableDays" inputMode="decimal" required value={values.totalPayableDays} onChange={change}/></PayrollField>
           <PayrollField label="Worked Days" error={fieldError('workedDays')}><input className={inputClass} name="workedDays" inputMode="decimal" required value={values.workedDays} onChange={change}/></PayrollField>
